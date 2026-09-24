@@ -30,8 +30,8 @@ jobs:
           if git clone $WIKI_REPO .; then
             echo "Wiki repo cloned."
           else
-            echo "Wiki repo not found."
-            exit 1
+            echo "Wiki repo not found. Skipping sync: create the first wiki page in the GitHub UI to enable the wiki repo."
+            exit 0
           fi
           
           # Salin semua file dari docs/ ke wiki
