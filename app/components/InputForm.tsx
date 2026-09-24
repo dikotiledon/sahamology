@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import type { StockInput } from '@/lib/types';
-import { getDefaultDate } from '@/lib/utils';
 import { Check, X, Minus } from 'lucide-react';
 
 interface InputFormProps {
@@ -22,7 +21,7 @@ interface InputFormProps {
   hasResult?: boolean;
 }
 
-let inFlightFlagFetch: Record<string, Promise<any>> = {};
+const inFlightFlagFetch: Record<string, Promise<any>> = {};
 
 export default function InputForm({
   onSubmit,
@@ -31,11 +30,11 @@ export default function InputForm({
   fromDate,
   toDate,
   onDateChange,
-  onCopyText,
-  onCopyImage,
+  onCopyText: _onCopyText,
+  onCopyImage: _onCopyImage,
   onAnalyzeAI,
-  copiedText,
-  copiedImage,
+  copiedText: _copiedText,
+  copiedImage: _copiedImage,
   storyStatus,
   hasResult
 }: InputFormProps) {

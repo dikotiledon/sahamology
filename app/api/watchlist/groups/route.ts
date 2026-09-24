@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWatchlistGroups } from '@/lib/stockbit';
-import { getCachedWatchlistGroups, saveCachedWatchlistGroups, hasWatchlistCache } from '@/lib/supabase';
+import { getCachedWatchlistGroups, saveCachedWatchlistGroups, hasWatchlistCache as _hasWatchlistCache } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

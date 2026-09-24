@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { enqueueWatchlistAnalysis } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,38 +9,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unsupported job type' }, { status: 400 });
     }
 
-    // Trigger manual Netlify function instead of scheduled one
-    // Scheduled functions return 500 when called via HTTP
-    const baseUrl = process.env.URL || 'http://localhost:8888';
-    const functionUrl = `${baseUrl}/.netlify/functions/analyze-watchlist-manual`;
+    const jobId = await enqueueWatchlistAnalysis();
+    console.log(`[Job Retry] Enqueued ${jobName} job ${jobId}`);
 
-    console.log(`[Job Retry] Triggering background job at: ${functionUrl}`);
-
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-
-    const responseText = await response.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      result = { message: responseText };
-    }
-
-    return NextResponse.json({ success: true, data: result });
-
-    } catch (error) {
+    return NextResponse.json({ success: true, data: { jobId } });
+  } catch (error) {
     console.error('[Job Retry] Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
-      error
+      error,
     });
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }

@@ -1,12 +1,13 @@
-import { 
-  updateAgentStory, 
-  createBackgroundJobLog, 
-  appendBackgroundJobLogEntry, 
-  updateBackgroundJobLog 
-} from '../../lib/supabase';
+import {
+  updateAgentStory,
+  createBackgroundJobLog,
+  appendBackgroundJobLogEntry,
+  updateBackgroundJobLog,
+} from '@/lib/supabase';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 const VALID_THINKING_LEVELS = ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH'] as const;
+
 function storyTimeoutMs(): number {
   const configured = Number(process.env.LLM_STORY_TIMEOUT_MS);
   return Number.isFinite(configured) && configured > 0 ? configured : 4 * 60 * 1000;
@@ -46,7 +47,7 @@ function requireEnv(name: string): string {
 function geminiSettings() {
   const requested = process.env.GEMINI_STORY_THINKING_LEVEL?.toUpperCase();
   const thinkingLevel = (
-    VALID_THINKING_LEVELS.includes(requested as typeof VALID_THINKING_LEVELS[number])
+    VALID_THINKING_LEVELS.includes(requested as (typeof VALID_THINKING_LEVELS)[number])
       ? requested
       : 'HIGH'
   ) as ThinkingLevel;
@@ -67,13 +68,14 @@ function openaiSettings() {
 
 function buildPrompt(emiten: string, keyStatsData: unknown, provider: Provider): string {
   const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const systemPrompt = "Kamu adalah seorang analis saham profesional Indonesia yang ahli dalam menganalisa story dan katalis pergerakan harga saham.";
+  const systemPrompt = 'Kamu adalah seorang analis saham profesional Indonesia yang ahli dalam menganalisa story dan katalis pergerakan harga saham.';
   const keyStatsContext = keyStatsData
     ? `\nDATA KEY STATISTICS UNTUK ${emiten}:\n${JSON.stringify(keyStatsData, null, 2)}\n`
     : '';
-  const searchLine = provider === 'gemini'
-    ? `Cari dan analisa berita-berita TERBARU (bulan ini/minggu ini) tentang emiten saham Indonesia dengan kode ${emiten} dari internet menggunakan Google Search. `
-    : `Analisa emiten saham Indonesia dengan kode ${emiten} dari data key statistics yang diberikan dan pengetahuanmu. Jangan mengklaim sudah mencari internet. `;
+  const searchLine =
+    provider === 'gemini'
+      ? `Cari dan analisa berita-berita TERBARU (bulan ini/minggu ini) tentang emiten saham Indonesia dengan kode ${emiten} dari internet menggunakan Google Search. `
+      : `Analisa emiten saham Indonesia dengan kode ${emiten} dari data key statistics yang diberikan dan pengetahuanmu. Jangan mengklaim sudah mencari internet. `;
 
   const userPrompt = `Hari ini adalah ${today}.
 ${searchLine}
@@ -122,7 +124,9 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
   return `${systemPrompt}\n\n${userPrompt}`;
 }
 
-async function generateGeminiText(prompt: string): Promise<{ text: string; model: string; thinkingLevel: string | null }> {
+async function generateGeminiText(
+  prompt: string
+): Promise<{ text: string; model: string; thinkingLevel: string | null }> {
   const settings = geminiSettings();
   const ai = new GoogleGenAI({ apiKey: settings.apiKey });
   const responseStream = await (ai.models as any).generateContentStream({
@@ -139,7 +143,9 @@ async function generateGeminiText(prompt: string): Promise<{ text: string; model
   return { text, model: settings.model, thinkingLevel: settings.thinkingLevel };
 }
 
-async function generateOpenAIText(prompt: string): Promise<{ text: string; model: string; thinkingLevel: null }> {
+async function generateOpenAIText(
+  prompt: string
+): Promise<{ text: string; model: string; thinkingLevel: null }> {
   const settings = openaiSettings();
   const response = await fetch(`${settings.baseUrl}/chat/completions`, {
     method: 'POST',
@@ -150,6 +156,10 @@ async function generateOpenAIText(prompt: string): Promise<{ text: string; model
     body: JSON.stringify({
       model: settings.model,
       response_format: { type: 'json_object' },
+      // This gateway (and several OpenAI-compatible ones) default to a small
+      // max_tokens when omitted, which truncates long story JSON mid-string.
+      // Ask for a generous budget so the full analysis fits.
+      max_tokens: Number(process.env.LLM_MAX_TOKENS) || 8000,
       messages: [{ role: 'user', content: prompt }],
     }),
     signal: AbortSignal.timeout(storyTimeoutMs()),
@@ -159,7 +169,26 @@ async function generateOpenAIText(prompt: string): Promise<{ text: string; model
     throw new Error(`OpenAI-compatible request failed: ${response.status}`);
   }
 
-  const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+  // Some OpenAI-compatible gateways append SSE artifacts (e.g. `data: [DONE]`)
+  // even to non-streaming responses. response.json() would throw on that, so
+  // parse defensively: trim trailing SSE frames before decoding, and fall
+  // back to extracting the first JSON object if the body still isn't pure.
+  const rawText = await response.text();
+  const cleanText = rawText
+    .replace(/data:\s*\[DONE\]\s*/g, '')
+    .trim();
+
+  let payload: { choices?: Array<{ message?: { content?: unknown } }> };
+  try {
+    payload = JSON.parse(cleanText);
+  } catch {
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('OpenAI-compatible response is not valid JSON');
+    }
+    payload = JSON.parse(jsonMatch[0]);
+  }
+
   const content = payload.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || content.trim() === '') {
     throw new Error('OpenAI-compatible response has empty choices content');
@@ -167,52 +196,58 @@ async function generateOpenAIText(prompt: string): Promise<{ text: string; model
   return { text: content, model: settings.model, thinkingLevel: null };
 }
 
-export default async (req: Request) => {
-  const startTime = Date.now();
-  let jobLogId: number | null = null;
-  const url = new URL(req.url);
-  const emiten = url.searchParams.get('emiten')?.toUpperCase();
-  const storyId = url.searchParams.get('id');
+export interface StoryAnalysisInput {
+  storyId: number;
+  emiten: string;
+  keyStats?: unknown;
+}
 
-  console.log('[Agent Story] Starting background analysis...');
+export interface StoryAnalysisOutcome {
+  success: boolean;
+  storyId: number;
+  emiten: string;
+  error?: string;
+}
+
+/**
+ * AI story generation worker.
+ *
+ * Ported from the former Netlify background function (deleted in this
+ * migration). Keeps the same job-log and `agent_stories` lifecycle:
+ * pending → processing → completed/error.
+ */
+export async function runStoryAnalysis(input: StoryAnalysisInput): Promise<StoryAnalysisOutcome> {
+  const startTime = Date.now();
+  const { storyId, emiten, keyStats } = input;
+  let jobLogId: number | null = null;
+
+  console.log('[Story Job] Starting background analysis...');
 
   try {
-    if (!emiten || !storyId) {
-      return new Response(JSON.stringify({ error: 'Missing emiten or id' }), { status: 400 });
-    }
-
-    // Create job log entry
+    // Create job log entry.
     try {
       const jobLog = await createBackgroundJobLog('analyze-story', 1);
       jobLogId = jobLog.id;
       if (jobLogId) {
         await appendBackgroundJobLogEntry(jobLogId, {
           level: 'info',
-          message: `Starting AI Story Analysis`,
+          message: 'Starting AI Story Analysis',
           emiten,
         });
       }
     } catch (logError) {
-      console.error('[Agent Story] Failed to create job log:', logError);
-    }
-
-    let keyStatsData = null;
-    try {
-      const body = await req.json();
-      keyStatsData = body.keyStats;
-    } catch (e) {
-      console.log('[Agent Story] No JSON body found or invalid JSON');
+      console.error('[Story Job] Failed to create job log:', logError);
     }
 
     const provider = resolveProvider();
-    const prompt = buildPrompt(emiten, keyStatsData, provider);
+    const prompt = buildPrompt(emiten, keyStats, provider);
     const generated = await withTimeout(
       provider === 'openai' ? generateOpenAIText(prompt) : generateGeminiText(prompt),
       storyTimeoutMs(),
       'Story request timed out'
     );
 
-    await updateAgentStory(parseInt(storyId), {
+    await updateAgentStory(storyId, {
       status: 'processing',
       model: generated.model,
       thinking_level: generated.thinkingLevel,
@@ -226,12 +261,12 @@ export default async (req: Request) => {
       });
       await appendBackgroundJobLogEntry(jobLogId, {
         level: 'info',
-        message: `Model response received, parsing results...`,
+        message: 'Model response received, parsing results...',
         emiten,
       });
     }
 
-    let analysisResult;
+    let analysisResult: Record<string, any>;
     try {
       const jsonMatch = generated.text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -241,82 +276,74 @@ export default async (req: Request) => {
       }
     } catch (parseError) {
       const errMsg = 'Failed to parse AI response';
-      console.error('[Agent Story] Parse error:', parseError);
+      console.error('[Story Job] Parse error:', parseError);
 
-      await updateAgentStory(parseInt(storyId), {
-        status: 'error',
-        error_message: errMsg
-      });
+      await updateAgentStory(storyId, { status: 'error', error_message: errMsg });
 
       if (jobLogId) {
         await appendBackgroundJobLogEntry(jobLogId, {
           level: 'error',
           message: errMsg,
           emiten,
-          details: { raw: generated.text.substring(0, 500) }
+          details: { raw: generated.text.substring(0, 500) },
         });
-        await updateBackgroundJobLog(jobLogId, {
-          status: 'failed',
-          error_message: errMsg,
-        });
+        await updateBackgroundJobLog(jobLogId, { status: 'failed', error_message: errMsg });
       }
 
-      return new Response(JSON.stringify({ error: 'Parse error' }), { status: 500 });
+      return { success: false, storyId, emiten, error: errMsg };
     }
 
-    // Save successful result
-    await updateAgentStory(parseInt(storyId), {
+    // Save successful result. The DB columns are jsonb, so coerce any
+    // malformed model output (e.g. a string where an array/object was
+    // expected) to a safe fallback instead of letting a bad cast fail the
+    // whole insert.
+    const asArray = (v: unknown): object[] => (Array.isArray(v) ? v : []);
+    const asObject = (v: unknown): object =>
+      v && typeof v === 'object' && !Array.isArray(v) ? (v as object) : {};
+
+    await updateAgentStory(storyId, {
       status: 'completed',
-      matriks_story: analysisResult.matriks_story || [],
-      swot_analysis: analysisResult.swot_analysis || {},
-      checklist_katalis: analysisResult.checklist_katalis || [],
-      keystat_signal: analysisResult.keystat_signal || '',
-      strategi_trading: analysisResult.strategi_trading || {},
-      kesimpulan: analysisResult.kesimpulan || ''
+      matriks_story: asArray(analysisResult.matriks_story),
+      swot_analysis: asObject(analysisResult.swot_analysis),
+      checklist_katalis: asArray(analysisResult.checklist_katalis),
+      keystat_signal: typeof analysisResult.keystat_signal === 'string' ? analysisResult.keystat_signal : '',
+      strategi_trading: asObject(analysisResult.strategi_trading),
+      kesimpulan: typeof analysisResult.kesimpulan === 'string' ? analysisResult.kesimpulan : '',
     });
 
     const duration = (Date.now() - startTime) / 1000;
-    console.log(`[Agent Story] Analysis completed for ${emiten} in ${duration}s`);
+    console.log(`[Story Job] Analysis completed for ${emiten} in ${duration}s`);
 
     if (jobLogId) {
       await appendBackgroundJobLogEntry(jobLogId, {
         level: 'info',
-        message: `Analysis completed successfully`,
+        message: 'Analysis completed successfully',
         emiten,
-        details: { duration_seconds: duration }
+        details: { duration_seconds: duration },
       });
       await updateBackgroundJobLog(jobLogId, {
         status: 'completed',
         success_count: 1,
-        metadata: { duration_seconds: duration }
+        metadata: { duration_seconds: duration },
       });
     }
 
-    return new Response(JSON.stringify({ success: true, emiten }), { status: 200 });
-
+    return { success: true, storyId, emiten };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('[Agent Story] Critical error:', error);
-    
+    console.error('[Story Job] Critical error:', error);
+
     if (jobLogId) {
       await appendBackgroundJobLogEntry(jobLogId, {
         level: 'error',
         message: `Analysis failed: ${errMsg}`,
         emiten,
       });
-      await updateBackgroundJobLog(jobLogId, {
-        status: 'failed',
-        error_message: errMsg,
-      });
+      await updateBackgroundJobLog(jobLogId, { status: 'failed', error_message: errMsg });
     }
 
-    if (storyId) {
-      await updateAgentStory(parseInt(storyId), {
-        status: 'error',
-        error_message: errMsg
-      });
-    }
+    await updateAgentStory(storyId, { status: 'error', error_message: errMsg });
 
-    return new Response(JSON.stringify({ error: errMsg }), { status: 500 });
+    return { success: false, storyId, emiten, error: errMsg };
   }
-};
+}

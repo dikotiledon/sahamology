@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchMarketDetector, fetchOrderbook, getTopBroker, parseLot, getBrokerSummary, fetchEmitenInfo } from '@/lib/stockbit';
 import { calculateTargets } from '@/lib/calculations';
-import { saveStockQuery, getLatestStockQuery, getSpecificStockQuery, getStockPriceByDate } from '@/lib/supabase';
+import { saveStockQuery, getLatestStockQuery, getSpecificStockQuery as _getSpecificStockQuery, getStockPriceByDate } from '@/lib/supabase';
 import type { StockInput, ApiResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {

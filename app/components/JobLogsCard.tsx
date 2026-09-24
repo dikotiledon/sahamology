@@ -16,7 +16,7 @@ export default function JobLogsCard({
 }: JobLogsCardProps) {
   const [logs, setLogs] = useState<BackgroundJobLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -40,7 +40,7 @@ export default function JobLogsCard({
       } else {
         setError(data.error);
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to fetch job logs');
     } finally {
       setLoading(false);

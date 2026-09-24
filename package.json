@@ -6,19 +6,24 @@
     "dev": "next dev",
     "migrate": "node scripts/run-migrations.js",
     "build": "next build",
-    "start": "next start"
+    "start": "node scripts/start-standalone.js",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --tsconfig tsconfig.test.json --test lib/jobs/run-story-analysis.test.ts lib/db.test.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@google/genai": "^1.35.0",
-    "@netlify/functions": "^5.1.2",
-    "@supabase/supabase-js": "^2.89.0",
+    "bullmq": "^6.3.8",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
+    "ioredis": "^6.0.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "mime": "^4.1.0",
     "next": "16.1.1",
+    "node-cron": "^4.6.0",
+    "pg": "^8.23.0",
     "playwright": "^1.57.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -27,12 +32,17 @@
     "recharts": "^3.6.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.70.1"
   }
 }

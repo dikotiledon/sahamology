@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test, beforeEach } from 'node:test';
 import { geminiCalls } from './stubs/google-genai.mjs';
 import { storyUpdates, jobUpdates } from './stubs/supabase.mjs';
+import { runStoryAnalysis } from './run-story-analysis';
 
 const STORY = {
   matriks_story: [{ kategori_story: 'Aksi Korporasi' }],
@@ -34,13 +35,7 @@ function setEnv(values: Record<string, string>) {
   for (const [key, value] of Object.entries(values)) process.env[key] = value;
 }
 
-function storyRequest() {
-  return new Request('https://example.test/.netlify/functions/analyze-story-background?emiten=bbri&id=42', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ keyStats: { pe: '10' } }),
-  });
-}
+const JOB_INPUT = { storyId: 42, emiten: 'BBRI', keyStats: { pe: '10' } };
 
 beforeEach(() => {
   geminiCalls.length = 0;
@@ -56,20 +51,14 @@ beforeEach(() => {
   }) as typeof fetch;
 });
 
-async function loadHandler() {
-  const imported = await import(`./analyze-story-background.ts?case=${Date.now()}-${Math.random()}`);
-  return imported.default as (req: Request) => Promise<Response>;
-}
-
 test('unset LLM_PROVIDER keeps the Gemini client, Google Search, and thinking config', async () => {
   setEnv({
     GEMINI_API_KEY: 'gemini-test-key',
     GEMINI_STORY_MODEL: 'gemini-test-model',
     GEMINI_STORY_THINKING_LEVEL: 'LOW',
   });
-  const handler = await loadHandler();
-  const response = await handler(storyRequest());
-  assert.equal(response.status, 200);
+  const outcome = await runStoryAnalysis(JOB_INPUT);
+  assert.equal(outcome.success, true);
   assert.equal(fetchCalls.length, 0);
   assert.equal(geminiCalls[0]?.apiKey, 'gemini-test-key');
   const generate = geminiCalls.find((call) => call.model) as {
@@ -89,9 +78,8 @@ test('unset LLM_PROVIDER keeps the Gemini client, Google Search, and thinking co
 
 test('openai mode names the first missing required variable and does not fetch', async () => {
   setEnv({ LLM_PROVIDER: 'openai', LLM_API_KEY: 'sk-test', LLM_MODEL: 'story-model' });
-  const handler = await loadHandler();
-  const response = await handler(storyRequest());
-  assert.equal(response.status, 500);
+  const outcome = await runStoryAnalysis(JOB_INPUT);
+  assert.equal(outcome.success, false);
   assert.equal(fetchCalls.length, 0);
   assert.equal(geminiCalls.length, 0);
   const errored = storyUpdates.find((update) => update.status === 'error');
@@ -101,9 +89,8 @@ test('openai mode names the first missing required variable and does not fetch',
 
 test('unknown LLM_PROVIDER fails before any network call', async () => {
   setEnv({ LLM_PROVIDER: 'anthropic', LLM_BASE_URL: 'https://llm.test/v1', LLM_API_KEY: 'sk-test', LLM_MODEL: 'm' });
-  const handler = await loadHandler();
-  const response = await handler(storyRequest());
-  assert.equal(response.status, 500);
+  const outcome = await runStoryAnalysis(JOB_INPUT);
+  assert.equal(outcome.success, false);
   assert.equal(fetchCalls.length, 0);
   assert.match(String(storyUpdates.find((update) => update.status === 'error')?.error_message), /LLM_PROVIDER/);
   assert.equal(jobUpdates.at(-1)?.status, 'failed');
@@ -118,9 +105,8 @@ test('openai mode posts one chat completion without tools and stores the model',
     GEMINI_API_KEY: 'must-not-be-used',
   });
   fetchImpl = async () => Response.json({ choices: [{ message: { content: STORY_JSON } }] });
-  const handler = await loadHandler();
-  const response = await handler(storyRequest());
-  assert.equal(response.status, 200);
+  const outcome = await runStoryAnalysis(JOB_INPUT);
+  assert.equal(outcome.success, true);
   assert.equal(fetchCalls.length, 1);
   assert.equal(fetchCalls[0].url, 'https://llm.test/v1/chat/completions');
   assert.equal(geminiCalls.length, 0);
@@ -186,9 +172,8 @@ test('openai mode marks 401, empty choices, and timeout as story and job failure
       LLM_STORY_TIMEOUT_MS: '30',
     });
     fetchImpl = item.impl;
-    const handler = await loadHandler();
-    const response = await handler(storyRequest());
-    assert.equal(response.status, 500, item.name);
+    const outcome = await runStoryAnalysis(JOB_INPUT);
+    assert.equal(outcome.success, false, item.name);
     assert.equal(fetchCalls.length, 1, item.name);
     const errored = storyUpdates.find((update) => update.status === 'error');
     assert.match(String(errored?.error_message), item.pattern, item.name);

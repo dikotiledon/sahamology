@@ -1,125 +1,102 @@
-# OPSI B: Instalasi Lokal (PC + Supabase)
+# OPSI B: Instalasi Lokal (Docker + PostgreSQL)
 
-Ikuti langkah-langkah berikut secara berurutan:
+Ikuti langkah-langkah berikut secara berurutan untuk menjalankan Sahamology di komputer sendiri.
 
-## B1. Setup Supabase
+## B1. Prasyarat
 
-> ⚠️ Langkah ini **sama dengan Opsi A**. Jika sudah setup Supabase, lanjut ke B2.
+1. Install **Docker Desktop** untuk OS Anda:
+   - Windows/Mac: <https://www.docker.com/products/docker-desktop/>
+   - Linux: Docker Engine + Compose v2
+2. Pastikan Docker sedang berjalan.
 
-1. Buat akun dan project baru di [Supabase](https://supabase.com/)
-2. Catat kredensial berikut dari **Project Settings > Data API**:
-   - `Project URL` → untuk `NEXT_PUBLIC_SUPABASE_URL`
-3. Catat kredensial berikut dari **Project Settings > API Keys > Legacy anon, service_role API keys**:
-   - `anon public` key → untuk `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-> **PENTING: Persiapan Database (Wajib Sekali Saja)**
-> Lakukan langkah yang sama seperti di **Opsi A (A1: Langkah 1-4)** dengan menjalankan `supabase/000_init.sql` di SQL Editor Supabase.
-> 
-> Setelah infrastruktur siap, Anda bisa menjalankan migrasi database lainnya secara otomatis dengan perintah:
-> ```bash
-> npm run migrate
-> ```
-
-## B2. Clone & Install
+## B2. Clone & Konfigurasi
 
 1. Clone repository:
+
    ```bash
-   git clone https://github.com/username/sahamology.git
+   git clone https://github.com/dikotiledon/sahamology.git
    cd sahamology
    ```
 
-2. Install dependensi:
+2. Salin template environment:
+
    ```bash
-   npm install
+   cp .env.example .env
    ```
 
-3. Salin file environment:
-   ```bash
-   cp .env.local.example .env.local
-   ```
+3. Edit `.env` dan isi variabel berikut:
 
-4. Edit `.env.local` dan isi variabel berikut:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   GEMINI_API_KEY=AIzaSy...
+   POSTGRES_PASSWORD=password-kuat-pilihanmu
+   APP_BASE_URL=http://localhost:3000
+   CRON_SECRET=rahasia-cron
+   AUTH_SECRET=rahasia-sesi-panjang
+   # --- AI Story: pilih salah satu provider ---
+   LLM_PROVIDER=gemini
+   GEMINI_API_KEY=AIza...
+   # ATAU pakai OpenAI-compatible:
+   # LLM_PROVIDER=openai
+   # LLM_BASE_URL=http://192.168.1.4:20128/v1
+   # LLM_API_KEY=sk-...
+   # LLM_MODEL=power
    ```
 
    | Variable | Nilai | Wajib |
    |----------|-------|:-----:|
-   | `NEXT_PUBLIC_SUPABASE_URL` | URL dari Supabase | ✅ |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key dari Supabase | ✅ |
-   | `GEMINI_API_KEY` | API Key dari [Google AI Studio](https://aistudio.google.com/) | ✅ |
-   | `GEMINI_STORY_MODEL` | Model Gemini untuk AI Story Analysis (opsional, default: `gemini-3-flash-preview`) | ❌ |
-   | `GEMINI_STORY_THINKING_LEVEL` | Thinking level: `MINIMAL`/`LOW`/`MEDIUM`/`HIGH` (opsional, default: `HIGH`) | ❌ |
-   | `LLM_PROVIDER` | `gemini` (default) atau `openai`. Mode `openai` tidak menjalankan Google Search | ❌ |
-   | `LLM_BASE_URL` | Base URL OpenAI-compatible. Wajib jika provider `openai`; kode menambahkan `/chat/completions` | ❌ |
-   | `LLM_API_KEY` | Bearer key endpoint OpenAI-compatible. Wajib jika provider `openai` | ❌ |
-   | `LLM_MODEL` | Nama model OpenAI-compatible. Wajib jika provider `openai`; tidak ada default | ❌ |
-   | `STOCKBIT_JWT_TOKEN` | Token manual (opsional, ekstensi lebih baik) | ❌ |
+   | `POSTGRES_PASSWORD` | Password database (ganti dari default) | ✅ |
+   | `APP_BASE_URL` | `http://localhost:3000` (atau IP LAN) | ✅ |
+   | `CRON_SECRET` | Secret untuk trigger cron/worker | ✅ |
+   | `AUTH_SECRET` | Secret HMAC untuk sesi login | ✅ |
+   | `GEMINI_API_KEY` | API Key dari [Google AI Studio](https://aistudio.google.com/) — provider `gemini` | ⚠️ |
+   | `LLM_PROVIDER` | `gemini` (default) atau `openai` | ❌ |
+   | `LLM_BASE_URL` | Base URL OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai` | ❌ |
+   | `LLM_API_KEY` | Bearer key endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai` | ❌ |
+   | `LLM_MODEL` | Nama model (contoh: `power`, `agmanager/gemini-3.8-flash-high`). Wajib saat `LLM_PROVIDER=openai` | ❌ |
+   | `STOCKBIT_JWT_TOKEN` | Fallback token manual (opsional, ekstensi lebih baik) | ❌ |
+
+   > **CATATAN**: Background worker (BullMQ + Redis) berjalan *embedded* di proses Next.js. Tidak ada Netlify Functions — AI Story Analysis berjalan lewat `instrumentation.ts` → queue worker.
 
 ## B3. Jalankan Aplikasi
 
 ```bash
-npm run dev
+docker compose up -d --build
 ```
 
-Aplikasi akan berjalan di [http://localhost:3000](http://localhost:3000)
+Aplikasi akan berjalan di [http://localhost:3000](http://localhost:3000).
 
-## B3.5. Menjalankan Netlify Functions Lokal (Wajib untuk AI)
+Cek status container:
 
-Fitur analisis AI (Story Analysis) menggunakan Netlify Functions. Untuk menjalankannya secara lokal:
+```bash
+docker compose ps
+docker compose logs -f app
+```
 
-1. Install Netlify CLI secara global:
-   ```bash
-   npm install -g netlify-cli
-   ```
+Migrasi database dijalankan otomatis saat startup. Untuk manual:
 
-2. Jalankan Netlify Functions pada port 8888 (buka terminal baru):
-   ```bash
-   netlify functions:serve --port 8888
-   ```
-
-3. Validasi bahwa function berikut berhasil dimuat di terminal:
-   - `analyze-watchlist`
-   - `analyze-watchlist-background`
-   - `analyze-story-background`
-
-   > **Note**: Biarkan terminal ini tetap berjalan berdampingan dengan terminal aplikasi utama (`npm run dev`).
+```bash
+docker compose exec app npm run migrate
+```
 
 ## B4. Setup Chrome Extension (untuk Lokal)
 
-1. Buka folder `stockbit-token-extension/` di repository
-2. Salin file konfigurasi:
-   ```bash
-   cp stockbit-token-extension/manifest.json.example stockbit-token-extension/manifest.json
-   cp stockbit-token-extension/background.js.example stockbit-token-extension/background.js
-   ```
+1. Buka folder `stockbit-token-extension/dist/` — sudah berisi `manifest.json` dan `background.js` siap pakai.
+2. (Opsional) Jika ingin kustomisasi, duplikat file `.example` di folder induk.
+3. Buka `chrome://extensions/` → aktifkan **Developer mode** → **Load unpacked** → pilih `stockbit-token-extension/dist`.
+4. Default target sudah `http://localhost:3000/api/update-token`. Jika aplikasi diakses dari perangkat lain (LAN), set URL dari service-worker console ekstensi:
 
-3. Edit `manifest.json` - konfigurasi untuk localhost:
-   ```json
-   "host_permissions": [
-      "https://*.stockbit.com/*",
-      "http://localhost:3000/*"
-   ]
-   ```
-
-4. Edit `background.js` - set `APP_API_URL` ke localhost:
    ```javascript
-   const APP_API_URL = "http://localhost:3000/api/update-token";
+   chrome.storage.local.set({ appApiUrl: "http://192.168.1.4:3000/api/update-token" });
    ```
-
-5. Install ekstensi di Chrome:
-   - Buka `chrome://extensions/`
-   - Aktifkan **Developer mode** (pojok kanan atas)
-   - Klik **Load unpacked**
-   - Pilih folder `stockbit-token-extension`
 
 ## B5. Verifikasi Instalasi
 
-1. Pastikan aplikasi berjalan (`npm run dev`)
-2. Buka [Stockbit](https://stockbit.com/) dan login
-3. Ekstensi akan otomatis menangkap dan mengirim token ke Supabase
-4. Buka [http://localhost:3000](http://localhost:3000)
-5. Cek indikator koneksi Stockbit - harus menunjukkan **Connected**
+1. Pastikan aplikasi berjalan (`docker compose ps`).
+2. Buka [Stockbit](https://stockbit.com/) dan login.
+3. Ekstensi otomatis menangkap token dan mengirimkannya ke `/api/update-token`.
+4. Buka [http://localhost:3000](http://localhost:3000).
+5. Cek indikator koneksi Stockbit — harus menunjukkan **Connected/Valid**.
 6. Coba analisis saham pertama Anda! 🎉
+
+---
+
+*Kembali ke [Halaman Utama Wiki](Home)*

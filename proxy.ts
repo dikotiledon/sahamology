@@ -8,6 +8,11 @@ const PUBLIC_PATHS = [
   '/api/auth/verify-password',
   '/api/auth/check-password',
   '/api/auth/set-password', // Allow initial setup
+  // The Chrome extension POSTs the intercepted Stockbit JWT here. It has no
+  // session cookie and no CRON secret (it is an external client), so this
+  // route must bypass the session gate. The route itself validates the
+  // payload; CORS is handled by the route's OPTIONS/POST headers.
+  '/api/update-token',
 ];
 
 export async function proxy(request: NextRequest) {

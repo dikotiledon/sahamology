@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { isSecureCookieRequest } from './config';
 
 const SESSION_NAME = 'sahamology_session';
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
@@ -67,7 +68,7 @@ export async function verifySessionToken(token: string): Promise<any | null> {
     if (payload.exp < Date.now()) return null;
 
     return payload;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
@@ -75,24 +76,31 @@ export async function verifySessionToken(token: string): Promise<any | null> {
 /**
  * Set session cookie in Response
  */
-export async function setSession(response: NextResponse, verified: boolean = true) {
+export async function setSession(
+  response: NextResponse,
+  verified: boolean = true,
+  forwardedProto?: string | null
+) {
   const token = await createSessionToken({ authenticated: true, verified });
-  
+
   response.cookies.set(SESSION_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // Only mark Secure when the request arrived over HTTPS (direct or via a
+    // reverse proxy setting X-Forwarded-Proto). Plain-HTTP LAN access must not
+    // receive a Secure cookie or the browser will refuse to store/send it.
+    secure: isSecureCookieRequest(forwardedProto),
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24, // 24 hours
   });
-  
+
   return response;
 }
 
 /**
  * Check if the request has a valid session
  */
-export async function getSession(req: NextRequest | Request) {
+export async function getSession(_req: NextRequest | Request) {
   const cookieStore = cookies();
   const token = (await cookieStore).get(SESSION_NAME)?.value;
   

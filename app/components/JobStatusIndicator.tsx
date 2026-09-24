@@ -10,7 +10,6 @@ export default function JobStatusIndicator() {
   const [showDetails, setShowDetails] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchStatus = async () => {
     if (inFlightFetch) {
@@ -45,9 +44,6 @@ export default function JobStatusIndicator() {
 
     setIsRetrying(true);
     try {
-      // Determine base URL for Netlify functions
-      // netlify functions:serve usually runs on port 9999
-      const host = window.location.hostname;
       if (latestLog.job_name !== 'analyze-watchlist') {
         console.warn(`Retry not implemented for job: ${latestLog.job_name}`);
         return;
@@ -94,7 +90,6 @@ export default function JobStatusIndicator() {
 
   const isRunning = latestLog.status === 'running';
   const isFailed = latestLog.status === 'failed';
-  const isCompleted = latestLog.status === 'completed';
 
   const statusClass = isRunning ? 'warning' : isFailed ? 'error' : 'good';
   const statusLabel = isRunning ? 'Job Running' : isFailed ? 'Job Failed' : 'Jobs Idle';

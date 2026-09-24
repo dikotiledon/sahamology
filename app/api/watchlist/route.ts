@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchWatchlist, fetchEmitenInfo, deleteWatchlistItem } from '@/lib/stockbit';
-import { supabase, getCachedWatchlistItems, saveCachedWatchlistItems, deleteCachedWatchlistItem } from '@/lib/supabase';
-import type { ApiResponse } from '@/lib/types';
+import { getEmitenFlagsForSymbols, getCachedWatchlistItems, saveCachedWatchlistItems, deleteCachedWatchlistItem } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,16 +22,11 @@ export async function GET(request: NextRequest) {
       if (cached.items.length > 0) {
         // Merge with flags from emiten_flags table
         const symbols = cached.items.map((item: any) => (item.symbol || item.company_code).toUpperCase());
-        
-        const { data: flags } = await supabase
-          .from('emiten_flags')
-          .select('emiten, flag')
-          .in('emiten', symbols);
+
+        const flags = await getEmitenFlagsForSymbols(symbols);
 
         const flagMap = new Map<string, string>();
-        if (flags) {
-          flags.forEach((f: any) => flagMap.set(f.emiten, f.flag));
-        }
+        flags.forEach((f: any) => flagMap.set(f.emiten, f.flag));
 
         const itemsWithFlags = cached.items.map((item: any) => {
           const symbol = (item.symbol || item.company_code).toUpperCase();
@@ -110,20 +104,11 @@ async function fetchFromStockbitAndCache(groupId?: number) {
 
   const symbols = items.map((item: any) => (item.symbol || item.company_code).toUpperCase());
 
-  // Fetch flags from Supabase
-  const { data: flags, error: flagError } = await supabase
-    .from('emiten_flags')
-    .select('emiten, flag')
-    .in('emiten', symbols);
-
-  if (flagError) {
-    console.error('Error fetching flags:', flagError);
-  }
+  // Fetch flags from database
+  const flags = await getEmitenFlagsForSymbols(symbols);
 
   const flagMap = new Map<string, string>();
-  if (flags) {
-    flags.forEach((f: any) => flagMap.set(f.emiten, f.flag));
-  }
+  flags.forEach((f: any) => flagMap.set(f.emiten, f.flag));
 
   // Fetch sector for each watchlist item in parallel AND merge flags
   const itemsWithData = await Promise.all(

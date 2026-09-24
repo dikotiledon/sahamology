@@ -1,7 +1,7 @@
 # Sahamology - Kalkulator Target Saham
 
 > [!CAUTION]
-> **PERINGATAN KEAMANAN**: Jangan pernah membagikan URL aplikasi Netlify Anda secara publik. Aplikasi ini melakukan sinkronisasi token sesi Stockbit Anda ke database. Jika URL bocor, orang lain dapat menyalahgunakan akses tersebut. Meski begitu, aplikasi ini tetap tidak bisa melakukan transaksi karena tidak bisa mengakses fitur PIN. Gunakan aplikasi ini hanya untuk penggunaan pribadi.
+> **PERINGATAN KEAMANAN**: Jangan pernah membagikan URL aplikasi Anda secara publik. Aplikasi ini melakukan sinkronisasi token sesi Stockbit Anda ke database. Jika URL bocor, orang lain dapat menyalahgunakan akses tersebut. Meski begitu, aplikasi ini tetap tidak bisa melakukan transaksi karena tidak bisa mengakses fitur PIN. Gunakan aplikasi ini hanya untuk penggunaan pribadi.
 
 > [!IMPORTANT]
 > **DISCLAIMER & TANGGUNG JAWAB**: Dengan menginstal dan menggunakan aplikasi ini, Anda menyatakan sadar dan setuju bahwa aplikasi ini akan menggunakan token sesi Stockbit Anda untuk keperluan sinkronisasi data. Pengguna memahami sepenuhnya cara kerja aplikasi ini dan membebaskan pengembang dari segala tuntutan hukum atau kerugian yang mungkin timbul. Pengembang tidak bertanggung jawab atas penyalahgunaan akses jika URL aplikasi Anda diketahui oleh pihak lain.
@@ -15,6 +15,12 @@
 ---
 
 ## Changelog
+
+### v0.5.0 (2026-09-24)
+- **Self-Hosted Migration**: Netlify + Supabase digantikan oleh stack self-hosted — Next.js (standalone) + PostgreSQL 16 + Redis 7 (BullMQ) dalam Docker Compose. Semua data kini diakses lewat native `pg` (`lib/db.ts`), migrasi SQL dijalankan oleh `scripts/run-migrations.js`, dan background worker (watchlist + story analysis) berjalan embedded di proses Next.js via `instrumentation.ts`.
+- **OpenAI-Compatible LLM Support**: AI Story Analysis kini mendukung `LLM_PROVIDER=openai` (endpoint OpenAI-compatible) selain `gemini`. Konfigurasi lewat `LLM_BASE_URL`, `LLM_API_KEY`, dan `LLM_MODEL`.
+- **Chrome Extension Token Syncer**: Ekstensi Manifest V3 (`stockbit-token-extension/dist/`) siap pakai untuk sinkronisasi token Stockbit ke `/api/update-token`.
+- **Fix JSONB Persistence**: `updateAgentStory` kini men-serialize nilai array/object untuk kolom `jsonb` dengan benar (mencegah `invalid input syntax for type json` dari node-postgres).
 
 ### v0.4.3 (2026-09-06)
 - **AI Story Anti-Stuck**: Kartu AI Story tidak lagi polling tanpa henti saat analisis macet di status `pending`/`processing` — polling otomatis menyerah setelah 3 menit dan menampilkan pesan error beserta tombol "Coba Lagi".
@@ -58,10 +64,11 @@
 
 ## Tech Stack
 
-- **Frontend**: [Next.js 15 (App Router)](https://nextjs.org/), React 19, Tailwind CSS 4.
-- **Backend/Database**: [Supabase](https://supabase.com/) (PostgreSQL).
-- **Deployment**: [Netlify](https://www.netlify.com/) (dengan Netlify Functions & Scheduled Functions).
-- **AI Engine**: [Google Gemini Pro](https://ai.google.dev/) dengan Google Search Grounding untuk data berita terkini.
+- **Frontend**: [Next.js 16 (App Router)](https://nextjs.org/), React 19, Tailwind CSS 4.
+- **Backend/Database**: PostgreSQL 16 via native `pg` (`lib/db.ts`), migrations dari `supabase/*.sql`.
+- **Deployment**: Docker Compose (app + PostgreSQL + Redis), atau PM2 (`ecosystem.config.js`) dengan Next.js standalone output.
+- **Queue/Background**: Redis 7 + BullMQ, worker embedded di proses Next.js (`instrumentation.ts`).
+- **AI Engine**: [Google Gemini](https://ai.google.dev/) dengan Google Search Grounding, atau endpoint OpenAI-compatible (`LLM_PROVIDER=openai`).
 - **Tools**: `jspdf`, `html-to-image`, & `html2canvas` untuk ekspor PDF dan capture image, `lucide-react` untuk ikon.
 
 ---
@@ -70,29 +77,37 @@
 
 Pilih salah satu opsi instalasi yang sesuai dengan kebutuhan Anda:
 
-| | **OPSI A: CLOUD** | 💻 **OPSI B: LOKAL** |
+| | **OPSI A: CLOUD / VPS** | 💻 **OPSI B: LOKAL** |
 |---|---|---|
-| **Platform** | Netlify + Supabase | PC Lokal + Supabase |
-| **Akses** | Dari mana saja via URL | Hanya dari PC Anda |
-| **Scheduled Functions** | ✅ Otomatis jalan | ❌ Manual trigger |
-| **Biaya** | Free tier tersedia | Gratis (self-hosted) |
+| **Platform** | Docker Compose di server publik | Docker Compose di PC |
+| **Akses** | Dari mana saja via URL | Hanya dari komputer Anda |
+| **Scheduled Jobs** | ✅ Otomatis (BullMQ cron) | ✅ Otomatis (BullMQ cron) |
+| **Biaya** | Sesuai biaya server | Gratis (self-hosted) |
 | **Cocok untuk** | Penggunaan harian | Development/testing |
 
 ---
 
-# OPSI A: Deploy ke Cloud (Netlify + Supabase)
+# OPSI A: Deploy ke Cloud / VPS (Docker + PostgreSQL)
 
-Opsi ini direkomendasikan untuk penggunaan harian karena aplikasi akan berjalan secara otomatis di cloud dan dapat diakses dari mana saja.
+Opsi ini direkomendasikan untuk penggunaan harian karena aplikasi akan berjalan secara otomatis di server dan dapat diakses dari mana saja.
 
 👉 **[Lihat Panduan Deploy Cloud Selengkapnya](https://github.com/dikotiledon/sahamology/wiki/Deploy-Cloud)**
 
 ---
 
-# OPSI B: Instalasi Lokal (PC + Supabase)
+# OPSI B: Instalasi Lokal (Docker + PostgreSQL)
 
 Opsi ini cocok untuk pengembangan atau jika Anda hanya ingin menjalankan aplikasi di komputer sendiri.
 
 👉 **[Lihat Panduan Instalasi Lokal Selengkapnya](https://github.com/dikotiledon/sahamology/wiki/Deploy-Local)**
+
+---
+
+## Self-Hosted Runbook (Lengkap)
+
+Panduan operasional lengkap (arsitektur, topologi jaringan, perintah verifikasi, troubleshooting) tersedia di:
+
+👉 **[Self-Hosted Runbook](https://github.com/dikotiledon/sahamology/wiki/Self-Hosted)**
 
 ---
 
@@ -106,16 +121,17 @@ Opsi ini cocok untuk pengembangan atau jika Anda hanya ingin menjalankan aplikas
 
 | Variable | Cloud | Lokal | Deskripsi |
 |----------|:-----:|:-----:|-----------|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | ✅ | URL project Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | ✅ | Anon key Supabase |
-| `CRON_SECRET` | ✅ | ❌ | Secret untuk scheduled functions |
-| `GEMINI_API_KEY` | ✅ | ✅ | API Key Google AI Studio |
+| `POSTGRES_PASSWORD` | ✅ | ✅ | Password database PostgreSQL |
+| `APP_BASE_URL` | ✅ | ✅ | URL publik aplikasi (contoh: `http://192.168.1.4:3000`) |
+| `CRON_SECRET` | ✅ | ✅ | Secret untuk trigger cron/worker |
+| `AUTH_SECRET` | ✅ | ✅ | Secret HMAC untuk sesi login |
+| `GEMINI_API_KEY` | ⚠️ | ⚠️ | API Key Google AI Studio (provider `gemini`) |
 | `GEMINI_STORY_MODEL` | ❌ | ❌ | Model Gemini untuk AI Story Analysis (default: `gemini-3-flash-preview`) |
 | `GEMINI_STORY_THINKING_LEVEL` | ❌ | ❌ | Thinking level Gemini: `MINIMAL`/`LOW`/`MEDIUM`/`HIGH` (default: `HIGH`) |
 | `LLM_PROVIDER` | ❌ | ❌ | `gemini` (default) atau `openai`. Mode `openai` memakai endpoint chat compatible dan tidak menjalankan Google Search |
 | `LLM_BASE_URL` | ❌ | ❌ | Base URL OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai`. Kode menambahkan `/chat/completions` |
 | `LLM_API_KEY` | ❌ | ❌ | Bearer key untuk endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai` |
-| `LLM_MODEL` | ❌ | ❌ | Nama model di endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai`; tidak ada default |
+| `LLM_MODEL` | ❌ | ❌ | Nama model di endpoint OpenAI-compatible (contoh: `power`, `agmanager/gemini-3.8-flash-high`). Wajib saat `LLM_PROVIDER=openai`; tidak ada default |
 | `STOCKBIT_JWT_TOKEN` | ❌ | ⚠️ | Fallback token manual |
 
 ---

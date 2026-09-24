@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     // so subsequent API calls pass the proxy
     if (!isEnabled) {
       const response = NextResponse.json({ ...result, isAuthenticated: true });
-      await setSession(response, false);
+      await setSession(response, false, request.headers.get('x-forwarded-proto'));
       return response;
     }
 

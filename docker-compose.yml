@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sahamology-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sahamology}
+      POSTGRES_USER: ${POSTGRES_USER:-sahamology}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sahamology}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sahamology} -d ${POSTGRES_DB:-sahamology}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sahamology
+
+  redis:
+    image: redis:7-alpine
+    container_name: sahamology-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sahamology
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sahamology-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sahamology}:${POSTGRES_PASSWORD:-sahamology}@db:5432/${POSTGRES_DB:-sahamology}
+      REDIS_URL: redis://redis:6379
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://127.0.0.1:3000}
+      CRON_SECRET: ${CRON_SECRET:-}
+      AUTH_SECRET: ${AUTH_SECRET:-please-change-me}
+      STOCKBIT_JWT_TOKEN: ${STOCKBIT_JWT_TOKEN:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_STORY_MODEL: ${GEMINI_STORY_MODEL:-gemini-3-flash-preview}
+      GEMINI_STORY_THINKING_LEVEL: ${GEMINI_STORY_THINKING_LEVEL:-HIGH}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_STORY_TIMEOUT_MS: ${LLM_STORY_TIMEOUT_MS:-240000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+    networks:
+      - sahamology
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  sahamology:
+    driver: bridge

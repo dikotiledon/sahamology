@@ -233,7 +233,7 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
     });
   }, [watchlist, filterEmiten, filterSector, filterStatus]);
 
-  const selectedGroup = groups.find(g => g.watchlist_id === selectedGroupId);
+  const _selectedGroup = groups.find(g => g.watchlist_id === selectedGroupId);
 
   if (loading && groups.length === 0) {
     return (

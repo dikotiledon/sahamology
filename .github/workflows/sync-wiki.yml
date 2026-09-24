@@ -34,13 +34,15 @@ jobs:
             exit 0
           fi
           
-          # Salin semua file dari docs/ ke wiki
-          # Kita juga merename file agar URL di wiki lebih bagus
+          # Salin semua halaman wiki dari docs/. Nama file di docs/ menentukan
+          # URL halaman di GitHub Wiki, jadi gunakan nama yang rapi.
           cp ../docs/Home.md ./Home.md
           cp ../docs/WIKI_DEPLOY_CLOUD.md ./Deploy-Cloud.md
           cp ../docs/WIKI_DEPLOY_LOCAL.md ./Deploy-Local.md
           cp ../docs/CHECKPOINT.md ./Checkpoint.md
           cp ../docs/WIKI_RESET_PASSWORD.md ./Reset-Password.md
+          cp ../docs/SELF_HOSTED.md ./Self-Hosted.md
+          cp ../docs/CLOUDFLARE_TUNNEL.md ./Cloudflare-Tunnel.md
           
           git add .
           if git diff --staged --quiet; then
