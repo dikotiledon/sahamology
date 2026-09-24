@@ -6,18 +6,13 @@ import {
 } from '../../lib/supabase';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_STORY_MODEL = process.env.GEMINI_STORY_MODEL || 'gemini-3-flash-preview';
-
 const VALID_THINKING_LEVELS = ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH'] as const;
-const requestedThinkingLevel = process.env.GEMINI_STORY_THINKING_LEVEL?.toUpperCase();
-const GEMINI_STORY_THINKING_LEVEL = (
-  VALID_THINKING_LEVELS.includes(requestedThinkingLevel as typeof VALID_THINKING_LEVELS[number])
-    ? requestedThinkingLevel
-    : 'HIGH'
-) as ThinkingLevel;
+function storyTimeoutMs(): number {
+  const configured = Number(process.env.LLM_STORY_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : 4 * 60 * 1000;
+}
 
-const GEMINI_STORY_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes — give up before Netlify's hard function limit so we always write a status
+type Provider = 'gemini' | 'openai';
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -35,96 +30,53 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-export default async (req: Request) => {
-  const startTime = Date.now();
-  let jobLogId: number | null = null;
-  const url = new URL(req.url);
-  const emiten = url.searchParams.get('emiten')?.toUpperCase();
-  const storyId = url.searchParams.get('id');
+function resolveProvider(): Provider {
+  const raw = process.env.LLM_PROVIDER?.trim().toLowerCase();
+  if (!raw || raw === 'gemini') return 'gemini';
+  if (raw === 'openai') return 'openai';
+  throw new Error(`LLM_PROVIDER must be "gemini" or "openai" (received "${process.env.LLM_PROVIDER}")`);
+}
 
-  console.log('[Agent Story] Starting background analysis with Gemini 3...');
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} not configured`);
+  return value;
+}
 
-  try {
-    if (!emiten || !storyId) {
-      return new Response(JSON.stringify({ error: 'Missing emiten or id' }), { status: 400 });
-    }
+function geminiSettings() {
+  const requested = process.env.GEMINI_STORY_THINKING_LEVEL?.toUpperCase();
+  const thinkingLevel = (
+    VALID_THINKING_LEVELS.includes(requested as typeof VALID_THINKING_LEVELS[number])
+      ? requested
+      : 'HIGH'
+  ) as ThinkingLevel;
+  return {
+    apiKey: requireEnv('GEMINI_API_KEY'),
+    model: process.env.GEMINI_STORY_MODEL?.trim() || 'gemini-3-flash-preview',
+    thinkingLevel,
+  };
+}
 
-    // Create job log entry
-    try {
-      const jobLog = await createBackgroundJobLog('analyze-story', 1);
-      jobLogId = jobLog.id;
-      if (jobLogId) {
-        await appendBackgroundJobLogEntry(jobLogId, {
-          level: 'info',
-          message: `Starting AI Story Analysis`,
-          emiten,
-        });
-      }
-    } catch (logError) {
-      console.error('[Agent Story] Failed to create job log:', logError);
-    }
+function openaiSettings() {
+  return {
+    baseUrl: requireEnv('LLM_BASE_URL').replace(/\/+$/, ''),
+    apiKey: requireEnv('LLM_API_KEY'),
+    model: requireEnv('LLM_MODEL'),
+  };
+}
 
-    let keyStatsData = null;
-    try {
-      const body = await req.json();
-      keyStatsData = body.keyStats;
-    } catch (e) {
-      console.log('[Agent Story] No JSON body found or invalid JSON');
-    }
+function buildPrompt(emiten: string, keyStatsData: unknown, provider: Provider): string {
+  const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const systemPrompt = "Kamu adalah seorang analis saham profesional Indonesia yang ahli dalam menganalisa story dan katalis pergerakan harga saham.";
+  const keyStatsContext = keyStatsData
+    ? `\nDATA KEY STATISTICS UNTUK ${emiten}:\n${JSON.stringify(keyStatsData, null, 2)}\n`
+    : '';
+  const searchLine = provider === 'gemini'
+    ? `Cari dan analisa berita-berita TERBARU (bulan ini/minggu ini) tentang emiten saham Indonesia dengan kode ${emiten} dari internet menggunakan Google Search. `
+    : `Analisa emiten saham Indonesia dengan kode ${emiten} dari data key statistics yang diberikan dan pengetahuanmu. Jangan mengklaim sudah mencari internet. `;
 
-    if (!GEMINI_API_KEY) {
-      const errMsg = 'GEMINI_API_KEY not configured';
-      await updateAgentStory(parseInt(storyId), {
-        status: 'error',
-        error_message: errMsg
-      });
-      
-      if (jobLogId) {
-        await updateBackgroundJobLog(jobLogId, {
-          status: 'failed',
-          error_message: errMsg,
-        });
-      }
-      
-      return new Response(JSON.stringify({ error: 'API key not configured' }), { status: 500 });
-    }
-
-    // Update agent story status to processing
-    await updateAgentStory(parseInt(storyId), {
-      status: 'processing',
-      model: GEMINI_STORY_MODEL,
-      thinking_level: GEMINI_STORY_THINKING_LEVEL,
-    });
-
-    if (jobLogId) {
-      await appendBackgroundJobLogEntry(jobLogId, {
-        level: 'info',
-        message: `Analyzing using ${GEMINI_STORY_MODEL} (Thinking ${GEMINI_STORY_THINKING_LEVEL})...`,
-        emiten,
-      });
-    }
-
-    const ai = new GoogleGenAI({
-      apiKey: GEMINI_API_KEY,
-    });
-
-    const config = {
-      thinkingConfig: {
-        thinkingLevel: GEMINI_STORY_THINKING_LEVEL,
-      },
-    };
-
-    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const model = GEMINI_STORY_MODEL;
-    const systemPrompt = "Kamu adalah seorang analis saham profesional Indonesia yang ahli dalam menganalisa story dan katalis pergerakan harga saham.";
-    
-    let keyStatsContext = '';
-    if (keyStatsData) {
-      keyStatsContext = `\nDATA KEY STATISTICS UNTUK ${emiten}:\n` + JSON.stringify(keyStatsData, null, 2) + '\n';
-    }
-
-    const userPrompt = `Hari ini adalah ${today}.
-Cari dan analisa berita-berita TERBARU (bulan ini/minggu ini) tentang emiten saham Indonesia dengan kode ${emiten} dari internet menggunakan Google Search. 
+  const userPrompt = `Hari ini adalah ${today}.
+${searchLine}
 ${keyStatsContext}
 FOKUS ANALISA:
 1. Fokus sepenuhnya pada STORY BISNIS, AKSI KORPORASI, dan KATALIS fundamental/sentimen.
@@ -167,58 +119,121 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
   "kesimpulan": "kesimpulan analisis dalam 2-3 kalimat"
 }`;
 
-    const contents = [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `${systemPrompt}\n\n${userPrompt}`,
-          },
-        ],
-      },
-    ];
+  return `${systemPrompt}\n\n${userPrompt}`;
+}
 
-    const tools = [
-      {
-        googleSearch: {},
-      },
-    ] as any;
+async function generateGeminiText(prompt: string): Promise<{ text: string; model: string; thinkingLevel: string | null }> {
+  const settings = geminiSettings();
+  const ai = new GoogleGenAI({ apiKey: settings.apiKey });
+  const responseStream = await (ai.models as any).generateContentStream({
+    model: settings.model,
+    config: { thinkingConfig: { thinkingLevel: settings.thinkingLevel } },
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    tools: [{ googleSearch: {} }],
+  });
 
-    async function generateStoryText(): Promise<string> {
-      const responseStream = await (ai.models as any).generateContentStream({
-        model,
-        config,
-        contents,
-        tools,
-      });
+  let text = '';
+  for await (const chunk of responseStream) {
+    if (chunk.text) text += chunk.text;
+  }
+  return { text, model: settings.model, thinkingLevel: settings.thinkingLevel };
+}
 
-      let text = '';
-      for await (const chunk of responseStream) {
-        if (chunk.text) {
-          text += chunk.text;
-        }
-      }
-      return text;
+async function generateOpenAIText(prompt: string): Promise<{ text: string; model: string; thinkingLevel: null }> {
+  const settings = openaiSettings();
+  const response = await fetch(`${settings.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${settings.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: settings.model,
+      response_format: { type: 'json_object' },
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(storyTimeoutMs()),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI-compatible request failed: ${response.status}`);
+  }
+
+  const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+  const content = payload.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || content.trim() === '') {
+    throw new Error('OpenAI-compatible response has empty choices content');
+  }
+  return { text: content, model: settings.model, thinkingLevel: null };
+}
+
+export default async (req: Request) => {
+  const startTime = Date.now();
+  let jobLogId: number | null = null;
+  const url = new URL(req.url);
+  const emiten = url.searchParams.get('emiten')?.toUpperCase();
+  const storyId = url.searchParams.get('id');
+
+  console.log('[Agent Story] Starting background analysis...');
+
+  try {
+    if (!emiten || !storyId) {
+      return new Response(JSON.stringify({ error: 'Missing emiten or id' }), { status: 400 });
     }
 
-    const fullText = await withTimeout(
-      generateStoryText(),
-      GEMINI_STORY_TIMEOUT_MS,
-      'Gemini request timed out'
+    // Create job log entry
+    try {
+      const jobLog = await createBackgroundJobLog('analyze-story', 1);
+      jobLogId = jobLog.id;
+      if (jobLogId) {
+        await appendBackgroundJobLogEntry(jobLogId, {
+          level: 'info',
+          message: `Starting AI Story Analysis`,
+          emiten,
+        });
+      }
+    } catch (logError) {
+      console.error('[Agent Story] Failed to create job log:', logError);
+    }
+
+    let keyStatsData = null;
+    try {
+      const body = await req.json();
+      keyStatsData = body.keyStats;
+    } catch (e) {
+      console.log('[Agent Story] No JSON body found or invalid JSON');
+    }
+
+    const provider = resolveProvider();
+    const prompt = buildPrompt(emiten, keyStatsData, provider);
+    const generated = await withTimeout(
+      provider === 'openai' ? generateOpenAIText(prompt) : generateGeminiText(prompt),
+      storyTimeoutMs(),
+      'Story request timed out'
     );
+
+    await updateAgentStory(parseInt(storyId), {
+      status: 'processing',
+      model: generated.model,
+      thinking_level: generated.thinkingLevel,
+    });
 
     if (jobLogId) {
       await appendBackgroundJobLogEntry(jobLogId, {
         level: 'info',
-        message: `Gemini response received, parsing results...`,
+        message: `Analyzing using ${generated.model}${generated.thinkingLevel ? ` (Thinking ${generated.thinkingLevel})` : ''}...`,
+        emiten,
+      });
+      await appendBackgroundJobLogEntry(jobLogId, {
+        level: 'info',
+        message: `Model response received, parsing results...`,
         emiten,
       });
     }
 
-    // Parse JSON from response
     let analysisResult;
     try {
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      const jsonMatch = generated.text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysisResult = JSON.parse(jsonMatch[0]);
       } else {
@@ -227,7 +242,7 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
     } catch (parseError) {
       const errMsg = 'Failed to parse AI response';
       console.error('[Agent Story] Parse error:', parseError);
-      
+
       await updateAgentStory(parseInt(storyId), {
         status: 'error',
         error_message: errMsg
@@ -238,7 +253,7 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
           level: 'error',
           message: errMsg,
           emiten,
-          details: { raw: fullText.substring(0, 500) }
+          details: { raw: generated.text.substring(0, 500) }
         });
         await updateBackgroundJobLog(jobLogId, {
           status: 'failed',
@@ -280,7 +295,7 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
     return new Response(JSON.stringify({ success: true, emiten }), { status: 200 });
 
   } catch (error) {
-    const errMsg = String(error);
+    const errMsg = error instanceof Error ? error.message : String(error);
     console.error('[Agent Story] Critical error:', error);
     
     if (jobLogId) {

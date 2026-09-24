@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-const SESSION_NAME = 'adimology_session';
+const SESSION_NAME = 'sahamology_session';
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 // Use AUTH_SECRET from env or fallback for dev (Warning during production)

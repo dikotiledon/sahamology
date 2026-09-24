@@ -24,8 +24,8 @@ Ikuti langkah-langkah berikut secara berurutan:
 
 1. Clone repository:
    ```bash
-   git clone https://github.com/username/adimology.git
-   cd adimology
+   git clone https://github.com/username/sahamology.git
+   cd sahamology
    ```
 
 2. Install dependensi:
@@ -52,6 +52,10 @@ Ikuti langkah-langkah berikut secara berurutan:
    | `GEMINI_API_KEY` | API Key dari [Google AI Studio](https://aistudio.google.com/) | ✅ |
    | `GEMINI_STORY_MODEL` | Model Gemini untuk AI Story Analysis (opsional, default: `gemini-3-flash-preview`) | ❌ |
    | `GEMINI_STORY_THINKING_LEVEL` | Thinking level: `MINIMAL`/`LOW`/`MEDIUM`/`HIGH` (opsional, default: `HIGH`) | ❌ |
+   | `LLM_PROVIDER` | `gemini` (default) atau `openai`. Mode `openai` tidak menjalankan Google Search | ❌ |
+   | `LLM_BASE_URL` | Base URL OpenAI-compatible. Wajib jika provider `openai`; kode menambahkan `/chat/completions` | ❌ |
+   | `LLM_API_KEY` | Bearer key endpoint OpenAI-compatible. Wajib jika provider `openai` | ❌ |
+   | `LLM_MODEL` | Nama model OpenAI-compatible. Wajib jika provider `openai`; tidak ada default | ❌ |
    | `STOCKBIT_JWT_TOKEN` | Token manual (opsional, ekstensi lebih baik) | ❌ |
 
 ## B3. Jalankan Aplikasi

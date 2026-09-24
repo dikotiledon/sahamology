@@ -1,11 +1,11 @@
-# Reset Password Adimology
+# Reset Password Sahamology
 
 Jika Anda lupa password proteksi aplikasi, Anda dapat mereset melalui Supabase SQL Editor.
 
 ## Langkah-langkah Reset
 
 1. Buka [Supabase Dashboard](https://supabase.com/) dan login
-2. Pilih project Adimology Anda
+2. Pilih project Sahamology Anda
 3. Buka **SQL Editor** di menu sebelah kiri
 4. Copy dan paste query berikut:
 
@@ -15,9 +15,9 @@ UPDATE profile SET value = 'false', updated_at = now() WHERE key = 'password_ena
 ```
 
 5. Klik **Run**
-6. Refresh aplikasi Adimology di browser Anda
+6. Refresh aplikasi Sahamology di browser Anda
 
 Setelah reset, aplikasi akan bisa diakses tanpa password. Anda dapat mengaktifkan dan mengatur password baru melalui ikon 🛡️ (Shield) di Navbar.
 
 ---
-*Kembali ke [Halaman Utama Wiki](https://github.com/bhaktiutama/adimology/wiki)*
+*Kembali ke [Halaman Utama Wiki](https://github.com/dikotiledon/sahamology/wiki)*

@@ -32,7 +32,7 @@ const Navbar = () => {
             </svg>
           </div>
           <div className="navbar-content">
-            <h1 className="navbar-title">Adimology Calculator</h1>
+            <h1 className="navbar-title">Sahamology Calculator</h1>
             <p className="navbar-subtitle">Analyze stock targets based on broker summary</p>
           </div>
         </div>
@@ -83,7 +83,7 @@ const Navbar = () => {
               Summary
             </Link>
             <a 
-              href="https://github.com/bhaktiutama/adimology" 
+              href="https://github.com/dikotiledon/sahamology" 
               target="_blank" 
               rel="noopener noreferrer"
               style={{
@@ -179,7 +179,7 @@ const Navbar = () => {
               Summary
             </Link>
             <a 
-              href="https://github.com/bhaktiutama/adimology" 
+              href="https://github.com/dikotiledon/sahamology" 
               target="_blank" 
               rel="noopener noreferrer"
               style={{

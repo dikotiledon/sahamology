@@ -4,7 +4,7 @@ import { verifySessionToken, setSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-const SESSION_NAME = 'adimology_session';
+const SESSION_NAME = 'sahamology_session';
 
 export async function GET(request: Request) {
   try {

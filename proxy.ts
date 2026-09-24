@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionToken } from './lib/auth';
 
-const SESSION_NAME = 'adimology_session';
+const SESSION_NAME = 'sahamology_session';
 
 // Define paths that don't require authentication
 const PUBLIC_PATHS = [

@@ -252,7 +252,7 @@ export const exportHistoryToPDF = (data: AnalysisRecord[], filters: any) => {
 
   doc.setFontSize(16);
   doc.setTextColor(40);
-  doc.text('RIWAYAT ADIMOLOGY (FILTERED)', 14, 15);
+  doc.text('RIWAYAT SAHAMOLOGY (FILTERED)', 14, 15);
 
   doc.setFontSize(9);
   doc.setTextColor(100);
@@ -371,7 +371,7 @@ export const exportHistoryByEmitenToPDF = async (
 
     doc.setFontSize(16);
     doc.setTextColor(40);
-    doc.text(`RIWAYAT ADIMOLOGY ${emiten} (${emitenData.length} TERAKHIR)`, 14, 15);
+    doc.text(`RIWAYAT SAHAMOLOGY ${emiten} (${emitenData.length} TERAKHIR)`, 14, 15);
 
     doc.setFontSize(9);
     doc.setTextColor(100);

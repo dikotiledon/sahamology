@@ -1,9 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let supabaseClient: SupabaseClient | undefined;
+
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    if (!supabaseClient) {
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('supabaseUrl is required.');
+      }
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    }
+    const value = Reflect.get(supabaseClient, prop, receiver);
+    return typeof value === 'function' ? value.bind(supabaseClient) : value;
+  },
+});
 
 /**
  * Save stock query to database
@@ -418,8 +431,8 @@ export async function updateAgentStory(id: number, data: {
   kesimpulan?: string;
   error_message?: string;
   sources?: { title: string; uri: string }[];
-  model?: string;
-  thinking_level?: string;
+  model?: string | null;
+  thinking_level?: string | null;
 }) {
 
   const { data: result, error } = await supabase

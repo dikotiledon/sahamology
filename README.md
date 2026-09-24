@@ -1,4 +1,4 @@
-# Adimology - Kalkulator Target Saham
+# Sahamology - Kalkulator Target Saham
 
 > [!CAUTION]
 > **PERINGATAN KEAMANAN**: Jangan pernah membagikan URL aplikasi Netlify Anda secara publik. Aplikasi ini melakukan sinkronisasi token sesi Stockbit Anda ke database. Jika URL bocor, orang lain dapat menyalahgunakan akses tersebut. Meski begitu, aplikasi ini tetap tidak bisa melakukan transaksi karena tidak bisa mengakses fitur PIN. Gunakan aplikasi ini hanya untuk penggunaan pribadi.
@@ -6,7 +6,7 @@
 > [!IMPORTANT]
 > **DISCLAIMER & TANGGUNG JAWAB**: Dengan menginstal dan menggunakan aplikasi ini, Anda menyatakan sadar dan setuju bahwa aplikasi ini akan menggunakan token sesi Stockbit Anda untuk keperluan sinkronisasi data. Pengguna memahami sepenuhnya cara kerja aplikasi ini dan membebaskan pengembang dari segala tuntutan hukum atau kerugian yang mungkin timbul. Pengembang tidak bertanggung jawab atas penyalahgunaan akses jika URL aplikasi Anda diketahui oleh pihak lain.
 
-![Adimology Preview 1](public/adimology01.PNG)
+![Sahamology Preview 1](public/sahamology01.PNG)
 
 ---
 
@@ -84,7 +84,7 @@ Pilih salah satu opsi instalasi yang sesuai dengan kebutuhan Anda:
 
 Opsi ini direkomendasikan untuk penggunaan harian karena aplikasi akan berjalan secara otomatis di cloud dan dapat diakses dari mana saja.
 
-👉 **[Lihat Panduan Deploy Cloud Selengkapnya](https://github.com/bhaktiutama/adimology/wiki/Deploy-Cloud)**
+👉 **[Lihat Panduan Deploy Cloud Selengkapnya](https://github.com/dikotiledon/sahamology/wiki/Deploy-Cloud)**
 
 ---
 
@@ -92,13 +92,13 @@ Opsi ini direkomendasikan untuk penggunaan harian karena aplikasi akan berjalan 
 
 Opsi ini cocok untuk pengembangan atau jika Anda hanya ingin menjalankan aplikasi di komputer sendiri.
 
-👉 **[Lihat Panduan Instalasi Lokal Selengkapnya](https://github.com/bhaktiutama/adimology/wiki/Deploy-Local)**
+👉 **[Lihat Panduan Instalasi Lokal Selengkapnya](https://github.com/dikotiledon/sahamology/wiki/Deploy-Local)**
 
 ---
 
 ## Troubleshooting
  
-👉 **[Punya masalah? Lihat Checkpoint Troubleshooting](https://github.com/bhaktiutama/adimology/wiki/Checkpoint)**
+👉 **[Punya masalah? Lihat Checkpoint Troubleshooting](https://github.com/dikotiledon/sahamology/wiki/Checkpoint)**
 
 ---
 
@@ -112,6 +112,10 @@ Opsi ini cocok untuk pengembangan atau jika Anda hanya ingin menjalankan aplikas
 | `GEMINI_API_KEY` | ✅ | ✅ | API Key Google AI Studio |
 | `GEMINI_STORY_MODEL` | ❌ | ❌ | Model Gemini untuk AI Story Analysis (default: `gemini-3-flash-preview`) |
 | `GEMINI_STORY_THINKING_LEVEL` | ❌ | ❌ | Thinking level Gemini: `MINIMAL`/`LOW`/`MEDIUM`/`HIGH` (default: `HIGH`) |
+| `LLM_PROVIDER` | ❌ | ❌ | `gemini` (default) atau `openai`. Mode `openai` memakai endpoint chat compatible dan tidak menjalankan Google Search |
+| `LLM_BASE_URL` | ❌ | ❌ | Base URL OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai`. Kode menambahkan `/chat/completions` |
+| `LLM_API_KEY` | ❌ | ❌ | Bearer key untuk endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai` |
+| `LLM_MODEL` | ❌ | ❌ | Nama model di endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai`; tidak ada default |
 | `STOCKBIT_JWT_TOKEN` | ❌ | ⚠️ | Fallback token manual |
 
 ---

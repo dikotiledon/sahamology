@@ -1,6 +1,6 @@
 # Supabase Migrations
 
-Direktori ini berisi database migration scripts untuk project Adimology. Migrasi dijalankan secara otomatis sebelum build process di Netlify.
+Direktori ini berisi database migration scripts untuk project Sahamology. Migrasi dijalankan secara otomatis sebelum build process di Netlify.
 
 ## 🚀 Cara Kerja
 

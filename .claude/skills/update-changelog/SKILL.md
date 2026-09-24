@@ -1,11 +1,11 @@
 ---
 name: update-changelog
-description: Update the Adimology changelog after shipping changes — adds a new entry to README.md and keeps only the 3 most recent versions there, archiving older entries to CHANGELOG.md. Use when the user asks to "update changelog", "tolong update changelog", or after a batch of features/fixes is ready to log.
+description: Update the Sahamology changelog after shipping changes — adds a new entry to README.md and keeps only the 3 most recent versions there, archiving older entries to CHANGELOG.md. Use when the user asks to "update changelog", "tolong update changelog", or after a batch of features/fixes is ready to log.
 ---
 
 # Update Changelog
 
-Adimology keeps changelog history split across two files:
+Sahamology keeps changelog history split across two files:
 
 - **[README.md](../../../README.md)** — `## Changelog` section holds only the **3 most recent versions**, newest first, so the README stays scannable.
 - **[CHANGELOG.md](../../../CHANGELOG.md)** — full archive of every older version, newest-first, with a one-line pointer back to the README at the top.
@@ -22,7 +22,7 @@ Adimology keeps changelog history split across two files:
 
 5. **Enforce the 3-version cap in README.md.** After inserting, count the `### v` entries in README's Changelog section. If there are more than 3:
    - Cut every entry beyond the 3rd (in order, oldest of the extras first).
-   - Prepend those cut entries — verbatim, same order (newest-first) — to the top of CHANGELOG.md, right after its intro line (`Riwayat lengkap perubahan Adimology...`).
+   - Prepend those cut entries — verbatim, same order (newest-first) — to the top of CHANGELOG.md, right after its intro line (`Riwayat lengkap perubahan Sahamology...`).
    - Make sure README.md still ends its Changelog section with the archive pointer line:
      ```
      📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
@@ -38,6 +38,6 @@ Adimology keeps changelog history split across two files:
   ```markdown
   # Changelog
 
-  Riwayat lengkap perubahan Adimology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
+  Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
   ```
 - Don't touch other README sections (Fitur Utama, Environment Variables, etc.) as part of this task.

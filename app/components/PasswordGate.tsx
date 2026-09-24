@@ -87,7 +87,7 @@ export default function PasswordGate({ children }: PasswordGateProps) {
         <div className="password-gate-icon">
           <Lock size={40} />
         </div>
-        <h2 className="password-gate-title">Adimology</h2>
+        <h2 className="password-gate-title">Sahamology</h2>
         <p className="password-gate-subtitle">Masukkan password untuk mengakses aplikasi</p>
 
         <form onSubmit={handleUnlock} className="password-gate-form">
@@ -152,7 +152,7 @@ export default function PasswordGate({ children }: PasswordGateProps) {
         <p className="password-gate-hint">
           Lupa password? Reset melalui Supabase.{' '}
           <a
-            href="https://github.com/bhaktiutama/adimology/wiki/Reset-Password"
+            href="https://github.com/dikotiledon/sahamology/wiki/Reset-Password"
             target="_blank"
             rel="noopener noreferrer"
           >
