@@ -57,7 +57,7 @@ services:
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://127.0.0.1:3000}
       CRON_SECRET: ${CRON_SECRET:-}
-      AUTH_SECRET: ${AUTH_SECRET:-please-change-me}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       STOCKBIT_JWT_TOKEN: ${STOCKBIT_JWT_TOKEN:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_STORY_MODEL: ${GEMINI_STORY_MODEL:-gemini-3-flash-preview}

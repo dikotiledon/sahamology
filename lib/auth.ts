@@ -1,12 +1,12 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { isSecureCookieRequest } from './config';
+import { resolveAuthSecret } from './auth-secret';
 
 const SESSION_NAME = 'sahamology_session';
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-// Use AUTH_SECRET from env or fallback for dev (Warning during production)
-const AUTH_SECRET = process.env.AUTH_SECRET || 'dev_secret_please_change_in_production';
+const AUTH_SECRET = resolveAuthSecret(process.env);
 
 /**
  * Basic HMAC-based token signing using Web Crypto API
