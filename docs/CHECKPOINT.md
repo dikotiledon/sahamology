@@ -3,43 +3,75 @@
 Jika status di aplikasi masih **"Disconnected"** atau data tidak muncul, silakan lakukan pemeriksaan poin-poin berikut:
 
 ## 1. Konfigurasi Ekstensi Chrome
-Pastikan file di dalam folder ekstensi sudah diubah (bukan lagi file `.example`):
 
-- **manifest.json**:
-  - Pastikan `host_permissions` sudah berisi URL Netlify Anda.
-  - Format: `"https://your-app.netlify.app/*"` (harus diakhiri dengan `/*`).
-  ![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint07.png)
+- **manifest.json** (folder `stockbit-token-extension/dist/`):
+  - Pastikan `host_permissions` berisi URL aplikasi Anda.
+  - Format: `http://localhost:3000/*` (lokal) atau `https://your-domain.com/*` (harus diakhiri dengan `/*`).
 - **background.js**:
-  - Pastikan variabel `APP_API_URL` sudah mengarah ke URL Netlify Anda + endpoint API.
-  - Contoh: `const APP_API_URL = "https://your-app.netlify.app/api/update-token";`.
-  ![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint06.png)
+  - Default target adalah `http://localhost:3000/api/update-token`.
+  - Untuk target lain, set dari service-worker console:
+    ```javascript
+    chrome.storage.local.set({ appApiUrl: "https://your-domain.com/api/update-token" });
+    ```
 - **Refresh Ekstensi**:
-  - Jika Anda baru saja mengubah kode, buka `chrome://extensions/`, klik tombol **Refresh** (ikon putar) pada ekstensi Sahamology, lalu refresh halaman Stockbit.
+  - Jika Anda baru saja mengubah kode, buka `chrome://extensions/`, klik tombol **Refresh** (ikon putar) pada ekstensi, lalu refresh halaman Stockbit.
 
-## 2. Struktur Database Supabase
-Pastikan tabel sudah terbentuk di dashboard Supabase (Menu **Table Editor**):
+## 2. Struktur Database PostgreSQL
 
-- Cek apakah tabel-tabel berikut sudah ada:
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint01.png)
-- Jika tabel tidak ada, ulangi langkah **A1 No. 4** (Jalankan script `000_init.sql` di SQL Editor).
-- Redeploy Netlify.
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint05.png)
+Pastikan tabel sudah terbentuk di container database:
 
-## 3. Environment Variables (Netlify)
-Pastikan di dashboard Netlify (**Project configuration > Environment variables**) variabel berikut sudah benar dan tidak ada typo:
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint02.png)
+```bash
+docker compose exec db psql -U sahamology -d sahamology -c "\dt"
+```
+
+Tabel utama yang harus ada: `session`, `stock_queries`, `agent_stories`, `background_job_logs`, `profile`, `watchlist_cache`, `emiten_flags`.
+
+Jika tabel tidak ada, jalankan migrasi:
+
+```bash
+docker compose exec app npm run migrate
+```
+
+## 3. Environment Variables (.env)
+
+Pastikan di file `.env` variabel berikut sudah benar dan tidak ada typo:
 
 | Key | Catatan |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Harus diawali `https://...` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Pastikan menyalin **Anon Public** key, bukan Service Role |
-| `GEMINI_API_KEY` | Harus valid dari Google AI Studio |
-| `CRON_SECRET` | Bebas, tapi pastikan tidak kosong |
+| `POSTGRES_PASSWORD` | Harus sama dengan yang dipakai container `db` saat pertama kali dibuat |
+| `APP_BASE_URL` | Harus sesuai URL yang dipakai browser/ekstensi |
+| `CRON_SECRET` | Bebas, tapi jangan kosong |
+| `AUTH_SECRET` | Bebas, tapi jangan kosong |
+| `LLM_PROVIDER` | `gemini` atau `openai` |
+| `GEMINI_API_KEY` | Wajib valid jika `LLM_PROVIDER=gemini` |
+| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | Wajib jika `LLM_PROVIDER=openai` |
+
+Setelah mengubah `.env`, jalankan ulang:
+
+```bash
+docker compose up -d
+```
 
 ## 4. Verifikasi Chrome Extension
-1. Buka Extension di Chrome chrome://extensions/
-2. Klik Service Worker.
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint04.png)
-3. Jika ekstensi bekerja, Anda akan melihat log seperti: `Token successfully synced to API.`.
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/checkpoint03.png)
+
+1. Buka `chrome://extensions/`.
+2. Klik **Service Worker** pada ekstensi Stockbit Token Syncer.
+3. Jika ekstensi bekerja, Anda akan melihat log seperti: `Token successfully synced to API.`
 4. Jika ada error merah, silakan screenshot dan tanyakan di group/issue.
+
+## 5. Periksa Log Aplikasi
+
+```bash
+docker compose logs -f app
+```
+
+Perhatikan baris seperti:
+- `[Story Job] Starting background analysis...`
+- `[Story Job] Analysis completed for BBCA in ...s`
+- `[Queue] BullMQ workers started (watchlist-analysis, story-analysis)`
+
+Jika worker tidak muncul, pastikan Redis berjalan sehat: `docker compose ps` (kolom `sahamology-redis` harus `Up (healthy)`).
+
+---
+
+*Kembali ke [Halaman Utama Wiki](Home)*

@@ -18,8 +18,8 @@ export default function ResultTable({ marketData, calculated }: ResultTableProps
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <DataRow label="Harga" value={`Rp ${formatNumber(marketData.harga)}`} />
-          <DataRow label="ARA (Offer Teratas)" value={`Rp ${formatNumber(marketData.offerTeratas)}`} />
-          <DataRow label="ARB (Bid Terbawah)" value={`Rp ${formatNumber(marketData.bidTerbawah)}`} />
+          <DataRow label="ARA (Offer Teratas)" value={`Rp ${formatNumber(marketData.ara)}`} />
+          <DataRow label="ARB (Bid Terbawah)" value={`Rp ${formatNumber(marketData.arb)}`} />
           <DataRow label="Fraksi" value={formatNumber(marketData.fraksi)} />
           <DataRow label="Total Bid" value={formatNumber(marketData.totalBid / 100)} />
           <DataRow label="Total Offer" value={formatNumber(marketData.totalOffer / 100)} />

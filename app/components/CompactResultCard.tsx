@@ -108,11 +108,11 @@ export default function CompactResultCard({
             </div>
             <div className="compact-cell">
               <span className="compact-label">Offer Max</span>
-              <span className="compact-value">Rp {formatNumber(marketData.offerTeratas)}</span>
+              <span className="compact-value">Rp {formatNumber(marketData.ara)}</span>
             </div>
             <div className="compact-cell">
               <span className="compact-label">Bid Min</span>
-              <span className="compact-value">Rp {formatNumber(marketData.bidTerbawah)}</span>
+              <span className="compact-value">Rp {formatNumber(marketData.arb)}</span>
             </div>
           </div>
           <div className="compact-grid-3">

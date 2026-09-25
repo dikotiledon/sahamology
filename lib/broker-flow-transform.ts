@@ -8,20 +8,20 @@ import type {
 } from './types';
 import { getBrokerInfo } from './brokers';
 
-type BrokerStatus = 'Bandar' | 'Whale' | 'Retail' | 'Mix';
+type BrokerStatus = 'Smartmoney' | 'Whale' | 'Retail' | 'Mix';
 
 function classifyBrokerStatus(brokerCode: string): BrokerStatus {
   const info = getBrokerInfo(brokerCode);
   switch (info.type) {
     case 'Smartmoney':
-      return 'Bandar';
+      return 'Smartmoney';
     case 'Whale':
       return 'Whale';
     case 'Retail':
       return 'Retail';
     default:
-      // 'Mix' and 'Unknown' both fold into 'Mix' — there is no
-      // '.broker-code-badge.unknown' CSS variant to render against.
+      // 'Mix' is the only remaining class — unknown broker codes already
+      // fold into 'Mix' at the getBrokerInfo type boundary.
       return 'Mix';
   }
 }

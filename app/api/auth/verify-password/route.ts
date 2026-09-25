@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     if (valid) {
       const response = NextResponse.json({ success: true, valid: true });
-      await setSession(response);
+      await setSession(response, true, request.headers.get('x-forwarded-proto'));
       return response;
     }
 

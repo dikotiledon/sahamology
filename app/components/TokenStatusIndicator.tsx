@@ -83,7 +83,7 @@ export default function TokenStatusIndicator() {
 
   if (loading || !status) return null;
 
-  const isGood = status.exists && status.isValid && !status.isExpired && !status.isExpiringSoon;
+  const _isGood = status.exists && status.isValid && !status.isExpired && !status.isExpiringSoon;
   const isWarning = status.exists && status.isValid && status.isExpiringSoon && !status.isExpired;
   const isError = !status.exists || !status.isValid || status.isExpired;
 

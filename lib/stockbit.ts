@@ -2,7 +2,8 @@ import type { MarketDetectorResponse, OrderbookResponse, BrokerData, WatchlistRe
 import { getSessionValue, updateTokenLastUsed, invalidateToken } from './supabase';
 
 const STOCKBIT_BASE_URL = 'https://exodus.stockbit.com';
-const STOCKBIT_AUTH_URL = 'https://stockbit.com';
+// Reserved for future auth-flow endpoints; kept documented but currently unused.
+// const STOCKBIT_AUTH_URL = 'https://stockbit.com';
 
 // Custom error for token expiry - allows UI to detect and show refresh prompt
 export class TokenExpiredError extends Error {

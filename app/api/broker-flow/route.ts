@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const emiten = searchParams.get('emiten');
   const periodParam = searchParams.get('period') || '7D';
-  const brokerStatus = searchParams.get('broker_status') || 'Bandar,Whale,Retail,Mix';
+  const brokerStatus = searchParams.get('broker_status') || 'Smartmoney,Whale,Retail,Mix';
 
   if (!emiten) {
     return NextResponse.json(

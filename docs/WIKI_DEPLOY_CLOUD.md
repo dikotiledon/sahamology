@@ -1,94 +1,96 @@
-# OPSI A: Deploy ke Cloud (Netlify + Supabase)
+# OPSI A: Deploy ke Cloud / VPS (Docker + PostgreSQL)
 
-Ikuti langkah-langkah berikut secara berurutan untuk menjalankan Sahamology di cloud menggunakan Netlify dan Supabase.
+Ikuti langkah-langkah berikut secara berurutan untuk menjalankan Sahamology di server publik (VPS, VM, atau dedicated server) menggunakan Docker Compose.
 
-## A1. Setup Supabase
+## A1. Prasyarat Server
 
-1. Buat akun dan project baru di [Supabase](https://supabase.com/)
-2. Catat kredensial berikut dari **Integration > Data API**: `API URL` → catat untuk nanti di Netlify `NEXT_PUBLIC_SUPABASE_URL`
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/supabase01.png)
-3. Catat kredensial berikut dari **Project Settings > API Keys > Legacy anon, service_role API keys**: `anon public` key → catat untuk nanti di Netlify `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/supabase02.png)
+1. Server Linux dengan **Docker Engine** dan **Docker Compose v2** terpasang.
+   - Docker: <https://docs.docker.com/engine/install/>
+   - Compose: sudah termasuk dalam Docker Desktop / plugin `docker-compose`.
+2. Pastikan port **3000** terbuka di firewall server (atau port lain yang Anda pilih lewat `APP_PORT`).
 
+## A2. Clone & Konfigurasi
 
-**PENTING: Persiapan Database (Wajib Sekali Saja)**
-Agar migrasi otomatis dapat berjalan, Anda perlu menyiapkan infrastruktur pelacakan migrasi secara manual:
-1. Buka folder **supabase** di repository ini, pilih file <a href="https://github.com/dikotiledon/sahamology/blob/main/supabase/000_init.sql" target="_blank">**000_init.sql**</a>, lalu salin (copy) seluruh teks yang ada di dalamnya.
-2. Buka **SQL Editor** di Dashboard Supabase dan paste teks script tersebut.
-3. Klik **Run**.
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/supabase03.png)
-4. Setelah berhasil, migrasi database lainnya (`001_...` dst) akan dijalankan otomatis setiap kali build di Netlify.
+1. Clone repository:
 
-## A2. Deploy ke Netlify
+   ```bash
+   git clone https://github.com/dikotiledon/sahamology.git
+   cd sahamology
+   ```
 
-1. **Fork Repository**: Pastikan Anda sudah memiliki dan login ke akun GitHub Anda. Buka link repository [Sahamology](https://github.com/dikotiledon/sahamology/) ini di GitHub, lalu klik tombol **Fork** di pojok kanan atas. Ini akan membuat salinan project ini di akun GitHub Anda sendiri agar Anda bisa menghubungkannya ke Netlify.
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/netlify01.png)
-2. Jika sudah berhasil akan tampak seperti di bawah ini. Kedepannya klik Sync fork untuk mendapatkan update fitur terbaru.
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/netlify02.png)
-3. Login ke [Netlify](https://www.netlify.com/) dan klik **Add new site > Import an existing project**
-4. Pilih Github, akan ada pop up untuk login ke github, ikuti saja langkahnya
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/netlify03.png)
-5. Pilih repository Sahamology dari GitHub anda
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/netlify04.png)
-6. Tambahkan **Environment Variables** di Netlify:
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/netlify05.png)
+2. Salin template environment:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Edit `.env` dan isi variabel berikut (minimal):
 
    | Variable | Nilai | Wajib |
    |----------|-------|:-----:|
-   | `NEXT_PUBLIC_SUPABASE_URL` | URL dari Supabase langkah A1 no 2| ✅ |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key dari Supabase langkah A1 no 3| ✅ |
-   | `CRON_SECRET` | String acak untuk keamanan cron | ✅ |
-   | `GEMINI_API_KEY` | API Key dari [Google AI Studio](https://aistudio.google.com/) | ✅ |
-   | `GEMINI_STORY_MODEL` | Model Gemini untuk AI Story Analysis (opsional, default: `gemini-3-flash-preview`) | ❌ |
-   | `GEMINI_STORY_THINKING_LEVEL` | Thinking level: `MINIMAL`/`LOW`/`MEDIUM`/`HIGH` (opsional, default: `HIGH`) | ❌ |
-   | `LLM_PROVIDER` | `gemini` (default) atau `openai`. Mode `openai` tidak menjalankan Google Search | ❌ |
-   | `LLM_BASE_URL` | Base URL OpenAI-compatible. Wajib jika provider `openai`; kode menambahkan `/chat/completions` | ❌ |
-   | `LLM_API_KEY` | Bearer key endpoint OpenAI-compatible. Wajib jika provider `openai` | ❌ |
-   | `LLM_MODEL` | Nama model OpenAI-compatible. Wajib jika provider `openai`; tidak ada default | ❌ |
+   | `POSTGRES_PASSWORD` | Password database PostgreSQL (ganti dari default) | ✅ |
+   | `APP_BASE_URL` | URL publik aplikasi, contoh `https://stocks.example.com` atau `http://<IP_PUBLIK>:3000` | ✅ |
+   | `CRON_SECRET` | Secret untuk trigger cron/worker internal | ✅ |
+   | `AUTH_SECRET` | Secret HMAC untuk sesi login (string acak panjang) | ✅ |
+   | `GEMINI_API_KEY` | API Key dari [Google AI Studio](https://aistudio.google.com/) — untuk provider `gemini` | ⚠️ |
+   | `LLM_PROVIDER` | `gemini` (default) atau `openai` | ❌ |
+   | `LLM_BASE_URL` | Base URL OpenAI-compatible (contoh: `http://192.168.1.4:20128/v1`). Wajib saat `LLM_PROVIDER=openai` | ❌ |
+   | `LLM_API_KEY` | Bearer key endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai` | ❌ |
+   | `LLM_MODEL` | Nama model (contoh: `power` atau `agmanager/gemini-3.8-flash-high`). Wajib saat `LLM_PROVIDER=openai` | ❌ |
+   | `STOCKBIT_JWT_TOKEN` | Fallback token manual (opsional — ekstensi Chrome lebih baik) | ❌ |
 
-7. Klik **Deploy site** dan tunggu hingga selesai
-8. Catat URL Netlify Anda (contoh: `https://your-app.netlify.app`) akan digunakan untuk proses berikutnya 
+   > **CATATAN**: AI Story Analysis bisa memakai salah satu dari dua provider:
+   > - `LLM_PROVIDER=gemini` → memakai `GEMINI_API_KEY` + `GEMINI_STORY_MODEL`, dengan Google Search grounding.
+   > - `LLM_PROVIDER=openai` → memakai `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` (endpoint OpenAI-compatible).
 
-## A3. Setup Chrome Extension (untuk Cloud)
+## A3. Jalankan Aplikasi
 
-1. **Download File ke Komputer**: Jika Anda belum memiliki file ini di komputer, buka repository GitHub Anda, klik tombol **Code** (warna hijau), lalu pilih **Download ZIP**. Ekstrak (Extract) file tersebut ke folder pilihan Anda (misal di Desktop atau Documents).
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/chrome-extension01.png)
-2. Buka folder `stockbit-token-extension/` yang ada di dalam folder hasil ekstrak tadi.
-3. Buat duplikat (Copy & Paste) untuk dua file berikut:
-   - Duplikat `manifest.json.example` lalu ubah namanya menjadi `manifest.json`
-   - Duplikat `background.js.example` lalu ubah namanya menjadi `background.js`
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/chrome-extension02.png)
+```bash
+docker compose up -d --build
+```
 
-4. Edit `manifest.json` - ganti `YOUR_APP_DOMAIN` dengan URL Netlify Anda dari langkah A2 no 8:
-   ```json
-   "host_permissions": [
-      "https://*.stockbit.com/*",
-      "https://your-app.netlify.app/*"
-   ]
-   ```
+Aplikasi akan berjalan di `http://<IP_SERVER>:3000` (atau sesuai `APP_PORT`/`APP_BASE_URL`).
 
-5. Edit `background.js` - ganti `APP_API_URL` dengan URL Netlify Anda:
+Cek status:
+
+```bash
+docker compose ps
+docker compose logs -f app
+```
+
+## A4. Migrasi Database
+
+Migrasi SQL (`supabase/*.sql`) dijalankan otomatis oleh container saat startup. Untuk menjalankannya manual:
+
+```bash
+docker compose exec app npm run migrate
+```
+
+## A5. Reverse Proxy (Opsional, HTTPS)
+
+Untuk HTTPS, letakkan aplikasi di belakang reverse proxy (Caddy/Nginx) dan set `APP_BASE_URL` ke domain HTTPS. Cookie `Secure` otomatis aktif ketika request tiba lewat HTTPS (atau lewat `X-Forwarded-Proto: https`).
+
+## A6. Setup Chrome Extension
+
+1. Buka folder `stockbit-token-extension/dist/` di dalam repositori — folder ini sudah berisi `manifest.json` dan `background.js` siap pakai.
+2. Jika ingin kustomisasi, duplikat file `.example` di folder induknya:
+   - `manifest.json.example` → `manifest.json`
+   - `background.js.example` → `background.js`
+3. Buka `chrome://extensions/` → aktifkan **Developer mode** → klik **Load unpacked** → pilih folder `stockbit-token-extension/dist` (atau folder tempat Anda membuat file kustom).
+4. Atur URL target (opsional, dari service-worker console ekstensi):
+
    ```javascript
-   const APP_API_URL = "https://your-app.netlify.app/api/update-token";
+   chrome.storage.local.set({ appApiUrl: "https://stocks.example.com/api/update-token" });
    ```
 
-6. Install ekstensi di Chrome:
-   - Buka `chrome://extensions/`
-   - Aktifkan **Developer mode** (pojok kanan atas)
-   - Klik **Load unpacked**
-   - Pilih folder `stockbit-token-extension`
-![Supabase Setup](https://raw.githubusercontent.com/dikotiledon/sahamology/main/public/chrome-extension03.png)
+## A7. Verifikasi Instalasi
 
-## A4. Verifikasi Instalasi
-
-1. Buka [Stockbit](https://stockbit.com/) dan login
-2. Ekstensi akan otomatis menangkap dan mengirim token ke Supabase
-3. Buka URL Netlify Anda
-4. Cek indikator koneksi Stockbit di aplikasi - harus menunjukkan **Connected**
+1. Buka [Stockbit](https://stockbit.com/) dan login.
+2. Ekstensi otomatis menangkap token dan mengirimkannya ke `/api/update-token`.
+3. Buka aplikasi Anda di `APP_BASE_URL`.
+4. Cek indikator koneksi Stockbit — harus menunjukkan **Connected/Valid**.
 5. Coba analisis saham pertama Anda! 🎉
 
-## A5. Checkpoint Troubleshooting Koneksi
+---
 
-Jika status di aplikasi masih **"Disconnected"** atau Token invalid, silakan lakukan [pemeriksaan poin-poin berikut](https://github.com/dikotiledon/sahamology/wiki/Checkpoint).
-
-   
+*Kembali ke [Halaman Utama Wiki](Home)*

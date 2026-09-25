@@ -93,7 +93,7 @@ export default function BrokerFlowCard({ emiten }: BrokerFlowCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<BrokerFlowPeriodOption>('7D');
-  const [selectedStatus, setSelectedStatus] = useState<string[]>(['Bandar', 'Whale', 'Retail', 'Mix']);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['Smartmoney', 'Whale', 'Retail', 'Mix']);
 
   useEffect(() => {
     if (!emiten) return;
@@ -124,7 +124,7 @@ export default function BrokerFlowCard({ emiten }: BrokerFlowCardProps) {
 
   const filterOptions: BrokerFlowPeriodOption[] = ['1D', '7D', '14D', '21D'];
   const statusOptions = [
-    { id: 'Bandar', label: 'Smart Money' },
+    { id: 'Smartmoney', label: 'Smart Money' },
     { id: 'Whale', label: 'Whale' },
     { id: 'Retail', label: 'Retail' },
     { id: 'Mix', label: 'Mix' }
@@ -234,9 +234,7 @@ function BrokerFlowRow({
   tradingDates: string[];
 }) {
   const brokerInfo = getBrokerInfo(activity.broker_code);
-  const displayType = brokerInfo.type !== 'Unknown' 
-    ? brokerInfo.type 
-    : (activity.broker_status === 'Bandar' ? 'Smart Money' : activity.broker_status);
+  const displayType = brokerInfo.type;
   
   return (
     <tr>
@@ -251,7 +249,7 @@ function BrokerFlowRow({
             {activity.broker_code}
           </span>
           <span 
-            className={`broker-type-label ${brokerInfo.type !== 'Unknown' ? brokerInfo.type.toLowerCase() : activity.broker_status.toLowerCase()}`}
+            className={`broker-type-label ${brokerInfo.type.toLowerCase()}`}
             style={{ fontSize: '0.65rem', opacity: 0.8 }}
           >
             {displayType}

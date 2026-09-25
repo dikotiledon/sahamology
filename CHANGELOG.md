@@ -2,6 +2,14 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### v0.5.0 (2026-09-24)
+- **Self-Hosted Migration**: Netlify + Supabase → Next.js standalone + PostgreSQL 16 + Redis 7 (BullMQ) dalam Docker Compose.
+- **Native pg Data Layer**: `lib/db.ts` menggantikan PostgREST/Supabase client; `lib/supabase.ts` tetap sebagai shim backward-compatible.
+- **Embedded Workers**: Background job (watchlist & story analysis) berjalan di proses Next.js via `instrumentation.ts`.
+- **OpenAI-Compatible LLM**: `LLM_PROVIDER=openai` mendukung endpoint chat-compatible (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`).
+- **Fix JSONB Persistence**: `updateAgentStory` men-serialize nilai array/object untuk kolom `jsonb` (mencegah `invalid input syntax for type json`).
+- **Chrome Extension Dist**: `stockbit-token-extension/dist/` siap load + archive `.zip`.
+
 ### v0.4.0 (2026-02-23)
 - **High-Fidelity Copy Image**: Migrasi dari `html2canvas` ke `html-to-image` untuk hasil capture yang lebih tajam (HD) dan akurat.
 - **Transparent Corners**: Optimalisasi capture spesifik pada elemen card untuk menghasilkan pojok yang transparan (rounded).

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@/lib/supabase": ["lib/jobs/stubs/supabase.mjs"],
+      "@google/genai": ["lib/jobs/stubs/google-genai.mjs"]
+    }
+  },
+  "include": ["lib/jobs/**/*.ts", "lib/jobs/**/*.mjs"]
+}

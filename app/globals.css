@@ -1628,7 +1628,7 @@ h3 {
   font-size: 0.75rem;
 }
 
-.broker-code-badge.bandar {
+.broker-code-badge.smartmoney {
   background: color-mix(in srgb, var(--broker-smartmoney) 15%, transparent);
   color: var(--broker-smartmoney);
 }
@@ -1668,10 +1668,6 @@ h3 {
 
 .broker-type-label.mix {
   color: var(--broker-mix);
-}
-
-.broker-type-label.unknown {
-  color: var(--text-muted);
 }
 
 .icon-action-btn {
