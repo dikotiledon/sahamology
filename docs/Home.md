@@ -9,8 +9,8 @@ Wiki ini berisi panduan lengkap untuk melakukan instalasi dan troubleshooting ap
 - [**Self-Hosted Runbook**](Self-Hosted): Panduan operasional lengkap (arsitektur, topologi, perintah verifikasi).
 - [**Cloudflare Tunnel**](Cloudflare-Tunnel): Ekspos instance lokal (Hindsight) secara privat lewat Cloudflare Tunnel.
 - [**Checkpoint & Troubleshooting**](Checkpoint): Lakukan pengecekan di sini jika aplikasi Anda berstatus "Disconnected" atau data tidak muncul.
-- [**Reset Password**](Reset-Password): Panduan reset password jika Anda lupa password proteksi aplikasi.
 - [**Terminology**](Terminology): Istilah kanonik (bandar, Smartmoney, ARA/ARB) yang dipakai di kode sumber.
+- [**Reset Password**](Reset-Password): Panduan reset password jika Anda lupa password proteksi aplikasi.
 
 > **Catatan**: Halaman `Project Review` hanya tersedia di folder `docs/` repositori utama (bahasa Inggris) dan tidak dipublikasikan ke wiki.
 
