@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "node scripts/start-standalone.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --tsconfig tsconfig.test.json --test lib/jobs/run-story-analysis.test.ts lib/db.test.ts",
+    "test": "tsx --tsconfig tsconfig.test.json --test \"lib/**/*.test.ts\"",
     "lint": "eslint ."
   },
   "dependencies": {

@@ -8,5 +8,5 @@
       "@google/genai": ["lib/jobs/stubs/google-genai.mjs"]
     }
   },
-  "include": ["lib/jobs/**/*.ts", "lib/jobs/**/*.mjs"]
+  "include": ["lib/**/*.ts", "lib/**/*.mjs", "lib/jobs/**/*.ts", "lib/jobs/**/*.mjs"]
 }
