@@ -15,8 +15,30 @@ export function getFraksi(harga: number): number {
   return 25; // harga >= 5000
 }
 
+export type CalculateTargetsOk = {
+  ok: true;
+  fraksi: number;
+  totalPapan: number;
+  rataRataBidOfer: number;
+  a: number;
+  p: number;
+  targetRealistis1: number;
+  targetMax: number;
+};
+
+export type CalculateTargetsErr = {
+  ok: false;
+  reason: 'degenerate_book';
+};
+
+export type CalculateTargetsResult = CalculateTargetsOk | CalculateTargetsErr;
+
 /**
- * Calculate target prices based on broker and market data
+ * Calculate target prices based on broker and market data.
+ *
+ * A degenerate book (ARA == ARB, zero total bid+offer, or anything that
+ * produces a non-positive totalPapan or rataRataBidOfer) yields
+ * `{ ok: false, reason: 'degenerate_book' }` instead of NaN/Infinity targets.
  */
 export function calculateTargets(
   rataRataBandar: number,
@@ -26,7 +48,7 @@ export function calculateTargets(
   totalBid: number,
   totalOffer: number,
   harga: number
-) {
+): CalculateTargetsResult {
   // Calculate Fraksi
   const fraksi = getFraksi(harga);
 
@@ -35,6 +57,15 @@ export function calculateTargets(
 
   // Rata rata Bid Ofer = (Total Bid + Total Offer) / Total Papan
   const rataRataBidOfer = (totalBid + totalOffer) / totalPapan;
+
+  if (
+    !Number.isFinite(totalPapan) ||
+    !Number.isFinite(rataRataBidOfer) ||
+    !(totalPapan > 0) ||
+    !(rataRataBidOfer > 0)
+  ) {
+    return { ok: false, reason: 'degenerate_book' };
+  }
 
   // a = Rata rata bandar × 5%
   const a = rataRataBandar * 0.05;
@@ -49,6 +80,7 @@ export function calculateTargets(
   const targetMax = rataRataBandar + a + (p * fraksi);
 
   return {
+    ok: true,
     fraksi,
     totalPapan: Math.round(totalPapan),
     rataRataBidOfer: Math.round(rataRataBidOfer),

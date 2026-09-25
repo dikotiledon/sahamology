@@ -130,6 +130,16 @@ export async function POST(request: NextRequest) {
       marketData.harga
     );
 
+    if (!calculated.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Buku order tidak valid untuk menghitung target (ARA/ARB atau bid/offer kosong).',
+        },
+        { status: 422 }
+      );
+    }
+
     // Prepare response
     const result: ApiResponse = {
       success: true,

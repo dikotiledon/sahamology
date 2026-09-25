@@ -106,6 +106,19 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         marketData.harga
       );
 
+      if (!calculated.ok) {
+        const errorMsg = 'Buku order tidak valid (degenerate_book)';
+        errors.push({ emiten, error: errorMsg });
+        if (jobLogId) {
+          await appendBackgroundJobLogEntry(jobLogId, {
+            level: 'warn',
+            message: errorMsg,
+            emiten,
+          });
+        }
+        continue;
+      }
+
       await saveWatchlistAnalysis({
         from_date: today,
         to_date: today,
