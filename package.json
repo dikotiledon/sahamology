@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "migrate": "node scripts/run-migrations.js",
+    "backfill:history": "tsx scripts/backfill-history.ts",
     "build": "next build",
     "start": "node scripts/start-standalone.js",
     "typecheck": "tsc --noEmit",

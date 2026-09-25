@@ -781,6 +781,16 @@ export async function getPriceHistory(emiten: string, from: string, to: string) 
   return result.rows;
 }
 
+/** Distinct emitens tracked by the analysis pipeline (watchlist history ∪ cache). */
+export async function getTrackedEmitens(): Promise<string[]> {
+  const result = await query(
+    `SELECT DISTINCT emiten FROM stock_queries WHERE emiten IS NOT NULL AND emiten <> ''
+     UNION
+     SELECT DISTINCT symbol FROM emiten_cache WHERE symbol IS NOT NULL AND symbol <> ''`
+  );
+  return result.rows.map((row) => String((row as Record<string, unknown>).emiten ?? '').toUpperCase());
+}
+
 // =====================================================================
 // Summary statistics
 // =====================================================================
