@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProfileSetting, setProfileSetting } from '@/lib/supabase';
+import { isPublicProfileKey, isForbiddenProfileKey } from '@/lib/profile-keys';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,13 @@ export async function GET(request: NextRequest) {
     if (!key) {
       return NextResponse.json(
         { success: false, error: 'Missing "key" parameter' },
+        { status: 400 }
+      );
+    }
+
+    if (!isPublicProfileKey(key)) {
+      return NextResponse.json(
+        { success: false, error: 'Unknown profile key' },
         { status: 400 }
       );
     }
@@ -33,6 +41,21 @@ export async function PUT(request: NextRequest) {
     if (!key || value === undefined) {
       return NextResponse.json(
         { success: false, error: 'Missing "key" or "value" in body' },
+        { status: 400 }
+      );
+    }
+
+    // Password keys are managed only by the dedicated auth routes.
+    if (isForbiddenProfileKey(key)) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden profile key' },
+        { status: 400 }
+      );
+    }
+
+    if (!isPublicProfileKey(key)) {
+      return NextResponse.json(
+        { success: false, error: 'Unknown profile key' },
         { status: 400 }
       );
     }
