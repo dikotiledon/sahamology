@@ -1,5 +1,6 @@
 import type { MarketDetectorResponse, OrderbookResponse, BrokerData, WatchlistResponse, BrokerSummaryData, EmitenInfoResponse, KeyStatsResponse, KeyStatsData, KeyStatsItem, WatchlistGroup, RunningTradeChartResponse } from './types';
 import { getSessionValue, updateTokenLastUsed, invalidateToken } from './supabase';
+import { stockbitFetch } from './stockbit-limiter';
 
 const STOCKBIT_BASE_URL = 'https://exodus.stockbit.com';
 // Reserved for future auth-flow endpoints; kept documented but currently unused.
@@ -108,7 +109,7 @@ export async function fetchMarketDetector(
   url.searchParams.append('investor_type', 'INVESTOR_TYPE_ALL');
   url.searchParams.append('limit', '25');
 
-  const response = await fetch(url.toString(), {
+  const response = await stockbitFetch(url.toString(), {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -124,7 +125,7 @@ export async function fetchMarketDetector(
 export async function fetchOrderbook(emiten: string): Promise<OrderbookResponse> {
   const url = `${STOCKBIT_BASE_URL}/company-price-feed/v2/orderbook/companies/${emiten}`;
 
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -160,7 +161,7 @@ export async function fetchEmitenInfo(emiten: string): Promise<EmitenInfoRespons
 
   const url = `${STOCKBIT_BASE_URL}/emitten/${emiten}/info`;
 
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -195,7 +196,7 @@ export async function fetchSectors(): Promise<string[]> {
 
   const url = `${STOCKBIT_BASE_URL}/emitten/sectors`;
 
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -220,7 +221,7 @@ export async function fetchSectors(): Promise<string[]> {
  */
 export async function fetchWatchlistGroups(): Promise<WatchlistGroup[]> {
   const url = `${STOCKBIT_BASE_URL}/watchlist?page=1&limit=500`;
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -247,7 +248,7 @@ export async function fetchWatchlist(watchlistId?: number): Promise<WatchlistRes
 
   // Fetch watchlist details
   const detailUrl = `${STOCKBIT_BASE_URL}/watchlist/${id}?page=1&limit=500`;
-  const response = await fetch(detailUrl, {
+  const response = await stockbitFetch(detailUrl, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -355,7 +356,7 @@ function parseKeyStatsResponse(json: KeyStatsResponse): KeyStatsData {
 export async function fetchKeyStats(emiten: string): Promise<KeyStatsData> {
   const url = `${STOCKBIT_BASE_URL}/keystats/ratio/v1/${emiten}?year_limit=10`;
   
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -398,7 +399,7 @@ export async function fetchHistoricalSummary(
 ): Promise<HistoricalSummaryItem[]> {
   const url = `${STOCKBIT_BASE_URL}/company-price-feed/historical/summary/${emiten}?period=HS_PERIOD_DAILY&start_date=${startDate}&end_date=${endDate}&limit=${limit}&page=1`;
 
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -431,7 +432,7 @@ export async function fetchRunningTradeChartByBrokers(
   url.searchParams.set('investor_type', 'INVESTOR_TYPE_ALL');
   url.searchParams.set('market_board', marketBoard);
 
-  const response = await fetch(url.toString(), {
+  const response = await stockbitFetch(url.toString(), {
     method: 'GET',
     headers: await getHeaders(),
   });
@@ -447,7 +448,7 @@ export async function fetchRunningTradeChartByBrokers(
 export async function deleteWatchlistItem(watchlistId: number, companyId: number): Promise<void> {
   const url = `${STOCKBIT_BASE_URL}/watchlist/${watchlistId}/company/${companyId}/item`;
 
-  const response = await fetch(url, {
+  const response = await stockbitFetch(url, {
     method: 'DELETE',
     headers: await getHeaders(),
   });
