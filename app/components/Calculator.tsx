@@ -9,6 +9,7 @@ import AgentStoryCard from './AgentStoryCard';
 import PriceGraph from './PriceGraph';
 import BrokerFlowCard from './BrokerFlowCard';
 import EmitenHistoryCard from './EmitenHistoryCard';
+import DecisionCard from './DecisionCard';
 
 import * as htmlToImage from 'html-to-image';
 import type { StockInput, StockAnalysisResult, KeyStatsData, AgentStoryResult } from '@/lib/types';
@@ -448,6 +449,11 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
                 brokerSummary={result.brokerSummary}
                 sector={result.sector}
               />
+            )}
+
+            {/* Decision Card (G0–G3 stance) */}
+            {result.playbook && (
+              <DecisionCard playbook={result.playbook} emiten={result.input.emiten} />
             )}
 
             {/* KeyStats Card */}
