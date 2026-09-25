@@ -136,6 +136,18 @@ export async function saveStockQuery(data: StockQueryInput) {
   }
 }
 
+/** Save decision journal row (one stance per emiten per as_of). */
+export async function saveDecisionJournal(data: Record<string, unknown>) {
+  const { text, values } = buildUpsert('decision_journal', 'as_of,emiten', data);
+  try {
+    const result = await query(text, values);
+    return result.rows;
+  } catch (error) {
+    console.error('Error saving decision journal:', error);
+    throw error;
+  }
+}
+
 /** Save watchlist analysis — same table/conflict contract as saveStockQuery. */
 export async function saveWatchlistAnalysis(data: StockQueryInput) {
   const { text, values } = buildUpsert('stock_queries', 'from_date,emiten', data);
