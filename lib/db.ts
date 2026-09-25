@@ -791,6 +791,40 @@ export async function getTrackedEmitens(): Promise<string[]> {
   return result.rows.map((row) => String((row as Record<string, unknown>).emiten ?? '').toUpperCase());
 }
 
+/** Adi-signal records for the baseline backtest (successful daily analyses). */
+export async function getSignalRecords(): Promise<
+  Array<{
+    emiten: string;
+    from_date: string;
+    harga: number;
+    target_realistis: number;
+    target_max: number;
+    rata_rata_bandar: number;
+    arb: number;
+  }>
+> {
+  const result = await query(
+    `SELECT emiten, from_date, harga, target_realistis, target_max, rata_rata_bandar, arb
+     FROM stock_queries
+     WHERE status = 'success'
+       AND harga IS NOT NULL
+       AND target_realistis IS NOT NULL
+     ORDER BY from_date ASC`
+  );
+  return result.rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      emiten: String(r.emiten),
+      from_date: String(r.from_date).slice(0, 10),
+      harga: Number(r.harga),
+      target_realistis: Number(r.target_realistis),
+      target_max: Number(r.target_max ?? r.target_realistis),
+      rata_rata_bandar: Number(r.rata_rata_bandar ?? 0),
+      arb: Number(r.arb ?? 0),
+    };
+  });
+}
+
 // =====================================================================
 // Summary statistics
 // =====================================================================
