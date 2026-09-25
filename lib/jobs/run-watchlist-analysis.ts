@@ -6,6 +6,7 @@ import {
   fetchEmitenInfo,
   fetchHistoricalSummary,
 } from '@/lib/stockbit';
+import { sessionDateJakarta } from '@/lib/market-calendar';
 import { calculateTargets } from '@/lib/calculations';
 import {
   saveWatchlistAnalysis,
@@ -36,7 +37,7 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   const startTime = Date.now();
   let jobLogId: number | null = null;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = sessionDateJakarta(new Date());
 
   // Fetch watchlist first to know total items.
   const watchlistResponse = await fetchWatchlist();
