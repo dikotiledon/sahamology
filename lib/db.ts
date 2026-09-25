@@ -340,7 +340,6 @@ export async function updatePreviousDayRealPrice(
 export interface TokenStatus {
   exists: boolean;
   isValid: boolean;
-  token?: string;
   expiresAt?: string;
   lastUsedAt?: string;
   updatedAt?: string;
@@ -384,7 +383,6 @@ export async function getTokenStatus(): Promise<TokenStatus> {
     return {
       exists: true,
       isValid: data.is_valid !== false && !isExpired,
-      token: data.value ? String(data.value) : undefined,
       expiresAt: data.expires_at ? String(data.expires_at) : undefined,
       lastUsedAt: data.last_used_at ? String(data.last_used_at) : undefined,
       updatedAt: data.updated_at ? String(data.updated_at) : undefined,
