@@ -43,6 +43,7 @@ jobs:
           cp ../docs/WIKI_RESET_PASSWORD.md ./Reset-Password.md
           cp ../docs/SELF_HOSTED.md ./Self-Hosted.md
           cp ../docs/CLOUDFLARE_TUNNEL.md ./Cloudflare-Tunnel.md
+          cp ../docs/TERMINOLOGY.md ./Terminology.md
           
           git add .
           if git diff --staged --quiet; then
