@@ -3,23 +3,19 @@
  *
  * Pulls every successful daily analysis from stock_queries, simulates each
  * signal against the following 5 trading-day candles in price_history using the
- * unified evaluation engine, and publishes the benchmark Expectancy, Profit
- * Factor, Win Rate, and legacy Touch R1/Max. Every future signal layer must
- * beat this number out-of-sample before it is merged.
+ * canonical playbook baseline evaluator, and writes the benchmark to
+ * artifacts/adi-baseline.json. Every future signal layer must beat this number
+ * out-of-sample before it is merged.
  *
  * Usage:
  *   npm run baseline:backtest [--horizon 5]
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getPriceHistory, getSignalRecords } from '../lib/db';
-import {
-  CandleInput,
-  evaluateTrade,
-  summarizeTrades,
-  TradeEvaluationResult,
-} from '../lib/evaluation';
+import { evaluateAdiOnly, type BaselineTrade } from '../lib/playbook/baseline';
+import { defaultCostModel } from '../lib/playbook/costs';
 
 try {
   const envContent = readFileSync(join(process.cwd(), '.env.local'), 'utf8');
@@ -46,24 +42,10 @@ async function main() {
   const horizonDays = Number(option('--horizon', '5'));
 
   const signals = await getSignalRecords();
-  if (signals.length === 0) {
-    console.error('No Adi signal records found in stock_queries. Run a watchlist analysis first.');
-    process.exit(1);
-  }
-
-  const cache = new Map<string, CandleInput[]>();
-  const results: TradeEvaluationResult[] = [];
-  let evaluated = 0;
-  let skipped = 0;
+  const cache = new Map<string, { high: number; low: number }[]>();
+  const trades: BaselineTrade[] = [];
 
   for (const signal of signals) {
-    // Skip degenerate signals: zero/negative ARB means invalidation cannot be
-    // priced; a target at or below entry cannot produce a valid long simulation.
-    if (signal.arb <= 0 || signal.target_realistis <= signal.harga) {
-      skipped += 1;
-      continue;
-    }
-
     const entryDate = signal.from_date;
     const start = new Date(entryDate);
     start.setDate(start.getDate() + 1);
@@ -78,49 +60,52 @@ async function main() {
     if (!bars) {
       const rows = await getPriceHistory(signal.emiten, from, to);
       bars = rows.map((row) => ({
-        open: Number(row.open ?? row.close ?? 0),
         high: Number(row.high ?? row.close ?? 0),
         low: Number(row.low ?? row.close ?? 0),
-        close: Number(row.close ?? 0),
       }));
       cache.set(cacheKey, bars);
     }
 
-    if (bars.length === 0) {
-      skipped += 1;
-      continue;
-    }
-
-    const entryPrice = bars[0].open;
-    const invalidation = Math.max(signal.arb, Math.round(signal.rata_rata_bandar * 0.97));
-    const result = evaluateTrade(
-      {
-        entryPrice,
-        targetR1: signal.target_realistis,
-        invalidation,
-        horizonDays,
-      },
-      bars
-    );
-    results.push(result);
-    evaluated += 1;
+    trades.push({
+      emiten: signal.emiten,
+      signalDate: entryDate,
+      entry: signal.harga,
+      r1: signal.target_realistis,
+      max: signal.target_max,
+      invalidation: Math.max(signal.arb, Math.round(signal.rata_rata_bandar * 0.97)),
+      nextDayHigh: bars[0]?.high ?? null,
+      path: bars.map((bar, i) => ({
+        date: new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10),
+        high: bar.high,
+        low: bar.low,
+      })),
+    });
   }
 
-  const summary = summarizeTrades(results);
-  const touchR1 = results.filter((r) => r.touchR1).length;
+  const report = evaluateAdiOnly(trades, defaultCostModel());
+
+  mkdirSync(join(process.cwd(), 'artifacts'), { recursive: true });
+  writeFileSync(
+    join(process.cwd(), 'artifacts', 'adi-baseline.json'),
+    JSON.stringify(report, null, 2) + '\n'
+  );
 
   console.log('Adi-Only Baseline Backtest');
   console.log('==========================');
   console.log(`Signal records : ${signals.length}`);
-  console.log(`Evaluated      : ${evaluated}`);
-  console.log(`Skipped (no bar): ${skipped}`);
   console.log(`Horizon        : ${horizonDays} trading days`);
   console.log('---');
-  console.log(`Win Rate       : ${(summary.winRate * 100).toFixed(2)}%`);
-  console.log(`Expectancy     : ${summary.expectancy.toFixed(2)} pts/trade`);
-  console.log(`Avg Net PnL    : ${summary.avgNetPnl.toFixed(2)} pts/trade`);
-  console.log(`Profit Factor  : ${Number.isFinite(summary.profitFactor) ? summary.profitFactor.toFixed(2) : '∞'}`);
-  console.log(`Touch R1 (legacy): ${touchR1}/${evaluated} (${((touchR1 / Math.max(evaluated, 1)) * 100).toFixed(2)}%)`);
+  console.log(`Sample size    : ${report.sampleSize}`);
+  console.log(`Next-day Hit R1: ${report.nextDayHitR1}`);
+  console.log(`Next-day Hit Max: ${report.nextDayHitMax}`);
+  console.log(
+    `Expectancy R   : ${report.expectancyR === null ? 'n/a (no path data)' : report.expectancyR.toFixed(3)}`
+  );
+  console.log(
+    `Profit Factor  : ${report.profitFactor === null ? 'n/a' : Number.isFinite(report.profitFactor) ? report.profitFactor.toFixed(2) : '∞'}`
+  );
+  console.log('---');
+  console.log('Wrote artifacts/adi-baseline.json');
 
   process.exit(0);
 }

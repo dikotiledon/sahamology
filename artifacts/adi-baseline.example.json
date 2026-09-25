@@ -1,0 +1,11 @@
+{
+  "n": 5,
+  "sampleSize": 0,
+  "nextDayHitR1": 0,
+  "nextDayHitMax": 0,
+  "expectancyR": null,
+  "profitFactor": null,
+  "notes": [
+    "Example schema only. Run `npm run baseline:backtest` with a live DATABASE_URL and backfilled price_history to produce artifacts/adi-baseline.json."
+  ]
+}
