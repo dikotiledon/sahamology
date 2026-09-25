@@ -1,3 +1,5 @@
+import type { PlaybookResult } from '@/lib/playbook';
+
 export interface StockInput {
   emiten: string;
   fromDate: string;
@@ -113,6 +115,7 @@ export interface StockAnalysisResult {
   marketData: MarketData;
   calculated: CalculatedData;
   brokerSummary?: BrokerSummaryData;
+  playbook?: PlaybookResult;
   isFromHistory?: boolean;
   historyDate?: string;
   sector?: string;

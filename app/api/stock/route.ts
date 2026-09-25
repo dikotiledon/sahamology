@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchMarketDetector, fetchOrderbook, getTopBroker, parseLot, getBrokerSummary, fetchEmitenInfo } from '@/lib/stockbit';
 import { calculateTargets } from '@/lib/calculations';
+import { evaluatePlaybook } from '@/lib/playbook';
 import { saveStockQuery, getLatestStockQuery, getSpecificStockQuery as _getSpecificStockQuery, getStockPriceByDate } from '@/lib/supabase';
 import type { StockInput, ApiResponse } from '@/lib/types';
 
@@ -141,6 +142,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare response
+    const playbook = evaluatePlaybook({
+      harga: marketData.harga,
+      ara: marketData.ara,
+      arb: marketData.arb,
+      fraksi: calculated.fraksi,
+      totalBid: marketData.totalBid,
+      totalOffer: marketData.totalOffer,
+      totalPapan: calculated.totalPapan,
+      rataRataBidOfer: calculated.rataRataBidOfer,
+      rataRataBandar: brokerData.rataRataBandar,
+      barangBandar: brokerData.barangBandar,
+      bandarCode: brokerData.bandar,
+      targetRealistis1: calculated.targetRealistis1,
+      targetMax: calculated.targetMax,
+    });
+
     const result: ApiResponse = {
       success: true,
       data: {
@@ -160,6 +177,7 @@ export async function POST(request: NextRequest) {
         },
         brokerSummary,
         sector,
+        playbook,
       },
     };
 
