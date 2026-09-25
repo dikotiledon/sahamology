@@ -166,7 +166,8 @@ export default function AgentStoryCard({ stories, status, onRetry }: AgentStoryC
           </h4>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ 
-              width: '100%', 
+              width: '100%',
+              minWidth: '640px',
               fontSize: '0.875rem',
               borderCollapse: 'collapse'
             }}>
