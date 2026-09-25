@@ -324,90 +324,7 @@ export default function AgentStoryCard({ stories, status, onRetry }: AgentStoryC
         </div>
       )}
 
-      {/* Section 4: Strategi Trading */}
-      {data.strategi_trading && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h4 style={{ 
-            fontSize: '1rem', 
-            color: 'var(--text-primary)',
-            marginBottom: '0.75rem',
-            fontWeight: 500,
-            opacity: 0.9
-          }}>
-            4. Strategi Trading
-          </h4>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-            gap: '0.75rem',
-            fontSize: '0.875rem'
-          }}>
-            {/* Tipe Saham */}
-            <div style={{ 
-              padding: '0.75rem', 
-              background: 'var(--bg-card)', 
-              borderRadius: '8px', 
-              border: '1px solid var(--border-color)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem'
-            }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tipe Saham</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{data.strategi_trading.tipe_saham}</span>
-            </div>
-
-            {/* Target Entry */}
-            <div style={{ 
-              padding: '0.75rem', 
-              background: 'var(--bg-card)', 
-              borderRadius: '8px', 
-              border: '1px solid var(--border-color)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem'
-            }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target Entry</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{data.strategi_trading.target_entry}</span>
-            </div>
-
-            {/* Take Profit */}
-            <div style={{ 
-              padding: '0.75rem', 
-              background: 'rgba(0, 200, 150, 0.05)', 
-              borderRadius: '8px', 
-              border: '1px solid rgba(0, 200, 150, 0.15)',
-              borderLeft: '4px solid var(--accent-success)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem'
-            }}>
-              <span style={{ color: 'var(--accent-success)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Take Profit</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
-                {data.strategi_trading.exit_strategy?.take_profit}
-              </span>
-            </div>
-
-            {/* Stop Loss */}
-            <div style={{ 
-              padding: '0.75rem', 
-              background: 'rgba(245, 87, 108, 0.05)', 
-              borderRadius: '8px', 
-              border: '1px solid rgba(245, 87, 108, 0.15)',
-              borderLeft: '4px solid var(--accent-warning)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem'
-            }}>
-              <span style={{ color: 'var(--accent-warning)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stop Loss</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
-                {data.strategi_trading.exit_strategy?.stop_loss}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Section 5: KeyStat Signal */}
+      {/* Section 4: KeyStat Signal */}
       {data.keystat_signal && (
         <div style={{ marginBottom: '1.5rem' }}>
           <h4 style={{ 
@@ -417,7 +334,7 @@ export default function AgentStoryCard({ stories, status, onRetry }: AgentStoryC
             fontWeight: 500,
             opacity: 0.9
           }}>
-            5. Fundamental Signal (Key Statistics)
+            4. Fundamental Signal (Key Statistics)
           </h4>
           <div style={{ 
             padding: '1rem',

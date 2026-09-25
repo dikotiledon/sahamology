@@ -8,7 +8,6 @@ const STORY = {
   matriks_story: [{ kategori_story: 'Aksi Korporasi' }],
   swot_analysis: { strengths: ['s'] },
   checklist_katalis: [{ item: 'i' }],
-  strategi_trading: { tipe_saham: 'value' },
   keystat_signal: 'Positif/Sehat',
   kesimpulan: 'Kesimpulan uji.',
 };
@@ -125,9 +124,9 @@ test('openai mode posts one chat completion without tools and stores the model',
   assert.deepEqual(completed?.swot_analysis, STORY.swot_analysis);
   assert.deepEqual(completed?.checklist_katalis, STORY.checklist_katalis);
   assert.equal(completed?.keystat_signal, STORY.keystat_signal);
-  assert.deepEqual(completed?.strategi_trading, STORY.strategi_trading);
   assert.equal(completed?.kesimpulan, STORY.kesimpulan);
   assert.equal(Object.hasOwn(completed, 'sources'), false);
+  assert.equal(Object.hasOwn(completed, 'strategi_trading'), false);
   const processing = storyUpdates.find((update) => update.status === 'processing');
   assert.equal(processing?.model, 'compatible-story');
   assert.equal(processing?.thinking_level, null);

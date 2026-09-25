@@ -244,15 +244,6 @@ export interface ChecklistKatalis {
   dampak_instan: string;
 }
 
-export interface StrategiTrading {
-  tipe_saham: string;
-  target_entry: string;
-  exit_strategy: {
-    take_profit: string;
-    stop_loss: string;
-  };
-}
-
 export interface SourceCitation {
   title: string;
   uri: string;
@@ -266,7 +257,6 @@ export interface AgentStoryResult {
   swot_analysis?: SwotAnalysis;
   checklist_katalis?: ChecklistKatalis[];
   keystat_signal?: string;
-  strategi_trading?: StrategiTrading;
   kesimpulan?: string;
   error_message?: string;
   created_at?: string;

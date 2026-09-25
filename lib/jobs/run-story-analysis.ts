@@ -93,6 +93,7 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
     {
       "kategori_story": "Transformasi Bisnis | Aksi Korporasi | Pemulihan Fundamental | Kondisi Makro",
       "deskripsi_katalis": "deskripsi singkat katalis",
+      "tanggal_katalis": "tanggal rilis berita/sumber (jika tersedia)",
       "logika_ekonomi_pasar": "penjelasan logika ekonomi/pasar",
       "potensi_dampak_harga": "dampak terhadap harga saham negatif/netral/positif dan alasan"
     }
@@ -109,17 +110,15 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
       "dampak_instan": "dampak jika terjadi"
     }
   ],
-  "strategi_trading": {
-    "tipe_saham": "jenis saham (growth/value/turnaround/dll)",
-    "target_entry": "area entry yang disarankan",
-    "exit_strategy": {
-      "take_profit": "target take profit",
-      "stop_loss": "level stop loss"
-    }
-  },
   "keystat_signal": "analisis data key statistics dalam bahasa awam dengan indikasi signal investasi",
   "kesimpulan": "kesimpulan analisis dalam 2-3 kalimat"
-}`;
+}
+
+ATURAN KETAT (WAJIB DIPATUHI):
+1. DILARANG KERAS menyebutkan atau menyarankan angka harga spesifik apa pun: target entry, take profit, stop loss, support, resistance, harga wajar, atau level numerik lainnya. Semua level harga dihitung secara deterministik oleh sistem (Adi Sucipto formula), BUKAN oleh model AI.
+2. Jangan pernah memproduksi field seperti "strategi_trading", "target_entry", "take_profit", "stop_loss", atau angka harga di dalam JSON output.
+3. Peranmu hanya: story bisnis, katalis bertanggal, SWOT kualitatif, dan narasi ekonomi-pasar. Bukan pemberi sinyal beli/jual numerik.
+4. Jika kamu tidak menemukan katalis bertanggal, katakan dengan jujur bahwa katalis tidak ditemukan, jangan mengarang.`;
 
   return `${systemPrompt}\n\n${userPrompt}`;
 }
@@ -307,7 +306,6 @@ export async function runStoryAnalysis(input: StoryAnalysisInput): Promise<Story
       swot_analysis: asObject(analysisResult.swot_analysis),
       checklist_katalis: asArray(analysisResult.checklist_katalis),
       keystat_signal: typeof analysisResult.keystat_signal === 'string' ? analysisResult.keystat_signal : '',
-      strategi_trading: asObject(analysisResult.strategi_trading),
       kesimpulan: typeof analysisResult.kesimpulan === 'string' ? analysisResult.kesimpulan : '',
     });
 

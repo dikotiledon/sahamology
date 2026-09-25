@@ -16,7 +16,6 @@ test('serializeJsonColumns stringifies arrays/objects for jsonb columns', () => 
     matriks_story: [{ kategori_story: 'Aksi Korporasi' }],
     swot_analysis: { strengths: ['s'] },
     checklist_katalis: [{ item: 'i' }],
-    strategi_trading: { tipe_saham: 'value' },
     sources: [{ title: 'Reuters', uri: 'https://example.com' }],
     keystat_signal: 'Positif/Sehat',
     kesimpulan: 'Kesimpulan uji.',
@@ -30,7 +29,6 @@ test('serializeJsonColumns stringifies arrays/objects for jsonb columns', () => 
   assert.equal(typeof byColumn.matriks_story, 'string');
   assert.equal(typeof byColumn.swot_analysis, 'string');
   assert.equal(typeof byColumn.checklist_katalis, 'string');
-  assert.equal(typeof byColumn.strategi_trading, 'string');
   assert.equal(typeof byColumn.sources, 'string');
 
   assert.deepEqual(JSON.parse(byColumn.matriks_story as string), [{ kategori_story: 'Aksi Korporasi' }]);

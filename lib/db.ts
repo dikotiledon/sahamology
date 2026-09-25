@@ -467,7 +467,6 @@ const JSON_COLUMNS = new Set([
   'matriks_story',
   'swot_analysis',
   'checklist_katalis',
-  'strategi_trading',
   'sources',
 ]);
 
@@ -493,7 +492,6 @@ export async function updateAgentStory(
     swot_analysis?: object;
     checklist_katalis?: object[];
     keystat_signal?: string;
-    strategi_trading?: object;
     kesimpulan?: string;
     error_message?: string;
     sources?: { title: string; uri: string }[];
