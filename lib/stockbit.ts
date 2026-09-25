@@ -410,6 +410,48 @@ export async function fetchHistoricalSummary(
   return json.data?.result || [];
 }
 
+export interface HistoricalSummaryFetchDeps {
+  fetch?: typeof fetch;
+  getHeaders?: () => Promise<Record<string, string>>;
+}
+
+/**
+ * Page through the historical-summary endpoint until a short page, so backfill
+ * can reach years of daily bars instead of the old single-request cap.
+ * Page length is capped at `maxPages` (50) to bound a runaway cursor.
+ */
+export async function fetchHistoricalSummaryPaged(
+  emiten: string,
+  startDate: string,
+  endDate: string,
+  limit: number,
+  deps: HistoricalSummaryFetchDeps = {}
+): Promise<HistoricalSummaryItem[]> {
+  const fetchImpl = deps.fetch ?? fetch;
+  const headersImpl = deps.getHeaders ?? getHeaders;
+  const out: HistoricalSummaryItem[] = [];
+  const maxPages = 50;
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const url = `${STOCKBIT_BASE_URL}/company-price-feed/historical/summary/${emiten}?period=HS_PERIOD_DAILY&start_date=${startDate}&end_date=${endDate}&limit=${limit}&page=${page}`;
+
+    const response = await stockbitFetch(url, {
+      method: 'GET',
+      headers: await headersImpl(),
+    }, { fetch: fetchImpl });
+
+    await handleApiResponse(response, 'Historical Summary API');
+
+    const json = await response.json();
+    const rows: HistoricalSummaryItem[] = json.data?.result || [];
+    out.push(...rows);
+
+    if (rows.length < limit) break;
+  }
+
+  return out;
+}
+
 /**
  * Fetch running trade chart data (per-broker daily net value/volume) for an
  * explicit set of broker codes and date range. Unlike the period-enum variant,

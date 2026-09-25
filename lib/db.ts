@@ -719,6 +719,69 @@ export async function setProfileSetting(key: string, value: string) {
 }
 
 // =====================================================================
+// Price history (daily OHLCV time series)
+// =====================================================================
+
+export interface PriceHistoryRow {
+  emiten: string;
+  date: string;
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  close?: number | null;
+  volume?: number | null;
+  value?: number | null;
+  frequency?: number | null;
+  foreign_buy?: number | null;
+  foreign_sell?: number | null;
+  net_foreign?: number | null;
+  average?: number | null;
+}
+
+/** Upsert one or more daily bars (ON CONFLICT on emiten+date). */
+export async function upsertPriceHistory(rows: PriceHistoryRow[]) {
+  if (rows.length === 0) return [];
+  const columns = [
+    'emiten', 'date', 'open', 'high', 'low', 'close', 'volume', 'value',
+    'frequency', 'foreign_buy', 'foreign_sell', 'net_foreign', 'average',
+  ] as const;
+  const values: unknown[] = [];
+  const tuples: string[] = rows.map((row, rowIndex) => {
+    const placeholders = columns.map((column, columnIndex) => {
+      const value = row[column as keyof PriceHistoryRow] ?? null;
+      values.push(value);
+      return `$${rowIndex * columns.length + columnIndex + 1}`;
+    });
+    return `(${placeholders.join(', ')})`;
+  });
+
+  const updateAssignments = columns
+    .filter((column) => column !== 'emiten' && column !== 'date')
+    .map((column) => `${column} = EXCLUDED.${column}`)
+    .join(', ');
+
+  const result = await query(
+    `INSERT INTO price_history (${columns.join(', ')})
+     VALUES ${tuples.join(', ')}
+     ON CONFLICT (emiten, date) DO UPDATE SET ${updateAssignments}, synced_at = NOW()
+     RETURNING *`,
+    values
+  );
+  return result.rows;
+}
+
+/** Ordered daily bars for one emiten between two dates. */
+export async function getPriceHistory(emiten: string, from: string, to: string) {
+  const result = await query(
+    `SELECT * FROM price_history
+     WHERE emiten = $1 AND date >= $2 AND date <= $3
+     ORDER BY date ASC`,
+    [emiten.toUpperCase(), from, to]
+  );
+  return result.rows;
+}
+
+// =====================================================================
 // Summary statistics
 // =====================================================================
 
