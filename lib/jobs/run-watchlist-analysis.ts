@@ -90,8 +90,8 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
 
       const marketData = {
         harga: Number(obData.close),
-        offerTeratas: offerPrices.length > 0 ? Math.max(...offerPrices) : Number(obData.high || 0),
-        bidTerbawah: bidPrices.length > 0 ? Math.min(...bidPrices) : 0,
+        ara: offerPrices.length > 0 ? Math.max(...offerPrices) : Number(obData.high || 0),
+        arb: bidPrices.length > 0 ? Math.min(...bidPrices) : 0,
         totalBid: Number(obData.total_bid_offer.bid.lot.replace(/,/g, '')),
         totalOffer: Number(obData.total_bid_offer.offer.lot.replace(/,/g, '')),
       };
@@ -99,8 +99,8 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
       const calculated = calculateTargets(
         brokerData.rataRataBandar,
         brokerData.barangBandar,
-        marketData.offerTeratas,
-        marketData.bidTerbawah,
+        marketData.ara,
+        marketData.arb,
         marketData.totalBid / 100,
         marketData.totalOffer / 100,
         marketData.harga
@@ -115,8 +115,8 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         barang_bandar: brokerData.barangBandar,
         rata_rata_bandar: brokerData.rataRataBandar,
         harga: marketData.harga,
-        ara: marketData.offerTeratas,
-        arb: marketData.bidTerbawah,
+        ara: marketData.ara,
+        arb: marketData.arb,
         fraksi: calculated.fraksi,
         total_bid: marketData.totalBid,
         total_offer: marketData.totalOffer,

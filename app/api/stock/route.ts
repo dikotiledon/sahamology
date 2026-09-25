@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
              },
              marketData: {
                 harga: historyData.harga,
-                offerTeratas: historyData.ara,
-                bidTerbawah: historyData.arb,
+                ara: historyData.ara,
+                arb: historyData.arb,
                 totalBid: historyData.total_bid,
                 totalOffer: historyData.total_offer,
                 fraksi: historyData.fraksi
@@ -93,8 +93,8 @@ export async function POST(request: NextRequest) {
     // Default market data from orderbook (live)
     let marketData = {
       harga: Number(obData.close),
-      offerTeratas: 0,
-      bidTerbawah: 0,
+      ara: 0,
+      arb: 0,
       totalBid: parseLot(obData.total_bid_offer.bid.lot),
       totalOffer: parseLot(obData.total_bid_offer.offer.lot),
     };
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
     const offerPrices = (obData.offer || []).map((o: { price: string }) => Number(o.price));
     const bidPrices = (obData.bid || []).map((b: { price: string }) => Number(b.price));
 
-    marketData.offerTeratas = offerPrices.length > 0 ? Math.max(...offerPrices) : Number(obData.high || 0);
-    marketData.bidTerbawah = bidPrices.length > 0 ? Math.min(...bidPrices) : 0;
+    marketData.ara = offerPrices.length > 0 ? Math.max(...offerPrices) : Number(obData.high || 0);
+    marketData.arb = bidPrices.length > 0 ? Math.min(...bidPrices) : 0;
 
     // 3. For any non-today queries (past single dates or ranges), Override Price from Database (if available)
     if (!isToday) {
@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
       if (histPrice) {
         marketData = {
           harga: Number(histPrice.harga),
-          offerTeratas: Number(histPrice.ara),
-          bidTerbawah: Number(histPrice.arb),
+          ara: Number(histPrice.ara),
+          arb: Number(histPrice.arb),
           totalBid: Number(histPrice.total_bid),
           totalOffer: Number(histPrice.total_offer),
         };
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
     const calculated = calculateTargets(
       brokerData.rataRataBandar,
       brokerData.barangBandar,
-      marketData.offerTeratas,
-      marketData.bidTerbawah,
+      marketData.ara,
+      marketData.arb,
       marketData.totalBid / 100,
       marketData.totalOffer / 100,
       marketData.harga
@@ -164,8 +164,8 @@ export async function POST(request: NextRequest) {
         barang_bandar: brokerData.barangBandar,
         rata_rata_bandar: brokerData.rataRataBandar,
         harga: marketData.harga,
-        ara: marketData.offerTeratas,
-        arb: marketData.bidTerbawah,
+        ara: marketData.ara,
+        arb: marketData.arb,
         fraksi: calculated.fraksi,
         total_bid: marketData.totalBid,
         total_offer: marketData.totalOffer,

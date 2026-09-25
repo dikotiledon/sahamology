@@ -1,4 +1,4 @@
-export type BrokerType = 'Smartmoney' | 'Whale' | 'Retail' | 'Mix' | 'Unknown';
+export type BrokerType = 'Smartmoney' | 'Whale' | 'Retail' | 'Mix';
 
 export interface BrokerInfo {
   code: string;
@@ -108,5 +108,7 @@ export const BROKERS: Record<string, BrokerInfo> = {
 };
 
 export const getBrokerInfo = (code: string): BrokerInfo => {
-  return BROKERS[code.toUpperCase()] || { code, name: "Unknown Broker", type: "Unknown" };
+  // Unknown broker codes fold into 'Mix' — there is no separate Unknown
+  // display state in the broker_status union or CSS badge variants.
+  return BROKERS[code.toUpperCase()] || { code, name: "Unknown Broker", type: "Mix" };
 };
