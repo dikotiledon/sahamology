@@ -811,9 +811,12 @@ export async function getSignalRecords(): Promise<
   );
   return result.rows.map((row) => {
     const r = row as Record<string, unknown>;
+    const rawDate = r.from_date instanceof Date
+      ? (r.from_date as Date).toISOString().slice(0, 10)
+      : String(r.from_date).slice(0, 10);
     return {
       emiten: String(r.emiten),
-      from_date: String(r.from_date).slice(0, 10),
+      from_date: rawDate,
       harga: Number(r.harga),
       target_realistis: Number(r.target_realistis),
       target_max: Number(r.target_max ?? r.target_realistis),

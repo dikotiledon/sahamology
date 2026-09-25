@@ -10,8 +10,9 @@
  *   --symbols: every emiten already tracked by the pipeline
  *              (stock_queries ∪ emiten_cache), or a comma-separated override.
  *
- * Each symbol is fetched with the paged historical-summary API (limit 100/day)
- * and upserted into price_history via ON CONFLICT (emiten, date).
+ * Each symbol is fetched with the paged historical-summary API (limit 50/day,
+ * the Stockbit endpoint maximum) and upserted into price_history via ON CONFLICT
+ * (emiten, date).
  */
 
 import { readFileSync } from 'node:fs';
@@ -42,10 +43,20 @@ function option(name: string, fallback: string): string {
   return index !== -1 && process.argv[index + 1] ? process.argv[index + 1] : fallback;
 }
 
+/** Stockbit historical-summary accepts at most ~1 year of lookback per request. */
+function clampStartDate(startDate: string, endDate: string): string {
+  const end = new Date(`${endDate}T00:00:00Z`);
+  const min = new Date(end);
+  min.setUTCDate(min.getUTCDate() - 365);
+  const requested = new Date(`${startDate}T00:00:00Z`);
+  return requested < min ? min.toISOString().slice(0, 10) : startDate;
+}
+
 async function main() {
-  const startDate = option('--start', '2020-01-02');
+  const rawStartDate = option('--start', '2020-01-02');
   const endDate = option('--end', new Date().toISOString().slice(0, 10));
   const symbolsArg = option('--symbols', '');
+  const startDate = clampStartDate(rawStartDate, endDate);
 
   const symbols = symbolsArg
     ? symbolsArg.split(',').map((s: string) => s.trim().toUpperCase()).filter(Boolean)
@@ -56,7 +67,10 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Backfilling ${symbols.length} symbols from ${startDate} to ${endDate}`);
+  console.log(
+    `Backfilling ${symbols.length} symbols from ${startDate} to ${endDate}` +
+    (startDate !== rawStartDate ? ` (start clamped from ${rawStartDate}; API max ~1 year lookback)` : '')
+  );
   let inserted = 0;
 
   for (const symbol of symbols) {
@@ -65,7 +79,7 @@ async function main() {
         symbol,
         startDate,
         endDate,
-        100
+        50
       );
       if (bars.length === 0) {
         console.log(`  ${symbol}: no bars`);

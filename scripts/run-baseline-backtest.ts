@@ -57,6 +57,13 @@ async function main() {
   let skipped = 0;
 
   for (const signal of signals) {
+    // Skip degenerate signals: zero/negative ARB means invalidation cannot be
+    // priced; a target at or below entry cannot produce a valid long simulation.
+    if (signal.arb <= 0 || signal.target_realistis <= signal.harga) {
+      skipped += 1;
+      continue;
+    }
+
     const entryDate = signal.from_date;
     const start = new Date(entryDate);
     start.setDate(start.getDate() + 1);

@@ -45,10 +45,17 @@ Copy `.env.example` → `.env` and fill values for your topology.
 
 ```bash
 npm run typecheck     # tsc --noEmit
-npm test              # 7 tests (story-analysis + db jsonb serialization)
+npm test              # full lib/**/*.test.ts suite (54 tests as of Phase 0)
 npm run lint          # eslint flat config
 npm run migrate       # apply supabase/*.sql via DATABASE_URL
+npm run backfill:history -- --start 2020-01-02 --symbols BBRI,TLKM   # populate price_history
+npm run baseline:backtest -- --horizon 5                              # Adi-only expectancy baseline
 ```
+
+The two data CLI scripts (`backfill:history`, `baseline:backtest`) require a
+reachable `DATABASE_URL` and a valid Stockbit JWT (`STOCKBIT_JWT_TOKEN`). The
+baseline script only makes sense after at least one watchlist analysis has run
+and price history has been backfilled.
 
 ---
 
