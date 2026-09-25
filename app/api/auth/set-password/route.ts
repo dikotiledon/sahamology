@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setProfileSetting } from '@/lib/supabase';
 import { clearSession } from '@/lib/auth';
-
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+import { hashPassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { password, enabled } = body;
 
-    if (enabled && (!password || password.length < 4)) {
+    if (enabled && (!password || password.length < MIN_PASSWORD_LENGTH)) {
       return NextResponse.json(
-        { success: false, error: 'Password minimal 4 karakter' },
+        { success: false, error: `Password minimal ${MIN_PASSWORD_LENGTH} karakter` },
         { status: 400 }
       );
     }

@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProfileSetting } from '@/lib/supabase';
+import { getProfileSetting, setProfileSetting } from '@/lib/supabase';
 import { setSession } from '@/lib/auth';
-
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+import { verifyPassword, hashPassword } from '@/lib/password';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,10 +24,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const inputHash = await hashPassword(password);
-    const valid = inputHash === storedHash;
+    const verification = await verifyPassword(password, storedHash);
+    const valid = verification.ok;
 
     if (valid) {
+      // Transparently upgrade legacy unsalted SHA-256 hashes to scrypt.
+      if (verification.needsRehash) {
+        await setProfileSetting('password_hash', await hashPassword(password));
+      }
+
       const response = NextResponse.json({ success: true, valid: true });
       await setSession(response, true, request.headers.get('x-forwarded-proto'));
       return response;
