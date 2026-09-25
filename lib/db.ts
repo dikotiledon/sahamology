@@ -1,4 +1,5 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
+import { hitR1, hitMax } from './hits';
 
 /**
  * Native PostgreSQL data access layer.
@@ -852,24 +853,26 @@ export async function getEmitenSummaryStats(limit: number = 5) {
 
     const stats = Object.entries(emitenGroups).map(([emiten, records]) => {
       const tradingDays = records.length;
-      let hitR1 = 0;
-      let hitMax = 0;
+      let hitR1Count = 0;
+      let hitMaxCount = 0;
       const sector = records[0]?.sector;
 
       const bandarCounts: Record<string, number> = {};
       records.forEach((r) => {
-        const maxHarga = Number(r.max_harga);
-        const targetRealistis = Number(r.target_realistis);
-        const targetMax = Number(r.target_max);
-
-        if (Number.isFinite(maxHarga) && Number.isFinite(targetRealistis) && maxHarga >= targetRealistis) {
-          hitR1++;
+        const row = r as {
+          max_harga?: number | null;
+          target_realistis?: number | null;
+          target_max?: number | null;
+          bandar?: unknown;
+        };
+        if (hitR1(row)) {
+          hitR1Count++;
         }
-        if (Number.isFinite(maxHarga) && Number.isFinite(targetMax) && maxHarga >= targetMax) {
-          hitMax++;
+        if (hitMax(row)) {
+          hitMaxCount++;
         }
-        if (r.bandar) {
-          const bandar = String(r.bandar);
+        if (row.bandar) {
+          const bandar = String(row.bandar);
           bandarCounts[bandar] = (bandarCounts[bandar] || 0) + 1;
         }
       });
@@ -879,16 +882,16 @@ export async function getEmitenSummaryStats(limit: number = 5) {
         .slice(0, 3)
         .map(([name, count]) => ({ name, count }));
 
-      const hitRateR1 = tradingDays > 0 ? (hitR1 / tradingDays) * 100 : 0;
-      const hitRateMax = tradingDays > 0 ? (hitMax / tradingDays) * 100 : 0;
+      const hitRateR1 = tradingDays > 0 ? (hitR1Count / tradingDays) * 100 : 0;
+      const hitRateMax = tradingDays > 0 ? (hitMaxCount / tradingDays) * 100 : 0;
       const totalHitRate = (hitRateR1 + hitRateMax) / 2;
 
       return {
         emiten,
         sector,
         tradingDays,
-        hitR1,
-        hitMax,
+        hitR1: hitR1Count,
+        hitMax: hitMaxCount,
         hitRateR1,
         hitRateMax,
         totalHitRate,

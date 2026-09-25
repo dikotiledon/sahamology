@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { hitR1, hitMax } from './hits';
 
 interface AnalysisRecord {
   id: number;
@@ -270,10 +271,8 @@ export const exportHistoryToPDF = (data: AnalysisRecord[], filters: any) => {
       if (avgG > 0) acc.bandarPlus++;
       else acc.bandarMinus++;
     }
-    const hitR1 = (r.target_realistis && ((r.max_harga && r.max_harga >= r.target_realistis) || (r.real_harga && r.real_harga >= r.target_realistis)));
-    const hitMax = (r.target_max && ((r.max_harga && r.max_harga >= r.target_max) || (r.real_harga && r.real_harga >= r.target_max)));
-    if (hitR1) acc.hitR1++;
-    if (hitMax) acc.hitMax++;
+    if (hitR1(r)) acc.hitR1++;
+    if (hitMax(r)) acc.hitMax++;
     if (r.bandar) {
       acc.bandarCounts[r.bandar] = (acc.bandarCounts[r.bandar] || 0) + 1;
     }
@@ -384,10 +383,10 @@ export const exportHistoryByEmitenToPDF = async (
         if (avgG > 0) acc.bandarPlus++;
         else acc.bandarMinus++;
       }
-      const hitR1 = (r.target_realistis && ((r.max_harga && r.max_harga >= r.target_realistis) || (r.real_harga && r.real_harga >= r.target_realistis)));
-      const hitMax = (r.target_max && ((r.max_harga && r.max_harga >= r.target_max) || (r.real_harga && r.real_harga >= r.target_max)));
-      if (hitR1) acc.hitR1++;
-      if (hitMax) acc.hitMax++;
+      const hitR1Row = hitR1(r);
+      const hitMaxRow = hitMax(r);
+      if (hitR1Row) acc.hitR1++;
+      if (hitMaxRow) acc.hitMax++;
       if (r.bandar) {
         acc.bandarCounts[r.bandar] = (acc.bandarCounts[r.bandar] || 0) + 1;
       }
