@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci
+          POSTGRES_USER: ci
+          POSTGRES_DB: sahamology
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Migrate
+        run: npm run migrate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/sahamology
+
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-auth-secret-not-for-production-use-32chars
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/sahamology
+          NEXT_TELEMETRY_DISABLED: '1'
