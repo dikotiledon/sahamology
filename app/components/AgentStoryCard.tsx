@@ -405,7 +405,7 @@ export default function AgentStoryCard({ stories, status, onRetry }: AgentStoryC
             fontWeight: 500,
             opacity: 0.9
           }}>
-            4. Fundamental Signal (Key Statistics)
+            5. Fundamental Signal (Key Statistics)
           </h4>
           <div style={{ 
             padding: '1rem',
