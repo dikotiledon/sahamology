@@ -1,9 +1,14 @@
 import { Queue, Worker, type ConnectionOptions } from 'bullmq';
 import { runWatchlistAnalysis } from '@/lib/jobs/run-watchlist-analysis';
 import { runStoryAnalysis, type StoryAnalysisInput } from '@/lib/jobs/run-story-analysis';
+import {
+  runPriceHistoryBackfill,
+  type PriceHistoryBackfillInput,
+} from '@/lib/jobs/run-price-history-backfill';
 
 export const WATCHLIST_QUEUE_NAME = 'watchlist-analysis';
 export const STORY_QUEUE_NAME = 'story-analysis';
+export const PRICE_HISTORY_QUEUE_NAME = 'price-history-backfill';
 export const DAILY_WATCHLIST_JOB_NAME = 'run-daily';
 export const DAILY_WATCHLIST_CRON = '0 11 * * *';
 
@@ -20,6 +25,7 @@ export function resolveRedisOptions(): ConnectionOptions {
 
 let watchlistQueue: Queue | undefined;
 let storyQueue: Queue | undefined;
+let priceHistoryQueue: Queue | undefined;
 let workersStarted = false;
 
 /** Queue used for daily/manual watchlist analysis. */
@@ -64,6 +70,26 @@ export async function enqueueStoryAnalysis(input: StoryAnalysisInput): Promise<s
   return String(job.id);
 }
 
+/** Queue used for manual price-history backfill (no daily cron in Phase 0). */
+export function getPriceHistoryQueue(): Queue {
+  if (!priceHistoryQueue) {
+    priceHistoryQueue = new Queue(PRICE_HISTORY_QUEUE_NAME, {
+      connection: resolveRedisOptions(),
+      defaultJobOptions: {
+        attempts: 1,
+        removeOnComplete: { count: 20 },
+        removeOnFail: { count: 100 },
+      },
+    });
+  }
+  return priceHistoryQueue;
+}
+
+export async function enqueuePriceHistoryBackfill(input: PriceHistoryBackfillInput = {}): Promise<string> {
+  const job = await getPriceHistoryQueue().add('backfill', input);
+  return String(job.id);
+}
+
 /** Ensure the daily 11:00 UTC watchlist repeatable job is scheduled. */
 export async function ensureScheduledJobs(): Promise<void> {
   await getWatchlistQueue().upsertJobScheduler(
@@ -104,12 +130,23 @@ export async function startWorkers(): Promise<void> {
     { connection: resolveRedisOptions(), concurrency: 1 }
   );
 
+  const priceHistoryWorker = new Worker(
+    PRICE_HISTORY_QUEUE_NAME,
+    async (job) => {
+      await runPriceHistoryBackfill(job.data as PriceHistoryBackfillInput);
+    },
+    { connection: resolveRedisOptions(), concurrency: 1 }
+  );
+
   watchlistWorker.on('failed', (job, err) => {
     console.error(`[Queue] Watchlist job ${job?.id} failed:`, err.message);
   });
   storyWorker.on('failed', (job, err) => {
     console.error(`[Queue] Story job ${job?.id} failed:`, err.message);
   });
+  priceHistoryWorker.on('failed', (job, err) => {
+    console.error(`[Queue] Price history backfill job ${job?.id} failed:`, err.message);
+  });
 
-  console.log('[Queue] BullMQ workers started (watchlist-analysis, story-analysis)');
+  console.log('[Queue] BullMQ workers started (watchlist-analysis, story-analysis, price-history-backfill)');
 }
