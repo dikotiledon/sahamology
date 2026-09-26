@@ -18,7 +18,8 @@ Browser / Chrome extension
    ├── proxy.ts middleware (cookie auth + CRON_SECRET)
    ├── instrumentation.ts → embedded BullMQ workers
    │     ├── watchlist-analysis  (daily 11:00 UTC cron)
-   │     └── story-analysis
+   │     ├── story-analysis
+   │     └── price-history-backfill (concurrency 1, manual trigger)
    ├── lib/db.ts → PostgreSQL via `pg` (DATABASE_URL)
    └── lib/queue.ts → Redis via `ioredis` (REDIS_URL)
 ```
@@ -45,12 +46,42 @@ Copy `.env.example` → `.env` and fill values for your topology.
 
 ```bash
 npm run typecheck     # tsc --noEmit
-npm test              # full lib/**/*.test.ts suite (54 tests as of Phase 0)
+npm test              # full lib/**/*.test.ts suite (89 tests at Phase 0 remediation)
 npm run lint          # eslint flat config
 npm run migrate       # apply supabase/*.sql via DATABASE_URL
-npm run backfill:history -- --start 2020-01-02 --symbols BBRI,TLKM   # populate price_history
+npm run backfill:history -- --start 2020-01-02 --symbols BBRI,TLKM   # populate price_history (CLI fallback)
 npm run baseline:backtest -- --horizon 5                              # Adi-only expectancy baseline
 ```
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs `npm run typecheck`, `npm test`, `npm run lint`,
+`npm run migrate`, and `npm run build` on every push and pull request (Postgres
+16 service container). The workflow file is committed; **a green run on GitHub
+is not claimed in this documentation.**
+
+### Enqueue price-history backfill (HTTP, session-gated)
+
+The BullMQ route is not in `PUBLIC_PATHS`, so it requires the same session
+cookie as the rest of the UI (login first, then use the cookie jar):
+
+```bash
+# queued — requires a valid session cookie (open the app and sign in)
+curl -X POST http://localhost:3000/api/price-history/backfill \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+# optional body: {"fromDate":"2019-01-01","toDate":"2026-01-01","symbols":["BBRI","TLKM"]}
+```
+
+The CLI `npm run backfill:history -- --start 2019-01-01 --symbols BBRI,TLKM`
+remains as a no-session fallback.
+
+### AUTH_SECRET in development
+
+`AUTH_SECRET=dev-secret` is accepted only in development (`NODE_ENV !==
+'production'`). Production fails fast on that value — the `WEAK_SECRETS`
+deny-list includes `dev-secret` — so a production compose with the dev example
+value will refuse to start.
 
 The two data CLI scripts (`backfill:history`, `baseline:backtest`) require a
 reachable `DATABASE_URL` and a valid Stockbit JWT (`STOCKBIT_JWT_TOKEN`). The

@@ -2,6 +2,52 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.6.0 (draft)
+
+Phase 0 "Honest Desk" — deterministic decision engine built on the Adi Sucipto
+target math. This entry describes work merged locally; **the CI workflow file was
+added but a GitHub CI run is not claimed in this entry.**
+
+- **Decision Journal JSONB Fix**: `saveDecisionJournal` serializes the `gates`
+  array into valid JSON before reaching node-postgres (was: `invalid input syntax
+  for type json` on every journal POST). `strategi_trading` is also covered by
+  the same serializer, and `listDecisionJournal(emiten, limit)` now reads back
+  the latest cards ordered by `as_of DESC`.
+- **Canonical G0–G3 Playbook Evaluator**: `lib/playbook/evaluate.ts` implements
+  the spec exactly — G0 data integrity (degenerate book → `AVOID`), G1 bandar
+  sponsorship (Smartmoney/Whale accumulation; `TAKE_PROFIT` when `harga > R1`
+  with an open ENTER card), G2 execution headroom (`harga < ARA − 2×fraksi`,
+  `totalOffer ≤ totalBid × 3`), and G3 net risk-reward ≥ 1.5 after IDX friction.
+  The invented 5%-above-bandar chase rule is removed. G4–G7 are emitted as
+  `pass: true, skipped: true` for forward compatibility.
+- **Live Context Wiring**: `/api/stock` now builds the playbook input from
+  historical bandar accumulation (prior 3 sessions), token validity
+  (`getTokenStatus`), IDX session check (`market-calendar`), and the latest
+  journaled card for open-position detection. The Decision Card renders the
+  evaluator's output and the calculator journals every shown card.
+- **Price History Backfill Worker**: BullMQ queue `price-history-backfill`
+  (`concurrency: 1`) with `enqueuePriceHistoryBackfill()` and a session-gated
+  `POST /api/price-history/backfill`. The CLI `npm run backfill:history` remains
+  as an operator fallback. No daily cron in Phase 0.
+- **2026 IDX Holiday Seed — BLOCKED**: `lib/idx-holidays.json` remains `[]`
+  because the official IDX trading-holiday page is Cloudflare-blocked from
+  automated environments. The calendar still rolls back over weekends but does
+  not yet know midweek exchange holidays. See
+  `docs/R5-IDX-HOLIDAYS-BLOCKER.md`. Dates are intentionally not fabricated.
+- **Story Analysis Schema Alignment**: `buildPrompt` is now exported and requires
+  `strategi_trading` (`tipe_saham`, `catalyst_bias`, `invalidating_events`) in
+  the model output while continuing to forbid numeric price levels.
+  `updateAgentStory` persists `strategi_trading` to the JSONB column, and
+  `AgentStoryCard` shows it with a fixed disclaimer that targets and
+  invalidations follow the Decision Card (Adi R1/Max).
+- **Phase 0 Hardening (from the audited initial delivery)**: test harness
+  expansion, guarded `calculateTargets` math, Asia/Jakarta market calendar,
+  `AUTH_SECRET` required in production, scrypt password hashing with legacy
+  migration, allow-listed profile settings, Stockbit JWT redaction, Stockbit
+  token-bucket rate limiter, `price_history` table, unified hit definition
+  (next-day `max_harga`), Adi-only baseline harness, decision journal table and
+  API, and the Decision Card UI.
+
 ### v0.5.0 (2026-09-24)
 - **Self-Hosted Migration**: Netlify + Supabase → Next.js standalone + PostgreSQL 16 + Redis 7 (BullMQ) dalam Docker Compose.
 - **Native pg Data Layer**: `lib/db.ts` menggantikan PostgREST/Supabase client; `lib/supabase.ts` tetap sebagai shim backward-compatible.

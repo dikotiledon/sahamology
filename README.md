@@ -16,6 +16,11 @@
 
 ## Changelog
 
+### Unreleased / v0.6.0 (draft)
+- **Honest Desk Phase 0**: Decision Card G0–G3 evaluator (`ENTER`/`WAIT`/`AVOID`/`TAKE_PROFIT`) berbasis Adi Sucipto math, journal persisten (`decision_journal`), price-history backfill worker (BullMQ), dan story-analysis schema alignment (`strategi_trading`).
+- **Fix Kritis JSONB**: `saveDecisionJournal` kini men-serialize `gates` sebagai JSON valid (sebelumnya selalu `invalid input syntax for type json`).
+- **Catatan jujur**: workflow CI (`.github/workflows/ci.yml`) sudah ditambahkan, tapi entri ini **tidak** mengklaim CI sudah berjalan hijau di GitHub. Seed hari libur IDX 2026 masih **diblokir** oleh Cloudflare — lihat `docs/R5-IDX-HOLIDAYS-BLOCKER.md`.
+
 ### v0.5.0 (2026-09-24)
 - **Self-Hosted Migration**: Netlify + Supabase digantikan oleh stack self-hosted — Next.js (standalone) + PostgreSQL 16 + Redis 7 (BullMQ) dalam Docker Compose. Semua data kini diakses lewat native `pg` (`lib/db.ts`), migrasi SQL dijalankan oleh `scripts/run-migrations.js`, dan background worker (watchlist + story analysis) berjalan embedded di proses Next.js via `instrumentation.ts`.
 - **OpenAI-Compatible LLM Support**: AI Story Analysis kini mendukung `LLM_PROVIDER=openai` (endpoint OpenAI-compatible) selain `gemini`. Konfigurasi lewat `LLM_BASE_URL`, `LLM_API_KEY`, dan `LLM_MODEL`.
