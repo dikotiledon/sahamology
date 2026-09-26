@@ -29,11 +29,13 @@ added but a GitHub CI run is not claimed in this entry.**
   (`concurrency: 1`) with `enqueuePriceHistoryBackfill()` and a session-gated
   `POST /api/price-history/backfill`. The CLI `npm run backfill:history` remains
   as an operator fallback. No daily cron in Phase 0.
-- **2026 IDX Holiday Seed — BLOCKED**: `lib/idx-holidays.json` remains `[]`
-  because the official IDX trading-holiday page is Cloudflare-blocked from
-  automated environments. The calendar still rolls back over weekends but does
-  not yet know midweek exchange holidays. See
-  `docs/R5-IDX-HOLIDAYS-BLOCKER.md`. Dates are intentionally not fabricated.
+- **2026 IDX Holiday Seed (from SKB 3 Menteri 2026)**: `lib/idx-holidays.json`
+  now carries 13 weekday libur-nasional dates. Sourced from the
+  `api.kemendesa.link` national-holiday API (metadata cites SKB 3 Menteri 2026)
+  and cross-checked against the `guangrei/APIHariLibur_V2` dataset. Cuti-bersama
+  days are excluded because the exchange stays open on them. See
+  `docs/R5-IDX-HOLIDAYS-BLOCKER.md` for the derivation and the caveat that the
+  gazette PDF itself is a scanned image.
 - **Story Analysis Schema Alignment**: `buildPrompt` is now exported and requires
   `strategi_trading` (`tipe_saham`, `catalyst_bias`, `invalidating_events`) in
   the model output while continuing to forbid numeric price levels.

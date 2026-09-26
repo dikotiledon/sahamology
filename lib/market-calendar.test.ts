@@ -24,8 +24,17 @@ test('weekend detection', () => {
   assert.equal(isWeekend('not-a-date'), false);
 });
 
-test('holiday set is honored and empty by default', () => {
-  assert.equal(isIdxHoliday('2026-12-25'), false);
+test('holiday set is honored and seeded with 2026 SKB weekday libur nasional', () => {
+  // Seeded libur nasional (weekdays only — exchange closed).
+  assert.equal(isIdxHoliday('2026-01-01'), true); // Tahun Baru (Thu)
+  assert.equal(isIdxHoliday('2026-08-17'), true); // Kemerdekaan (Mon)
+  assert.equal(isIdxHoliday('2026-12-25'), true); // Natal (Fri)
+  // Cuti bersama is NOT an exchange holiday — IDX stays open.
+  assert.equal(isIdxHoliday('2026-02-16'), false); // cuti bersama Imlek (Mon)
+  assert.equal(isIdxHoliday('2026-03-20'), false); // cuti bersama Idul Fitri (Fri)
+  // Weekends are handled separately, not duplicated in the holiday set.
+  assert.equal(isIdxHoliday('2026-03-21'), false); // Idul Fitri (Sat)
+  // Injectable override still works for tests.
   assert.equal(isIdxHoliday('2026-12-25', new Set(['2026-12-25'])), true);
 });
 

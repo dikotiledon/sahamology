@@ -8,10 +8,11 @@ import idxHolidays from './idx-holidays.json';
  * be the next Jakarta session date.
  *
  * `lib/idx-holidays.json` is config, not code: it holds IDX non-trading days
- * (beyond weekends) as an array of "YYYY-MM-DD". Seed it from the official IDX
- * trading calendar for each year. The file ships empty rather than with
- * guessed dates — a missing holiday only means the calendar falls back to
- * weekend awareness, which is safe.
+ * (beyond weekends) as an array of "YYYY-MM-DD". 2026 is seeded from the
+ * SKB 3 Menteri 2026 national-holiday calendar (weekday libur nasional only;
+ * cuti bersama days are excluded because the exchange stays open on them).
+ * A missing holiday only means the calendar falls back to weekend awareness,
+ * which is safe — never guess a date into this file.
  */
 
 const IDX_HOLIDAYS: ReadonlySet<string> = new Set(idxHolidays as string[]);
