@@ -2,8 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchMarketDetector, fetchOrderbook, getTopBroker, parseLot, getBrokerSummary, fetchEmitenInfo } from '@/lib/stockbit';
 import { calculateTargets } from '@/lib/calculations';
 import { evaluatePlaybook } from '@/lib/playbook';
-import { playbookInputFromStock } from '@/lib/playbook-from-stock';
-import { saveStockQuery, getLatestStockQuery, getSpecificStockQuery as _getSpecificStockQuery, getStockPriceByDate } from '@/lib/supabase';
+import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
+import { defaultCostModel } from '@/lib/playbook/costs';
+import { isWeekend, isIdxHoliday } from '@/lib/market-calendar';
+import {
+  saveStockQuery,
+  getLatestStockQuery,
+  getSpecificStockQuery as _getSpecificStockQuery,
+  getStockPriceByDate,
+  getWatchlistAnalysisHistory,
+  getTokenStatus,
+  listDecisionJournal,
+} from '@/lib/supabase';
 import type { StockInput, ApiResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -142,20 +152,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare response
+    // Prepare the decision card from live context: prior bandar persistence,
+    // token validity, IDX session date, and any already-open card.
+    const asOf = toDate;
+    const [history, token, previous] = await Promise.all([
+      getWatchlistAnalysisHistory({ emiten, limit: 4, status: 'success' }),
+      getTokenStatus(),
+      listDecisionJournal(emiten, 1),
+    ]);
+
+    const openCard =
+      previous[0] &&
+      String((previous[0] as Record<string, unknown>).as_of).slice(0, 10) < asOf &&
+      (previous[0] as Record<string, unknown>).stance === 'ENTER'
+        ? { stance: 'ENTER' as const }
+        : undefined;
+
     const playbook = evaluatePlaybook(
-      playbookInputFromStock(
-        emiten,
-        {
+      buildPlaybookInputFromStock({
+        market: {
           harga: marketData.harga,
           ara: marketData.ara,
           arb: marketData.arb,
           totalBid: marketData.totalBid,
           totalOffer: marketData.totalOffer,
         },
-        brokerData,
-        calculated
-      )
+        broker: brokerData,
+        calculated,
+        priorRows: history.data as Array<{ bandar?: string | null; from_date?: string | null }>,
+        asOf,
+        isIdxSession: !isWeekend(asOf) && !isIdxHoliday(asOf),
+        tokenValid: token.isValid,
+        costs: defaultCostModel(),
+        openCard,
+      })
     );
 
     const result: ApiResponse = {

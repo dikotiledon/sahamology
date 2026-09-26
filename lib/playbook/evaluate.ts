@@ -130,7 +130,7 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   const bandar = input.bandar?.trim() || null;
   const brokerType: BrokerType = input.brokerType;
   let g1Pass = false;
-  let g1Reason = '';
+  let g1Reason: string;
   let g1Block = false; // AVOID-class failure (no bandar / Retail / Mix)
   let g1Wait = false; // WAIT-class failure (harga already above R1)
   let takeProfit = false;

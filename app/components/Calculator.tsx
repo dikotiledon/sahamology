@@ -129,6 +129,19 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
 
       setResult(json.data);
 
+      // Journal the shown card (fire-and-forget; UI never blocks on this).
+      if (json.data?.playbook) {
+        void fetch('/api/decision-journal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emiten: json.data.input.emiten,
+            asOf: json.data.input.toDate,
+            card: json.data.playbook,
+          }),
+        }).catch(() => {});
+      }
+
       // Fetch KeyStats after getting result
       try {
         const keyStatsRes = await fetch(`/api/keystats?emiten=${data.emiten}`);
