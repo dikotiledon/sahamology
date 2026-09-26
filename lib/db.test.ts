@@ -54,3 +54,37 @@ test('serializeJsonColumns drops undefined values and keeps null scalars', () =>
   const columns = entries.map(([column]) => String(column));
   assert.deepEqual(columns, ['status', 'model']);
 });
+
+test('serializeJsonColumns stringifies decision_journal gates jsonb', () => {
+  const entries = serializeJsonColumns({
+    emiten: 'BBRI',
+    as_of: '2026-09-25',
+    stance: 'ENTER',
+    gates: [{ id: 'G0', pass: true, reason: 'ok' }],
+    failed_gates: ['G2'],
+  });
+
+  const byColumn = Object.fromEntries(entries.map(([c, v]) => [String(c), v]));
+
+  assert.equal(typeof byColumn.gates, 'string');
+  assert.deepEqual(JSON.parse(byColumn.gates as string), [{ id: 'G0', pass: true, reason: 'ok' }]);
+  // text[] stays a JS array for the pg driver
+  assert.deepEqual(byColumn.failed_gates, ['G2']);
+  assert.equal(byColumn.emiten, 'BBRI');
+});
+
+test('serializeJsonColumns stringifies strategi_trading jsonb', () => {
+  const entries = serializeJsonColumns({
+    status: 'completed',
+    strategi_trading: { tipe_saham: 'Growth', catalyst_bias: 'dukung', invalidating_events: ['rights issue'] },
+  });
+
+  const byColumn = Object.fromEntries(entries.map(([c, v]) => [String(c), v]));
+
+  assert.equal(typeof byColumn.strategi_trading, 'string');
+  assert.deepEqual(JSON.parse(byColumn.strategi_trading as string), {
+    tipe_saham: 'Growth',
+    catalyst_bias: 'dukung',
+    invalidating_events: ['rights issue'],
+  });
+});

@@ -138,12 +138,30 @@ export async function saveStockQuery(data: StockQueryInput) {
 
 /** Save decision journal row (one stance per emiten per as_of). */
 export async function saveDecisionJournal(data: Record<string, unknown>) {
-  const { text, values } = buildUpsert('decision_journal', 'as_of,emiten', data);
+  const serialized = Object.fromEntries(serializeJsonColumns(data));
+  const { text, values } = buildUpsert('decision_journal', 'as_of,emiten', serialized);
   try {
     const result = await query(text, values);
     return result.rows;
   } catch (error) {
     console.error('Error saving decision journal:', error);
+    throw error;
+  }
+}
+
+/** Ordered decision journal rows for one emiten, newest first. */
+export async function listDecisionJournal(emiten: string, limit = 5) {
+  try {
+    const result = await query(
+      `SELECT * FROM decision_journal
+       WHERE emiten = $1
+       ORDER BY as_of DESC
+       LIMIT $2`,
+      [emiten.toUpperCase(), limit]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Error listing decision journal:', error);
     throw error;
   }
 }
@@ -481,6 +499,8 @@ const JSON_COLUMNS = new Set([
   'swot_analysis',
   'checklist_katalis',
   'sources',
+  'gates',
+  'strategi_trading',
 ]);
 
 /** Serialize json/jsonb column values for the pg driver (see JSON_COLUMNS). */
