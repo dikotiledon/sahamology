@@ -1,22 +1,27 @@
 'use client';
 
-import type { PlaybookResult } from '@/lib/playbook';
+import type { PlaybookCard } from '@/lib/playbook';
 
 interface DecisionCardProps {
-  playbook: PlaybookResult;
+  card: PlaybookCard;
   emiten: string;
+  priorBandar?: string[];
 }
 
-const STANCE_STYLE: Record<PlaybookResult['stance'], { label: string; background: string; color: string }> = {
-  ENTER: { label: 'ENTER', background: '#16a34a', color: '#ffffff' },
-  WAIT: { label: 'WAIT', background: '#f59e0b', color: '#1f2937' },
-  AVOID: { label: 'AVOID', background: '#dc2626', color: '#ffffff' },
-  TAKE_PROFIT: { label: 'TAKE PROFIT', background: '#2563eb', color: '#ffffff' },
-  INVALIDATED: { label: 'INVALIDATED', background: '#4b5563', color: '#ffffff' },
+const STANCE_STYLE: Record<PlaybookCard['stance'], { label: string; background: string; color: string }> = {
+  ENTER: { label: 'Masuk', background: '#16a34a', color: '#ffffff' },
+  WAIT: { label: 'Tunggu', background: '#f59e0b', color: '#1f2937' },
+  AVOID: { label: 'Hindari', background: '#dc2626', color: '#ffffff' },
+  TAKE_PROFIT: { label: 'Ambil Profit', background: '#2563eb', color: '#ffffff' },
+  INVALIDATED: { label: 'Batal', background: '#4b5563', color: '#ffffff' },
 };
 
-export default function DecisionCard({ playbook, emiten }: DecisionCardProps) {
-  const style = STANCE_STYLE[playbook.stance];
+function fmt(value: number | null | undefined): string {
+  return value === null || value === undefined || !Number.isFinite(value) ? '—' : value.toLocaleString('id-ID');
+}
+
+export default function DecisionCard({ card, emiten, priorBandar }: DecisionCardProps) {
+  const style = STANCE_STYLE[card.stance];
 
   return (
     <div
@@ -48,27 +53,31 @@ export default function DecisionCard({ playbook, emiten }: DecisionCardProps) {
         </span>
       </div>
 
-      {playbook.failedGates.length > 0 && (
-        <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
-          {playbook.blockers.map((blocker) => (
-            <li key={blocker}>{blocker}</li>
-          ))}
-        </ul>
+      <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', opacity: 0.9 }}>{card.thesis}</p>
+
+      {card.failedGates.length > 0 && (
+        <div style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', opacity: 0.75 }}>
+          Gate gagal: {card.failedGates.join(', ')}
+        </div>
       )}
 
-      {playbook.stance === 'ENTER' && (
-        <dl style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '0.25rem 1rem', margin: '0.75rem 0 0', fontSize: '0.9rem' }}>
-          <dt style={{ opacity: 0.7 }}>Entry</dt>
-          <dd style={{ margin: 0, fontWeight: 600 }}>{playbook.entryPrice.toLocaleString()}</dd>
-          <dt style={{ opacity: 0.7 }}>Target R1</dt>
-          <dd style={{ margin: 0, fontWeight: 600 }}>{playbook.targetR1.toLocaleString()}</dd>
-          <dt style={{ opacity: 0.7 }}>Target Max</dt>
-          <dd style={{ margin: 0, fontWeight: 600 }}>{playbook.targetMax.toLocaleString()}</dd>
-          <dt style={{ opacity: 0.7 }}>Invalidation</dt>
-          <dd style={{ margin: 0, fontWeight: 600 }}>{playbook.invalidation.toLocaleString()}</dd>
-          <dt style={{ opacity: 0.7 }}>Net R:R</dt>
-          <dd style={{ margin: 0, fontWeight: 600 }}>{playbook.netRR?.toFixed(2) ?? '—'}</dd>
-        </dl>
+      <dl style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '0.25rem 1rem', margin: '0.75rem 0 0', fontSize: '0.9rem' }}>
+        <dt style={{ opacity: 0.7 }}>Entry</dt>
+        <dd style={{ margin: 0, fontWeight: 600 }}>{fmt(card.entry)}</dd>
+        <dt style={{ opacity: 0.7 }}>Target R1</dt>
+        <dd style={{ margin: 0, fontWeight: 600 }}>{fmt(card.r1)}</dd>
+        <dt style={{ opacity: 0.7 }}>Target Max</dt>
+        <dd style={{ margin: 0, fontWeight: 600 }}>{fmt(card.max)}</dd>
+        <dt style={{ opacity: 0.7 }}>Invalidasi</dt>
+        <dd style={{ margin: 0, fontWeight: 600 }}>{fmt(card.invalidation)}</dd>
+        <dt style={{ opacity: 0.7 }}>Net R:R</dt>
+        <dd style={{ margin: 0, fontWeight: 600 }}>{card.rr === null ? '—' : card.rr.toFixed(2)}</dd>
+      </dl>
+
+      {priorBandar && priorBandar.length > 0 && (
+        <div style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', opacity: 0.75 }}>
+          Bandar 5 print terakhir: {priorBandar.join(' → ')}
+        </div>
       )}
     </div>
   );

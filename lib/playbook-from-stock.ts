@@ -1,12 +1,18 @@
 /**
- * Maps an /api/stock result into the pure playbook evaluator input, so the
- * decision card cannot drift from the evaluator. Degenerate Adi calculations
- * throw — the API already returned HTTP 422 before this point.
+ * Maps an /api/stock result into the pure playbook evaluator input.
+ *
+ * Degenerate Adi calculations throw — the API already returned HTTP 422 before
+ * this point. The optional context defaults (isIdxSession/tokenValid true)
+ * exist only so legacy callers keep compiling during the evaluator migration;
+ * the stock route must pass real values in Task R3.
  */
 
 import type { BrokerData, MarketData } from './types';
 import type { CalculateTargetsResult } from './calculations';
 import type { PlaybookInput } from './playbook';
+import type { CostModel } from './playbook/costs';
+import { defaultCostModel } from './playbook/costs';
+import { getBrokerInfo } from './brokers';
 
 interface StockMarketInput {
   harga: number;
@@ -20,7 +26,13 @@ export function playbookInputFromStock(
   _emiten: string,
   market: StockMarketInput,
   broker: Pick<BrokerData, 'bandar' | 'barangBandar' | 'rataRataBandar'>,
-  calculated: CalculateTargetsResult
+  calculated: CalculateTargetsResult,
+  extra?: {
+    isIdxSession?: boolean;
+    tokenValid?: boolean;
+    costs?: CostModel;
+    priorBandar?: string[];
+  }
 ): PlaybookInput {
   if (!calculated.ok) {
     throw new Error('degenerate_book');
@@ -30,16 +42,17 @@ export function playbookInputFromStock(
     harga: market.harga,
     ara: market.ara,
     arb: market.arb,
-    fraksi: calculated.fraksi,
     totalBid: market.totalBid,
     totalOffer: market.totalOffer,
-    totalPapan: calculated.totalPapan,
-    rataRataBidOfer: calculated.rataRataBidOfer,
-    rataRataBandar: broker.rataRataBandar,
+    bandar: broker.bandar || null,
     barangBandar: broker.barangBandar,
-    bandarCode: broker.bandar || '',
-    targetRealistis1: calculated.targetRealistis1,
-    targetMax: calculated.targetMax,
+    rataRataBandar: broker.rataRataBandar,
+    calculated,
+    brokerType: getBrokerInfo(broker.bandar || '').type,
+    priorBandar: extra?.priorBandar ?? [],
+    isIdxSession: extra?.isIdxSession ?? true,
+    tokenValid: extra?.tokenValid ?? true,
+    costs: extra?.costs ?? defaultCostModel(),
   };
 }
 

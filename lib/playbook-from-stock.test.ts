@@ -22,10 +22,10 @@ test('maps stock result into evaluator input', () => {
     { bandar: 'BK', barangBandar: 10000, rataRataBandar: 980 },
     calcOk
   );
-  assert.equal(input.bandarCode, 'BK');
-  assert.equal(getBrokerInfo(input.bandarCode).type, 'Whale');
+  assert.equal(input.bandar, 'BK');
+  assert.equal(input.brokerType, getBrokerInfo('BK').type);
   assert.equal(input.harga, 1000);
-  assert.equal(input.targetRealistis1, 1120);
+  assert.equal(input.calculated.ok, true);
 });
 
 test('degenerate calc rejects before evaluation', () => {
@@ -41,12 +41,26 @@ test('degenerate calc rejects before evaluation', () => {
   );
 });
 
-test('null bandar folds to AVOID at evaluator (no throw)', () => {
+test('null bandar folds to Mix at the mapper (no throw)', () => {
   const input = playbookInputFromStock(
     'BBRI',
     { harga: 1000, ara: 1100, arb: 900, totalBid: 10000, totalOffer: 12000 },
     { bandar: '', barangBandar: 10000, rataRataBandar: 980 },
     calcOk
   );
-  assert.equal(input.bandarCode, '');
+  assert.equal(input.bandar, null);
+  assert.equal(input.brokerType, 'Mix');
+});
+
+test('extra context (token/session) survives into the input', () => {
+  const input = playbookInputFromStock(
+    'BBRI',
+    { harga: 1000, ara: 1100, arb: 900, totalBid: 10000, totalOffer: 12000 },
+    { bandar: 'BK', barangBandar: 10000, rataRataBandar: 980 },
+    calcOk,
+    { tokenValid: false, isIdxSession: false, priorBandar: ['BK', 'BK'] }
+  );
+  assert.equal(input.tokenValid, false);
+  assert.equal(input.isIdxSession, false);
+  assert.deepEqual(input.priorBandar, ['BK', 'BK']);
 });

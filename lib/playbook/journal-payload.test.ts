@@ -1,18 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildJournalPayload } from './journal-payload';
-import type { PlaybookResult } from '../playbook';
+import type { PlaybookCard } from '../playbook';
 
-const card: PlaybookResult = {
+const card: PlaybookCard = {
   stance: 'ENTER',
-  passedGates: ['G0', 'G1', 'G2', 'G3'],
-  failedGates: [],
-  blockers: [],
-  entryPrice: 1000,
-  targetR1: 1120,
-  targetMax: 1180,
+  gates: [
+    { id: 'G0', pass: true, reason: 'ok' },
+    { id: 'G1', pass: true, reason: 'ok' },
+    { id: 'G4', pass: true, skipped: true, reason: 'phase-0' },
+  ],
+  entry: 1000,
+  r1: 1120,
+  max: 1180,
   invalidation: 950,
-  netRR: 2.1,
+  rr: 2.1,
+  thesis: 'G0–G3 lolos',
+  failedGates: [],
 };
 
 test('payload serializes evaluator card into journal columns', () => {
@@ -26,7 +30,11 @@ test('payload serializes evaluator card into journal columns', () => {
   assert.deepEqual(payload.invalidation, 950);
   assert.deepEqual(payload.rr, 2.1);
   assert.deepEqual(payload.failed_gates, []);
-  assert.ok(Array.isArray(payload.gates));
+  assert.deepEqual(payload.gates, [
+    { id: 'G0', pass: true, skipped: false, reason: 'ok' },
+    { id: 'G1', pass: true, skipped: false, reason: 'ok' },
+    { id: 'G4', pass: true, skipped: true, reason: 'phase-0' },
+  ]);
 });
 
 test('failed gates serialize into text[]', () => {
@@ -34,7 +42,7 @@ test('failed gates serialize into text[]', () => {
     ...card,
     stance: 'AVOID',
     failedGates: ['G0', 'G1'],
-    blockers: ['G0: degenerate', 'G1: Retail'],
+    thesis: 'G0: degenerate; G1: Retail',
   });
   assert.deepEqual(payload.stance, 'AVOID');
   assert.deepEqual(payload.failed_gates, ['G0', 'G1']);

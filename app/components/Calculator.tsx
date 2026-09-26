@@ -453,7 +453,7 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
 
             {/* Decision Card (G0–G3 stance) */}
             {result.playbook && (
-              <DecisionCard playbook={result.playbook} emiten={result.input.emiten} />
+              <DecisionCard card={result.playbook} emiten={result.input.emiten} />
             )}
 
             {/* KeyStats Card */}
