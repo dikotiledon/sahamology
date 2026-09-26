@@ -249,6 +249,12 @@ export interface SourceCitation {
   uri: string;
 }
 
+export interface StrategiTradingResult {
+  tipe_saham?: string;
+  catalyst_bias?: string;
+  invalidating_events?: string[];
+}
+
 export interface AgentStoryResult {
   id?: number;
   emiten: string;
@@ -261,6 +267,7 @@ export interface AgentStoryResult {
   error_message?: string;
   created_at?: string;
   sources?: SourceCitation[];
+  strategi_trading?: StrategiTradingResult;
   model?: string;
   thinking_level?: string;
 }

@@ -517,6 +517,14 @@ export function serializeJsonColumns<T extends Record<string, unknown>>(
     ]);
 }
 
+/** Structured trading strategy output produced by the story analysis prompt. */
+export interface StrategiTrading {
+  tipe_saham: 'swing' | 'fast_trade' | 'investasi';
+  catalyst_bias: 'dukung' | 'netral' | 'tolak';
+  /** Concrete future events that would invalidate the thesis. */
+  invalidating_events: string[];
+}
+
 export async function updateAgentStory(
   id: number,
   data: {
@@ -528,6 +536,7 @@ export async function updateAgentStory(
     kesimpulan?: string;
     error_message?: string;
     sources?: { title: string; uri: string }[];
+    strategi_trading?: StrategiTrading;
     model?: string | null;
     thinking_level?: string | null;
   }

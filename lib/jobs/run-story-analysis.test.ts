@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test, beforeEach } from 'node:test';
 import { geminiCalls } from './stubs/google-genai.mjs';
 import { storyUpdates, jobUpdates } from './stubs/supabase.mjs';
-import { runStoryAnalysis } from './run-story-analysis';
+import { runStoryAnalysis, buildPrompt } from './run-story-analysis';
 
 const STORY = {
   matriks_story: [{ kategori_story: 'Aksi Korporasi' }],
@@ -12,6 +12,26 @@ const STORY = {
   kesimpulan: 'Kesimpulan uji.',
 };
 const STORY_JSON = JSON.stringify(STORY);
+
+const STORY_WITH_STRATEGY = {
+  ...STORY,
+  strategi_trading: {
+    tipe_saham: 'swing',
+    catalyst_bias: 'dukung',
+    invalidating_events: ['Gagal akuisisi', 'Rights issue batal'],
+  },
+};
+const STORY_WITH_STRATEGY_JSON = JSON.stringify(STORY_WITH_STRATEGY);
+
+const STORY_WITH_BAD_STRATEGY = {
+  ...STORY,
+  strategi_trading: {
+    tipe_saham: 'day_trade_invalid',
+    catalyst_bias: 'netral',
+    invalidating_events: ['event'],
+  },
+};
+const STORY_WITH_BAD_STRATEGY_JSON = JSON.stringify(STORY_WITH_BAD_STRATEGY);
 
 const ENV_KEYS = [
   'LLM_PROVIDER',
@@ -131,6 +151,58 @@ test('openai mode posts one chat completion without tools and stores the model',
   assert.equal(processing?.model, 'compatible-story');
   assert.equal(processing?.thinking_level, null);
   assert.equal(jobUpdates.at(-1)?.status, 'completed');
+});
+
+test('openai mode persists strategi_trading when the model returns valid enums', async () => {
+  setEnv({
+    LLM_PROVIDER: 'openai',
+    LLM_BASE_URL: 'https://llm.test/v1',
+    LLM_API_KEY: 'sk-test',
+    LLM_MODEL: 'compatible-story',
+  });
+  fetchImpl = async () => Response.json({ choices: [{ message: { content: STORY_WITH_STRATEGY_JSON } }] });
+  const outcome = await runStoryAnalysis(JOB_INPUT);
+  assert.equal(outcome.success, true);
+  const completed = storyUpdates.find((update) => update.status === 'completed');
+  assert.ok(completed);
+  assert.deepEqual(completed?.strategi_trading, {
+    tipe_saham: 'swing',
+    catalyst_bias: 'dukung',
+    invalidating_events: ['Gagal akuisisi', 'Rights issue batal'],
+  });
+});
+
+test('openai mode drops strategi_trading when enums are invalid', async () => {
+  setEnv({
+    LLM_PROVIDER: 'openai',
+    LLM_BASE_URL: 'https://llm.test/v1',
+    LLM_API_KEY: 'sk-test',
+    LLM_MODEL: 'compatible-story',
+  });
+  fetchImpl = async () => Response.json({ choices: [{ message: { content: STORY_WITH_BAD_STRATEGY_JSON } }] });
+  const outcome = await runStoryAnalysis(JOB_INPUT);
+  assert.equal(outcome.success, true);
+  const completed = storyUpdates.find((update) => update.status === 'completed');
+  assert.ok(completed);
+  assert.equal(Object.hasOwn(completed, 'strategi_trading'), false);
+});
+
+test('buildPrompt requires strategi_trading schema and forbids numeric price fields', () => {
+  const prompt = buildPrompt('BBRI', { pe: '10' }, 'openai');
+  assert.match(prompt, /strategi_trading/);
+  assert.match(prompt, /tipe_saham/);
+  assert.match(prompt, /catalyst_bias/);
+  assert.match(prompt, /invalidating_events/);
+  assert.match(prompt, /dukung/);
+  assert.match(prompt, /netral/);
+  assert.match(prompt, /tolak/);
+  assert.match(prompt, /swing/);
+  assert.match(prompt, /fast_trade/);
+  assert.match(prompt, /investasi/);
+  assert.match(prompt, /DILARANG KERAS menyebutkan atau menyarankan angka harga spesifik/);
+  assert.match(prompt, /target_entry/);
+  assert.match(prompt, /take_profit/);
+  assert.match(prompt, /stop_loss/);
 });
 
 test('openai mode marks 401, empty choices, and timeout as story and job failures', async () => {

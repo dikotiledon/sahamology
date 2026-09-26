@@ -152,6 +152,20 @@ export default function AgentStoryCard({ stories, status, onRetry }: AgentStoryC
         )}
       </div>
 
+      {/* Fixed disclaimer: price levels come from the deterministic Decision Card */}
+      <p style={{
+        margin: '0 0 1.25rem',
+        padding: '0.6rem 0.75rem',
+        fontSize: '0.78rem',
+        lineHeight: 1.5,
+        color: 'var(--text-muted)',
+        background: 'var(--glass-inner-glow)',
+        borderRadius: '8px',
+        border: '1px dashed var(--border-color)'
+      }}>
+        ⚠️ Target dan invalidasi mengikuti Decision Card (Adi R1/Max) — bukan narasi kualitatif di atas.
+      </p>
+
       {/* Section 1: Matriks Story */}
       {data.matriks_story && data.matriks_story.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
@@ -325,7 +339,63 @@ export default function AgentStoryCard({ stories, status, onRetry }: AgentStoryC
         </div>
       )}
 
-      {/* Section 4: KeyStat Signal */}
+      {/* Section 4: Strategi Trading (kualitatif) */}
+      {data.strategi_trading && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h4 style={{ 
+            fontSize: '1rem', 
+            color: 'var(--text-primary)',
+            marginBottom: '0.75rem',
+            fontWeight: 500,
+            opacity: 0.9
+          }}>
+            4. Ringkasan Strategi (Kualitatif)
+          </h4>
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '0.75rem',
+            fontSize: '0.875rem'
+          }}>
+            <div style={{
+              background: 'var(--bg-card)',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)'
+            }}>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                Tipe Saham
+              </span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500, textTransform: 'capitalize' }}>
+                {data.strategi_trading.tipe_saham}
+              </span>
+            </div>
+            <div style={{
+              background: 'var(--bg-card)',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)'
+            }}>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                Bias Katalis
+              </span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500, textTransform: 'capitalize' }}>
+                {data.strategi_trading.catalyst_bias}
+              </span>
+            </div>
+          </div>
+          {data.strategi_trading.invalidating_events && data.strategi_trading.invalidating_events.length > 0 && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Kejadian pembatal tesis:</span>
+              <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                {data.strategi_trading.invalidating_events.map((ev, i) => <li key={i}>{ev}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section 5: KeyStat Signal */}
       {data.keystat_signal && (
         <div style={{ marginBottom: '1.5rem' }}>
           <h4 style={{ 

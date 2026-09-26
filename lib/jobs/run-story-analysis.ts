@@ -66,7 +66,7 @@ function openaiSettings() {
   };
 }
 
-function buildPrompt(emiten: string, keyStatsData: unknown, provider: Provider): string {
+export function buildPrompt(emiten: string, keyStatsData: unknown, provider: Provider): string {
   const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   const systemPrompt = 'Kamu adalah seorang analis saham profesional Indonesia yang ahli dalam menganalisa story dan katalis pergerakan harga saham.';
   const keyStatsContext = keyStatsData
@@ -110,15 +110,21 @@ Berikan analisis dalam format JSON dengan struktur berikut (PASTIKAN HANYA OUTPU
       "dampak_instan": "dampak jika terjadi"
     }
   ],
+  "strategi_trading": {
+    "tipe_saham": "swing | fast_trade | investasi",
+    "catalyst_bias": "dukung | netral | tolak",
+    "invalidating_events": ["kejadian spesifik yang membatalkan tesis ini"]
+  },
   "keystat_signal": "analisis data key statistics dalam bahasa awam dengan indikasi signal investasi",
   "kesimpulan": "kesimpulan analisis dalam 2-3 kalimat"
 }
 
 ATURAN KETAT (WAJIB DIPATUHI):
 1. DILARANG KERAS menyebutkan atau menyarankan angka harga spesifik apa pun: target entry, take profit, stop loss, support, resistance, harga wajar, atau level numerik lainnya. Semua level harga dihitung secara deterministik oleh sistem (Adi Sucipto formula), BUKAN oleh model AI.
-2. Jangan pernah memproduksi field seperti "strategi_trading", "target_entry", "take_profit", "stop_loss", atau angka harga di dalam JSON output.
-3. Peranmu hanya: story bisnis, katalis bertanggal, SWOT kualitatif, dan narasi ekonomi-pasar. Bukan pemberi sinyal beli/jual numerik.
-4. Jika kamu tidak menemukan katalis bertanggal, katakan dengan jujur bahwa katalis tidak ditemukan, jangan mengarang.`;
+2. Jangan pernah memproduksi angka harga, atau field "target_entry", "take_profit", "stop_loss", di dalam JSON output.
+3. Peranmu hanya: story bisnis, katalis bertanggal, SWOT kualitatif, narasi ekonomi-pasar, serta ringkasan strategi kualitatif (tipe saham, bias katalis, dan kejadian pembatal tesis). Bukan pemberi sinyal beli/jual numerik.
+4. "strategi_trading" adalah ringkasan kualitatif WAJIB: pilih tepat satu "tipe_saham" dari swing/fast_trade/investasi, tepat satu "catalyst_bias" dari dukung/netral/tolak, dan tulis 1-5 "invalidating_events" berupa kejadian spesifik yang akan membatalkan tesis (tanpa angka harga).
+5. Jika kamu tidak menemukan katalis bertanggal, katakan dengan jujur bahwa katalis tidak ditemukan, jangan mengarang.`;
 
   return `${systemPrompt}\n\n${userPrompt}`;
 }
@@ -300,6 +306,29 @@ export async function runStoryAnalysis(input: StoryAnalysisInput): Promise<Story
     const asObject = (v: unknown): object =>
       v && typeof v === 'object' && !Array.isArray(v) ? (v as object) : {};
 
+    // The prompt requires exactly one enum per field; reject anything else
+    // instead of persisting a value the UI/DB schema can't represent.
+    const TIPE_SAHAM = ['swing', 'fast_trade', 'investasi'] as const;
+    const CATALYST_BIAS = ['dukung', 'netral', 'tolak'] as const;
+    const rawStrategy = asObject(analysisResult.strategi_trading) as Record<string, unknown>;
+    const tipeSaham = rawStrategy.tipe_saham;
+    const catalystBias = rawStrategy.catalyst_bias;
+    const invalidatingEvents = Array.isArray(rawStrategy.invalidating_events)
+      ? rawStrategy.invalidating_events.filter(
+          (e): e is string => typeof e === 'string' && e.trim().length > 0
+        )
+      : [];
+
+    const strategiTrading =
+      (TIPE_SAHAM as readonly string[]).includes(String(tipeSaham)) &&
+      (CATALYST_BIAS as readonly string[]).includes(String(catalystBias))
+        ? {
+            tipe_saham: tipeSaham as (typeof TIPE_SAHAM)[number],
+            catalyst_bias: catalystBias as (typeof CATALYST_BIAS)[number],
+            invalidating_events: invalidatingEvents.slice(0, 5),
+          }
+        : undefined;
+
     await updateAgentStory(storyId, {
       status: 'completed',
       matriks_story: asArray(analysisResult.matriks_story),
@@ -307,6 +336,7 @@ export async function runStoryAnalysis(input: StoryAnalysisInput): Promise<Story
       checklist_katalis: asArray(analysisResult.checklist_katalis),
       keystat_signal: typeof analysisResult.keystat_signal === 'string' ? analysisResult.keystat_signal : '',
       kesimpulan: typeof analysisResult.kesimpulan === 'string' ? analysisResult.kesimpulan : '',
+      ...(strategiTrading ? { strategi_trading: strategiTrading } : {}),
     });
 
     const duration = (Date.now() - startTime) / 1000;
