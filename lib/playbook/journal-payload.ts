@@ -41,6 +41,12 @@ export function buildJournalPayload(
       // machine keys. The spread keeps the key ABSENT (not null) when there is
       // no micro view, so every pre-Phase-2 journal row serializes identically.
       ...(gate.id === 'G1' && card.micro ? { micro: card.micro } : {}),
+      // Phase 3: the fundamental state that produced the stance, on the G5 row
+      // only, with MACHINE keys (LANDMINE, NEGATIVE_EQUITY, no-keystats) so a
+      // later audit can re-score it rather than re-read prose. Same discipline
+      // as `micro`: the key is ABSENT, not null, when there is no reading, so a
+      // pre-Phase-3 row still serializes byte for byte.
+      ...(gate.id === 'G5' && card.fundamental ? { fundamental: card.fundamental } : {}),
     })),
     entry: card.entry,
     r1: card.r1,

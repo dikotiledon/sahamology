@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildPlaybookInputFromStock } from './from-stock';
+import { evaluatePlaybook } from './evaluate';
 import { defaultCostModel } from './costs';
 import type { CalculateTargetsOk } from '../calculations';
 import { getBrokerInfo } from '../brokers';
@@ -82,4 +83,51 @@ test('tape snapshot passes through unchanged when supplied', () => {
   };
   const input = buildPlaybookInputFromStock({ ...base, tape });
   assert.deepEqual(input.tape, tape);
+});
+
+/**
+ * Phase 3 (D1) — the adapter is a pass-through, so the important property is
+ * not that the values arrive but that they arrive UNCHANGED and that an absent
+ * value stays absent. `undefined` is meaningful here: the evaluator treats an
+ * absent profile as 'off', and that is what keeps every pre-Phase-3 caller
+ * byte-identical.
+ */
+test('g5Profile and fundamental pass through unchanged', () => {
+  const fundamental = {
+    state: 'LANDMINE' as const,
+    clauses: ['NEGATIVE_EQUITY' as const],
+    isFinancialIssuer: false,
+    reason: 'veto-clause-fired' as const,
+  };
+  const input = buildPlaybookInputFromStock({ ...base, g5Profile: 'veto', fundamental });
+  assert.equal(input.g5Profile, 'veto');
+  assert.deepEqual(input.fundamental, fundamental);
+});
+
+test('an absent g5Profile and fundamental stay undefined, not defaulted', () => {
+  // This adapter always ASSIGNS the keys, exactly as it already does for
+  // g1Profile and micro, so `undefined` is the contract here — the key being
+  // absent is the contract in the journal payload, one layer over.
+  const input = buildPlaybookInputFromStock({ ...base });
+  assert.equal(input.g5Profile, undefined, 'g5Profile must stay undefined, never defaulted');
+  assert.equal(input.fundamental, undefined, 'fundamental must stay undefined, never defaulted');
+  // And the evaluator must treat that exactly as the off profile.
+  assert.equal(evaluatePlaybook(input).stance, evaluatePlaybook({ ...input, g5Profile: 'off' }).stance);
+});
+
+test('g5Profile is independent of g1Profile', () => {
+  const fundamental = {
+    state: 'SOUND' as const,
+    clauses: [],
+    isFinancialIssuer: false,
+    reason: 'no-veto-clause-fired' as const,
+  };
+  const input = buildPlaybookInputFromStock({
+    ...base,
+    g1Profile: 'phase-1',
+    g5Profile: 'veto',
+    fundamental,
+  });
+  assert.equal(input.g1Profile, 'phase-1');
+  assert.equal(input.g5Profile, 'veto');
 });

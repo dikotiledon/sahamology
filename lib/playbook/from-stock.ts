@@ -14,6 +14,7 @@ import type { MicroInput } from './types';
 import type { CostModel } from './costs';
 import type { PlaybookInput, Stance } from './types';
 import type { TapeSnapshot } from '../tape/snapshot';
+import type { FundamentalInput } from '../fundamentals/types';
 
 interface StockMarketInput {
   harga: number;
@@ -53,10 +54,19 @@ export interface BuildPlaybookInputArgs {
    * evaluator must behave exactly as Phase 1 (Task 7 fixture 2).
    */
   micro?: MicroInput;
+  /**
+   * Phase 3 G5 profile (D1). Passed through unchanged; absent is 'off'.
+   */
+  g5Profile?: 'off' | 'visible' | 'veto';
+  /**
+   * Phase 3 fundamental reading (D11). Passed through unchanged. Absent means
+   * "no fundamental layer", which G5 treats as NOT_EVALUATED — it fails OPEN.
+   */
+  fundamental?: FundamentalInput;
 }
 
 export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): PlaybookInput {
-  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape, g1Profile, micro } = args;
+  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape, g1Profile, micro, g5Profile, fundamental } = args;
 
   const priorBandar = priorRows
     .filter((row) => {
@@ -90,5 +100,9 @@ export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): Playb
     // keeps every pre-Phase-2 caller byte-identical.
     g1Profile,
     micro,
+    // D1: same discipline as the two fields above — `undefined` is meaningful
+    // and keeps every pre-Phase-3 caller byte-identical.
+    g5Profile,
+    fundamental,
   };
 }
