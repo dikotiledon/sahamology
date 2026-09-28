@@ -4,7 +4,9 @@ import { calculateTargets } from '@/lib/calculations';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
-import { isWeekend, isIdxHoliday } from '@/lib/market-calendar';
+import { isWeekend, isIdxHoliday, jakartaYmd, addTradingDays } from '@/lib/market-calendar';
+import { buildTapeSnapshot } from '@/lib/tape/snapshot';
+import type { OhlcBar } from '@/lib/tape/ohlc';
 import {
   saveStockQuery,
   getLatestStockQuery,
@@ -13,8 +15,40 @@ import {
   getWatchlistAnalysisHistory,
   getTokenStatus,
   listDecisionJournal,
+  getPriceHistory,
 } from '@/lib/supabase';
 import type { StockInput, ApiResponse } from '@/lib/types';
+
+/** Build the tape view from completed price_history bars (no today's running candle). */
+function buildTape(
+  emiten: string,
+  asOf: string,
+  liveIncompleteToday: boolean,
+  bandar: number,
+  todayBandar: string | null,
+  priorBandar: string[]
+) {
+  const from = addTradingDays(asOf, -40);
+  const to = liveIncompleteToday ? addTradingDays(asOf, -1) : asOf;
+  return getPriceHistory(emiten, from, to).then((rows) =>
+    buildTapeSnapshot({
+      bars: rows.map(
+        (row): OhlcBar => ({
+          date: String(row.date).slice(0, 10),
+          open: Number(row.open ?? row.close ?? 0),
+          high: Number(row.high ?? row.close ?? 0),
+          low: Number(row.low ?? row.close ?? 0),
+          close: Number(row.close ?? 0),
+        })
+      ),
+      asOf,
+      liveIncompleteToday,
+      bandar,
+      todayBandar,
+      priorBandar,
+    })
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const isSingleDate = fromDate === toDate;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = jakartaYmd(new Date());
     const isToday = toDate === todayStr;
 
     // 2. Fetch data from both Stockbit APIs and emiten info
@@ -168,6 +202,20 @@ export async function POST(request: NextRequest) {
         ? { stance: 'ENTER' as const }
         : undefined;
 
+    const priorBandar = (history.data as Array<{ bandar?: string | null; from_date?: string | null }>)
+      .filter((row) => String(row.from_date ?? '').slice(0, 10) !== asOf)
+      .map((row) => (row.bandar ? String(row.bandar).trim() : ''))
+      .filter(Boolean);
+
+    const tape = await buildTape(
+      emiten,
+      asOf,
+      isToday,
+      brokerData.rataRataBandar,
+      brokerData.bandar,
+      priorBandar
+    );
+
     const playbook = evaluatePlaybook(
       buildPlaybookInputFromStock({
         market: {
@@ -185,6 +233,7 @@ export async function POST(request: NextRequest) {
         tokenValid: token.isValid,
         costs: defaultCostModel(),
         openCard,
+        tape,
       })
     );
 

@@ -66,3 +66,20 @@ test('open card propagates', () => {
   const input = buildPlaybookInputFromStock({ ...base, openCard: { stance: 'ENTER' } });
   assert.deepEqual(input.openCard, { stance: 'ENTER' });
 });
+
+test('tape snapshot passes through unchanged when supplied', () => {
+  const tape = {
+    ok: true,
+    reason: 'Tape valid',
+    asOf: '2026-09-25',
+    barsUsed: 21,
+    atr: 20,
+    ema20: 990,
+    ema20Prev: 985,
+    trendOk: true,
+    pattern: null,
+    completedDate: '2026-09-24',
+  };
+  const input = buildPlaybookInputFromStock({ ...base, tape });
+  assert.deepEqual(input.tape, tape);
+});

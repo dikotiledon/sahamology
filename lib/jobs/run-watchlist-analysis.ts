@@ -6,7 +6,7 @@ import {
   fetchEmitenInfo,
   fetchHistoricalSummary,
 } from '@/lib/stockbit';
-import { sessionDateJakarta } from '@/lib/market-calendar';
+import { sessionDateJakarta, addTradingDays } from '@/lib/market-calendar';
 import { calculateTargets } from '@/lib/calculations';
 import {
   saveWatchlistAnalysis,
@@ -15,6 +15,12 @@ import {
   appendBackgroundJobLogEntry,
   updateBackgroundJobLog,
 } from '@/lib/supabase';
+import { getPriceHistory, saveDecisionJournal, getWatchlistAnalysisHistory } from '@/lib/db';
+import { evaluatePlaybook } from '@/lib/playbook';
+import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
+import { defaultCostModel } from '@/lib/playbook/costs';
+import { buildTapeSnapshot } from '@/lib/tape/snapshot';
+import type { OhlcBar } from '@/lib/tape/ohlc';
 
 export interface WatchlistAnalysisOutcome {
   success: boolean;
@@ -159,6 +165,61 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         }
       } catch (updateError) {
         console.error(`[Watchlist Job] Failed to update price for ${emiten}`, updateError);
+      }
+
+      // Journal the G4-aware decision card (best-effort; never fails the symbol).
+      try {
+        const [history, rows] = await Promise.all([
+          getWatchlistAnalysisHistory({ emiten, limit: 4, status: 'success' }),
+          getPriceHistory(emiten, addTradingDays(today, -40), addTradingDays(today, -1)),
+        ]);
+        const historyRows = (history.data ?? []) as Array<{ bandar?: string | null; from_date?: string | null }>;
+        const priorBandar = historyRows
+          .filter((row) => String(row.from_date ?? '').slice(0, 10) !== today)
+          .map((row) => (row.bandar ? String(row.bandar).trim() : ''))
+          .filter(Boolean);
+        const tape = buildTapeSnapshot({
+          bars: rows.map(
+            (row): OhlcBar => ({
+              date: String(row.date).slice(0, 10),
+              open: Number(row.open ?? row.close ?? 0),
+              high: Number(row.high ?? row.close ?? 0),
+              low: Number(row.low ?? row.close ?? 0),
+              close: Number(row.close ?? 0),
+            })
+          ),
+          asOf: today,
+          liveIncompleteToday: true,
+          bandar: brokerData.rataRataBandar,
+          todayBandar: brokerData.bandar,
+          priorBandar,
+        });
+        const card = evaluatePlaybook(
+          buildPlaybookInputFromStock({
+            market: {
+              harga: marketData.harga,
+              ara: marketData.ara,
+              arb: marketData.arb,
+              totalBid: marketData.totalBid,
+              totalOffer: marketData.totalOffer,
+            },
+            broker: brokerData,
+            calculated,
+            priorRows: historyRows,
+            asOf: today,
+            isIdxSession: true,
+            tokenValid: true,
+            costs: defaultCostModel(),
+            tape,
+          })
+        );
+        await saveDecisionJournal({
+          emiten,
+          as_of: today,
+          card,
+        });
+      } catch (journalError) {
+        console.error(`[Watchlist Job] Failed to journal decision card for ${emiten}`, journalError);
       }
 
       results.push({ emiten, status: 'success' });

@@ -11,6 +11,7 @@ import { getBrokerInfo } from '../brokers';
 import type { CalculateTargetsResult } from '../calculations';
 import type { CostModel } from './costs';
 import type { PlaybookInput, Stance } from './types';
+import type { TapeSnapshot } from '../tape/snapshot';
 
 interface StockMarketInput {
   harga: number;
@@ -38,10 +39,12 @@ export interface BuildPlaybookInputArgs {
   tokenValid: boolean;
   costs: CostModel;
   openCard?: { stance: Stance };
+  /** Phase 1 tape view; passed through unchanged when supplied. */
+  tape?: TapeSnapshot;
 }
 
 export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): PlaybookInput {
-  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession } = args;
+  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape } = args;
 
   const priorBandar = priorRows
     .filter((row) => {
@@ -69,5 +72,6 @@ export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): Playb
     tokenValid,
     costs,
     openCard,
+    tape,
   };
 }
