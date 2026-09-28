@@ -20,6 +20,12 @@ function fmt(value: number | null | undefined): string {
   return value === null || value === undefined || !Number.isFinite(value) ? '—' : value.toLocaleString('id-ID');
 }
 
+const PATTERN_LABEL: Record<string, string> = {
+  spring: 'Spring (P1)',
+  higher_low: 'Higher Low (P2)',
+  break_prior_high: 'Break Prior High (P3)',
+};
+
 export default function DecisionCard({ card, emiten, priorBandar }: DecisionCardProps) {
   const style = STANCE_STYLE[card.stance];
 
@@ -77,6 +83,37 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
       {priorBandar && priorBandar.length > 0 && (
         <div style={{ margin: '0.75rem 0 0', fontSize: '0.8rem', opacity: 0.75 }}>
           Bandar 5 print terakhir: {priorBandar.join(' → ')}
+        </div>
+      )}
+
+      {card.tape && (
+        <div
+          style={{
+            margin: '0.75rem 0 0',
+            padding: '0.6rem 0.75rem',
+            borderRadius: '8px',
+            background: '#1e293b',
+            fontSize: '0.8rem',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Tape Filter</div>
+          <div>ATR(14): {fmt(card.tape.atr)}</div>
+          <div>
+            EMA(20): {fmt(card.tape.ema20)}{' '}
+            {card.tape.emaSlope === 'up' ? '↗' : card.tape.emaSlope === 'down' ? '↘' : ''}
+          </div>
+          <div>
+            Tren:{' '}
+            {card.tape.trendOk ? 'Di atas 20-EMA' : 'Tertahan (di bawah 20-EMA)'}
+          </div>
+          <div>
+            Pola: {card.tape.pattern ? PATTERN_LABEL[card.tape.pattern] ?? card.tape.pattern : '—'}
+          </div>
+          <div style={{ opacity: 0.7 }}>Bar selesai: {card.tape.barsUsed}</div>
+          <div style={{ opacity: 0.7 }}>
+            Sumber invalidasi: {card.tape.invalidationSource === 'atr' ? 'ATR (Phase 1)' : 'Interim (Phase 0)'}
+          </div>
         </div>
       )}
     </div>

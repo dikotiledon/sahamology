@@ -2,6 +2,31 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.7.0 (draft) — Phase 1 Tape Filter
+
+Phase 1 "Tape Filter" — ATR(14) invalidation, 20-EMA trend gate, and the
+3-pattern allow-list, validated by a purged walk-forward before the gate ships.
+
+- **Tape substrate (`lib/tape/`)**: zero-dependency Wilder ATR(14) and
+  TA-Lib-aligned EMA(20) with lookahead-closed snapshot builder
+  (`MIN_BARS = 21`, unclosed session excluded when `liveIncompleteToday`).
+- **3-pattern allow-list**: P1 Wyckoff spring, P2 higher low with same-bandar
+  persistence, P3 break of prior high holding above EMA(20). No candlestick
+  patterns.
+- **G3 ATR invalidation**: stop = `rataRataBandar − 1.0×ATR` tick-rounded
+  toward entry on IDX fraksi; Phase 0 interim `min(arb, bandar×0.97)` kept as
+  the no-tape fallback.
+- **G4 live fail-closed tape gate**: missing/short tape or a collapsing tape
+  without an allow-list pattern → `WAIT`; G5–G7 remain skipped (`phase-1`).
+- **Unified path-outcome scorer**: stop-first, max-before-R1, expiry at last
+  close, round-trip friction 0.006, empty path unscored.
+- **365-day chunked backfill**: Stockbit history queries paginated through
+  `chunkDateRange` and deduplicated (`dedupeHistoryByDate`).
+- **Walk-forward reporter**: `npm run walkforward:g4` compares the Phase 0
+  card (G0–G3, interim stop, G4 skipped) against the Phase 1 card (G0–G4, ATR
+  stop) on a purged 80/20 split (5-session purge gap). Ship gate = Phase 1
+  beats Phase 0 on OOS expectancy and profit factor with ≥ 30 ENTER trades.
+
 ### Unreleased / v0.6.0 (draft)
 
 Phase 0 "Honest Desk" — deterministic decision engine built on the Adi Sucipto
@@ -16,10 +41,11 @@ added but a GitHub CI run is not claimed in this entry.**
 - **Canonical G0–G3 Playbook Evaluator**: `lib/playbook/evaluate.ts` implements
   the spec exactly — G0 data integrity (degenerate book → `AVOID`), G1 bandar
   sponsorship (Smartmoney/Whale accumulation; `TAKE_PROFIT` when `harga > R1`
-  with an open ENTER card), G2 execution headroom (`harga < ARA − 2×fraksi`,
-  `totalOffer ≤ totalBid × 3`), and G3 net risk-reward ≥ 1.5 after IDX friction.
+  with an open ENTER card), G2 execution headroom (`harga >= ara`,
+  `totalOffer > 2 × totalBid`), and G3 net risk-reward ≥ 1.5 after IDX friction.
   The invented 5%-above-bandar chase rule is removed. G4–G7 are emitted as
-  `pass: true, skipped: true` for forward compatibility.
+  `pass: true, skipped: true` for forward compatibility (Phase 1 replaces G4
+  with the live tape filter).
 - **Live Context Wiring**: `/api/stock` now builds the playbook input from
   historical bandar accumulation (prior 3 sessions), token validity
   (`getTokenStatus`), IDX session check (`market-calendar`), and the latest
