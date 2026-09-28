@@ -36,8 +36,12 @@ describe('macro vocabulary', () => {
     assert.equal(new Set(states).size, 4);
   });
 
-  it('has exactly three caution clauses', () => {
-    assert.deepEqual([...MACRO_CLAUSES], ['IHSG_DOWNTREND', 'RUPIAH_SHOCK', 'COMMODITY_HEADWIND']);
+  it('has exactly three caution clauses, named as the accepted spec fixes them', () => {
+    assert.deepEqual([...MACRO_CLAUSES], [
+      'USD_IDR_DETERIORATING',
+      'IHSG_BROAD_WEAKNESS',
+      'SECTOR_COMMODITY_ADVERSE',
+    ]);
   });
 
   it('has exactly five series', () => {
@@ -45,12 +49,13 @@ describe('macro vocabulary', () => {
     assert.equal(new Set(MACRO_SERIES).size, 5);
   });
 
-  it('exposes exactly the four measured reason keys', () => {
+  it('exposes exactly the five spec reason keys', () => {
     assert.deepEqual(Object.keys(REGIME_REASON).sort(), [
-      'ALL_CLEAR',
-      'CAUTION_CLAUSE_FIRED',
-      'NOT_EVALUATED',
-      'NO_DATA',
+      'INSUFFICIENT_HISTORY',
+      'NO_SNAPSHOT',
+      'NO_THRESHOLD_FIRED',
+      'SECTOR_UNMAPPED',
+      'THRESHOLD_FIRED',
     ]);
   });
 
@@ -85,8 +90,8 @@ describe('commodity leg identity', () => {
     assert.ok((MACRO_SERIES as readonly string[]).includes('XAU'));
   });
 
-  it('points COMMODITY_HEADWIND at the commodity legs only', () => {
-    const legs: readonly MacroSeries[] = CLAUSE_LEG.COMMODITY_HEADWIND;
+  it('points SECTOR_COMMODITY_ADVERSE at the commodity legs only', () => {
+    const legs: readonly MacroSeries[] = CLAUSE_LEG.SECTOR_COMMODITY_ADVERSE;
     assert.ok(legs.includes('XAU'));
     assert.ok(legs.includes('OIL'));
     assert.ok(legs.includes('BRENT'));
@@ -109,7 +114,7 @@ describe('measured vendor limits', () => {
 
 describe('clause type is closed', () => {
   it('accepts only the three declared clause strings', () => {
-    const ok: MacroClause[] = ['IHSG_DOWNTREND', 'RUPIAH_SHOCK', 'COMMODITY_HEADWIND'];
+    const ok: MacroClause[] = ['USD_IDR_DETERIORATING', 'IHSG_BROAD_WEAKNESS', 'SECTOR_COMMODITY_ADVERSE'];
     assert.equal(ok.length, MACRO_CLAUSES.length);
   });
 });
