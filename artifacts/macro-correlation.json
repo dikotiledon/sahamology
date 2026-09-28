@@ -1,0 +1,226 @@
+{
+  "generatedAt": "2026-09-28T22:52:36.060Z",
+  "mode": "exported",
+  "sample": {
+    "signals": 13,
+    "distinctSignalDates": 3,
+    "macroSeries": [
+      {
+        "symbol": "BRENT",
+        "bars": 479,
+        "first": "2025-06-01",
+        "last": "2026-09-28"
+      },
+      {
+        "symbol": "IHSG",
+        "bars": 319,
+        "first": "2025-06-02",
+        "last": "2026-09-28"
+      },
+      {
+        "symbol": "OIL",
+        "bars": 480,
+        "first": "2025-06-01",
+        "last": "2026-09-28"
+      },
+      {
+        "symbol": "USDIDR",
+        "bars": 485,
+        "first": "2025-06-01",
+        "last": "2026-09-28"
+      },
+      {
+        "symbol": "XAU",
+        "bars": 480,
+        "first": "2025-06-01",
+        "last": "2026-09-28"
+      }
+    ]
+  },
+  "clauses": [
+    {
+      "clause": "USD_IDR_DETERIORATING",
+      "legs": [
+        "USDIDR"
+      ],
+      "observations": 13,
+      "quantiles": {
+        "p5": 0.4922,
+        "p10": 1.6937,
+        "p25": 2.229,
+        "p50": 2.229,
+        "p75": 2.229,
+        "p90": 2.229,
+        "p95": 2.229
+      },
+      "forward": [
+        {
+          "horizon": 5,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 10,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 20,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        }
+      ],
+      "candidate": null,
+      "noBoundReason": "only 13 observation(s); 30 required before a bound may be proposed"
+    },
+    {
+      "clause": "IHSG_BROAD_WEAKNESS",
+      "legs": [
+        "IHSG"
+      ],
+      "observations": 13,
+      "quantiles": {
+        "p5": -2.6656,
+        "p10": -2.6656,
+        "p25": -2.6656,
+        "p50": -2.6656,
+        "p75": -2.6656,
+        "p90": -2.1602,
+        "p95": -2.1229
+      },
+      "forward": [
+        {
+          "horizon": 5,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 10,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 20,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        }
+      ],
+      "candidate": null,
+      "noBoundReason": "only 13 observation(s); 30 required before a bound may be proposed"
+    },
+    {
+      "clause": "SECTOR_COMMODITY_ADVERSE",
+      "legs": [
+        "XAU",
+        "OIL",
+        "BRENT"
+      ],
+      "observations": 39,
+      "quantiles": {
+        "p5": -5.0476,
+        "p10": -5.0476,
+        "p25": -3.7316,
+        "p50": -1.9875,
+        "p75": -1.1557,
+        "p90": -0.6425,
+        "p95": 0.5076
+      },
+      "forward": [
+        {
+          "horizon": 5,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 10,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 20,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        }
+      ],
+      "candidate": null,
+      "noBoundReason": "the adverse bucket is empty at the shortest horizon (adverse=0, baseline=0)"
+    }
+  ],
+  "sectorExposure": [
+    {
+      "sector": "Keuangan",
+      "n": 5,
+      "exposures": {
+        "XAU": null,
+        "OIL": null,
+        "BRENT": null
+      }
+    },
+    {
+      "sector": "Infrastruktur",
+      "n": 4,
+      "exposures": {
+        "XAU": null,
+        "OIL": null,
+        "BRENT": null
+      }
+    },
+    {
+      "sector": "Barang Konsumen Primer",
+      "n": 3,
+      "exposures": {
+        "XAU": null,
+        "OIL": null,
+        "BRENT": null
+      }
+    },
+    {
+      "sector": "Perindustrian",
+      "n": 1,
+      "exposures": {
+        "XAU": null,
+        "OIL": null,
+        "BRENT": null
+      }
+    }
+  ],
+  "sampleWarnings": [
+    "only 13 signal(s) in the sample; a shipped threshold needs at least 30",
+    "the sample spans only 3 distinct signal date(s); a macro regime needs a calendar to vary over"
+  ],
+  "threshold": {
+    "measuredFrom": null,
+    "bounds": {
+      "USD_IDR_DETERIORATING": null,
+      "IHSG_BROAD_WEAKNESS": null,
+      "SECTOR_COMMODITY_ADVERSE": null
+    }
+  }
+}

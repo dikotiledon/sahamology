@@ -15,7 +15,9 @@
     "start": "node scripts/start-standalone.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --tsconfig tsconfig.test.json --test \"lib/**/*.test.ts\"",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "macro:correlation": "tsx --tsconfig tsconfig.test.json scripts/run-macro-correlation.ts",
+    "macro:backfill": "tsx --tsconfig tsconfig.test.json scripts/backfill-macro-history.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-09-28T22:55:24.424Z",
+  "mode": "example",
+  "sample": {
+    "signals": 43,
+    "distinctSignalDates": 43,
+    "macroSeries": [
+      {
+        "symbol": "USDIDR",
+        "bars": 260,
+        "first": "2025-01-01",
+        "last": "2025-09-17"
+      }
+    ]
+  },
+  "clauses": [
+    {
+      "clause": "USD_IDR_DETERIORATING",
+      "legs": [
+        "USDIDR"
+      ],
+      "observations": 43,
+      "quantiles": {
+        "p5": -1.9876,
+        "p10": -1.3016,
+        "p25": -0.9908,
+        "p50": 0.0345,
+        "p75": 0.8542,
+        "p90": 1.2371,
+        "p95": 1.2603
+      },
+      "forward": [
+        {
+          "horizon": 5,
+          "adverseN": 5,
+          "adverseMean": -0.003367,
+          "baselineN": 38,
+          "baselineMean": 0.000145,
+          "delta": -0.003512
+        },
+        {
+          "horizon": 10,
+          "adverseN": 5,
+          "adverseMean": -0.002761,
+          "baselineN": 38,
+          "baselineMean": 0.000594,
+          "delta": -0.003356
+        },
+        {
+          "horizon": 20,
+          "adverseN": 4,
+          "adverseMean": -0.003226,
+          "baselineN": 36,
+          "baselineMean": 0.000386,
+          "delta": -0.003611
+        }
+      ],
+      "candidate": {
+        "bound": 1.2371,
+        "quantile": "p90",
+        "measuredFrom": "synthetic-fixture:not-a-measurement"
+      },
+      "noBoundReason": null
+    },
+    {
+      "clause": "IHSG_BROAD_WEAKNESS",
+      "legs": [
+        "IHSG"
+      ],
+      "observations": 0,
+      "quantiles": {},
+      "forward": [
+        {
+          "horizon": 5,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 10,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 20,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        }
+      ],
+      "candidate": null,
+      "noBoundReason": "only 0 observation(s); 30 required before a bound may be proposed"
+    },
+    {
+      "clause": "SECTOR_COMMODITY_ADVERSE",
+      "legs": [
+        "XAU",
+        "OIL",
+        "BRENT"
+      ],
+      "observations": 0,
+      "quantiles": {},
+      "forward": [
+        {
+          "horizon": 5,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 10,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        },
+        {
+          "horizon": 20,
+          "adverseN": 0,
+          "adverseMean": null,
+          "baselineN": 0,
+          "baselineMean": null,
+          "delta": null
+        }
+      ],
+      "candidate": null,
+      "noBoundReason": "only 0 observation(s); 30 required before a bound may be proposed"
+    }
+  ],
+  "sectorExposure": [
+    {
+      "sector": "Energi",
+      "n": 43,
+      "exposures": {
+        "XAU": null,
+        "OIL": null,
+        "BRENT": null
+      }
+    }
+  ],
+  "sampleWarnings": [],
+  "threshold": {
+    "measuredFrom": "synthetic-fixture:not-a-measurement",
+    "bounds": {
+      "USD_IDR_DETERIORATING": {
+        "bound": 1.2371,
+        "quantile": "p90",
+        "measuredFrom": "synthetic-fixture:not-a-measurement"
+      },
+      "IHSG_BROAD_WEAKNESS": null,
+      "SECTOR_COMMODITY_ADVERSE": null
+    }
+  }
+}
