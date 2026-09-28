@@ -15,6 +15,7 @@ import type { CostModel } from './costs';
 import type { PlaybookInput, Stance } from './types';
 import type { TapeSnapshot } from '../tape/snapshot';
 import type { FundamentalInput } from '../fundamentals/types';
+import type { MacroInput } from '../macro/types';
 
 interface StockMarketInput {
   harga: number;
@@ -63,10 +64,20 @@ export interface BuildPlaybookInputArgs {
    * "no fundamental layer", which G5 treats as NOT_EVALUATED — it fails OPEN.
    */
   fundamental?: FundamentalInput;
+  /**
+   * Phase 4 G7 profile (D1). Absent is 'off', matching the live default. Read
+   * at the boundary, never inside the evaluator.
+   */
+  g7Profile?: 'off' | 'visible' | 'veto';
+  /**
+   * Phase 4 macro regime reading (D11). Passed through unchanged. Absent means
+   * "no macro layer", which G7 treats as NOT_EVALUATED — it fails OPEN.
+   */
+  macro?: MacroInput;
 }
 
 export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): PlaybookInput {
-  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape, g1Profile, micro, g5Profile, fundamental } = args;
+  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape, g1Profile, micro, g5Profile, fundamental, g7Profile, macro } = args;
 
   const priorBandar = priorRows
     .filter((row) => {
@@ -104,5 +115,7 @@ export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): Playb
     // and keeps every pre-Phase-3 caller byte-identical.
     g5Profile,
     fundamental,
+    g7Profile,
+    macro,
   };
 }

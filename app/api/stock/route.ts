@@ -4,9 +4,22 @@ import { calculateTargets } from '@/lib/calculations';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { classifyFundamentals } from '@/lib/fundamentals/rubric';
+import { classifyRegime, REGIME_WINDOW } from '@/lib/macro/classifier';
+import type { MacroInput, MacroSeries } from '@/lib/macro/types';
+
+/**
+ * Legs the live route reads for the regime.
+ *
+ * Only the legs a CAUTION can be raised from today. OIL and BRENT are captured
+ * but not read here, because the commodity clause is sector-mapped and leaf
+ * 1.2.2 has not measured that mapping — reading them would cost two queries
+ * per request for bars nothing scores. Adding them is a one-line change once
+ * the sector table exists.
+ */
+const MACRO_LIVE_LEGS: readonly MacroSeries[] = ['IHSG', 'USDIDR', 'XAU'];
 import type { ReplayKeystatsSeries } from '@/lib/playbook/replay';
 import { isFinancialIssuerEntries } from '@/lib/fundamentals/keystats-series';
-import { getKeystatsSnapshot } from '@/lib/db';
+import { getKeystatsSnapshot, getMacroSnapshotWindow } from '@/lib/db';
 import type { FundamentalInput } from '@/lib/fundamentals/types';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { isWeekend, isIdxHoliday, jakartaYmd, addTradingDays } from '@/lib/market-calendar';
@@ -300,6 +313,47 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Phase 4 macro regime reading.
+    //
+    // Gated on `isToday` for the same reason the tape, the flow and the
+    // KeyStats read are: a historical session must be graded from what was
+    // PERSISTED at the time, never from today's bars. `getMacroSnapshotWindow`
+    // is itself point-in-time (`bar_date <= asOf`), so the two constraints are
+    // independent and both hold.
+    //
+    // Best effort by design, same as the fundamental read: any failure yields
+    // `undefined`, which G7 treats as NOT_EVALUATED and fails OPEN. A macro
+    // vendor outage must never break the calculator or delete a trade.
+    let macro: MacroInput | undefined;
+    if (isToday) {
+      try {
+        const series: Array<{ symbol: MacroSeries; closes: number[] }> = [];
+        for (const symbol of MACRO_LIVE_LEGS) {
+          const bars = await getMacroSnapshotWindow(symbol, asOf, REGIME_WINDOW + 1);
+          if (bars.length === 0) continue;
+          series.push({ symbol, closes: bars.map((b) => b.close) });
+        }
+        if (series.length > 0) {
+          // The sector is a DISPLAY input, not a gate input: the commodity leg
+          // is skipped until leaf 1.2.2 measures a sector->commodity table, and
+          // a null sector is recorded as `sectorUnmapped` rather than guessed.
+          macro = classifyRegime({ series, sector: null });
+        }
+      } catch (error) {
+        console.error('[stock route] macro snapshot read failed', error);
+      }
+    }
+
+    // Phase 4: resolve the G7 profile HERE, at the boundary, exactly like G5.
+    // Anything unrecognised — including an unset variable — degrades to 'off',
+    // so a typo in the deployment can never arm a hold.
+    const g7Profile: 'off' | 'visible' | 'veto' =
+      process.env.PLAYBOOK_G7_PROFILE === 'veto'
+        ? 'veto'
+        : process.env.PLAYBOOK_G7_PROFILE === 'visible'
+          ? 'visible'
+          : 'off';
+
     // Phase 3: resolve the G5 profile HERE, at the boundary, never inside the
     // pure evaluator. Anything unrecognised — including an unset variable —
     // degrades to 'off', so a typo in the deployment can never arm a veto.
@@ -334,6 +388,8 @@ export async function POST(request: NextRequest) {
         micro,
         g5Profile,
         fundamental,
+        g7Profile,
+        macro,
       })
     );
 

@@ -95,6 +95,56 @@ its last line and `npm test` never greps it. If the database is unreachable it
 exits 1 and prints **no** `SHIP_GATE` token at all — an environment error is not
 a verdict.
 
+### Phase 4 macro regime notes
+
+Phase 4 adds **G7**, a macro-regime hold. **It ships default-off, unvalidated,
+and — as of this release — incapable of firing.** `PLAYBOOK_G7_PROFILE` is
+`off` by default; `visible` reports a CAUTION without touching the stance, and
+`veto` is the only profile that may act. An unset or unrecognised value
+degrades to `off`.
+
+**The honest sample reality, stated first:** the empirical study that defines
+G7's thresholds ran against 2,243 captured macro bars and 13 successful signals
+across 3 dates, and **every clause fell below the 30-observation floor**. So
+`npm run macro:correlation` publishes the z-score distribution, refuses to
+publish a threshold, and prints `ARMED_CLAUSES=0/3`. `npm run walkforward:p4`
+consequently reports `SHIP_GATE=VERDICT_UNREACHABLE`, not `FAIL`. Treat G7 as
+instrumentation that is honestly reporting "not measured yet", not as a feature
+that works. Do not arm `veto` on the expectation that it is conservative — it
+is currently inert, and it will stop being inert the moment a bound is measured,
+which is exactly when you should re-read this paragraph.
+
+- **An unarmed clause cannot fire.** This is the load-bearing property. Bounds
+  are `null` until the study measures them, so a half-measured phase reports
+  `NOT_EVALUATED` rather than defaulting to something like "2 sigma" that would
+  arm all three clauses on nothing.
+- **G7 is one notch, and the ordering enforces it.** A CAUTION downgrades
+  `ENTER` to `WAIT`. It never creates an `ENTER`, never softens a `WAIT`, and
+  never reaches `AVOID`. The armed branch is the final `else if` in the stance
+  ladder, which is what makes this structural; `scripts/check-g7-single-notch.mjs`
+  fails the build if that ordering is changed.
+- **Missing data fails open.** No snapshot, too few bars, a failed capture, or
+  an unknown sector all yield `NOT_EVALUATED` and G7 passes — the same reasoning
+  as G5, and the opposite of G4. A vendor outage must not delete valid trades.
+  In a walk-forward the same absence makes the row *unscored* rather than
+  scored as neutral, because macro state is what selects for adverse days and
+  dropping unscored rows would bias the comparison in the flattering direction.
+- **USD/IDR is a JISDOR proxy, not JISDOR.** The series is Stockbit's market
+  spot rate for US Dollar / Rupiah. Bank Indonesia's JISDOR is a volume-weighted
+  interbank benchmark computed at end of day and is published under no ticker on
+  this feed. The system names the leg `USDIDR` and never claims it is JISDOR.
+- **`macro_incomplete` is its own flag.** It is independent of
+  `capture_incomplete` (micro) and `fundamentals_incomplete` (G5): the three
+  captures fail separately, and conflating them would silently drop signals from
+  the Phase 4 denominator for an unrelated reason.
+- **Migrations 026/027.** `macro_snapshot` holds raw bars and no computed
+  verdict, so a future recalibration re-scores history without a backfill.
+  `stock_queries.macro_incomplete` is a nullable boolean; migration 027 contains
+  no `UPDATE` against existing rows.
+- **The reporter never fetches macro data.** It reads only stored bars at or
+  before the signal date. A replay that re-fetched today's macro history would
+  grade a past decision with present-day prices.
+
 ### Phase 3 fundamental veto notes
 
 Phase 3 adds **G5**, a fundamental health veto. **It ships default-off and

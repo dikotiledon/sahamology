@@ -56,6 +56,35 @@ const G5_MODE_LABEL = {
   visible: 'Skor saja',
   veto: 'Veto aktif',
 } as const;
+
+/**
+ * Phase 4. Same rule: the LABEL is Indonesian, the state key stays machine
+ * English so the journal, the replay and the card all agree.
+ *
+ * NOT_EVALUATED gets a badge rather than being hidden, for the same reason as
+ * the fundamental block — but there is a sharper reason here. Every clause
+ * bound in G7 is currently UNMEASURED (leaf 1.2.2 armed 0 of 3 on real data),
+ * so "Tidak dievaluasi" is the honest everyday answer, and showing it plainly
+ * is what stops an operator reading a quiet macro backdrop as a green light.
+ */
+const MACRO_LABEL = {
+  SUPPORTIVE: { label: 'Mendukung', color: 'green' as const },
+  NEUTRAL: { label: 'Netral', color: 'blue' as const },
+  CAUTION: { label: 'Waspadai', color: 'yellow' as const },
+  NOT_EVALUATED: { label: 'Tidak dievaluasi', color: 'gray' as const },
+} as const;
+
+const MACRO_CLAUSE_LABEL = {
+  IHSG_BROAD_WEAKNESS: 'IHSG melemah',
+  USD_IDR_DETERIORATING: 'Rupiah melemah',
+  SECTOR_COMMODITY_ADVERSE: 'Komoditas/sektor adversely',
+} as const;
+
+const G7_MODE_LABEL = {
+  off: 'Nonaktif',
+  visible: 'Skor saja',
+  veto: 'Tahan aktif',
+} as const;
 const ACCDIST_LABEL: Record<string, { label: string; color: string }> = {
   ACC: { label: 'Big Acc', color: '#16a34a' },
   SMALL_ACC: { label: 'Small Acc', color: '#4ade80' },
@@ -275,6 +304,63 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
           <div style={{ opacity: 0.7 }}>
             Mode G5: {G5_MODE_LABEL[card.fundamental.g5Profile]}
           </div>
+        </div>
+      )}
+
+      {/*
+        Phase 4 G7. Rendered whenever a macro reading exists, INCLUDING under
+        the 'off' profile, where it is inert. The mode row is always shown so
+        the operator can see that the gate exists and what it is currently armed
+        to do — never left to be inferred from its absence.
+
+        The block states the leg count and the sector gap on purpose. A CAUTION
+        raised from two of three legs is a materially different claim from one
+        raised from all three, and the `evaluated` list is the only thing on
+        the card that tells them apart.
+      */}
+      {card.macro && (
+        <div
+          style={{
+            margin: '0.75rem 0 0',
+            padding: '0.6rem 0.75rem',
+            borderRadius: '8px',
+            background: '#1e293b',
+            fontSize: '0.8rem',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Regime Makro (G7)</div>
+          <div>
+            <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Status:</span>
+            <Badge color={MACRO_LABEL[card.macro.state].color}>
+              {MACRO_LABEL[card.macro.state].label}
+            </Badge>
+          </div>
+          {card.macro.clauses.length > 0 && (
+            <div>
+              <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Pemicu:</span>
+              {card.macro.clauses.map((clause) => (
+                <span key={clause} style={{ marginRight: '0.35rem', whiteSpace: 'nowrap' }}>
+                  {MACRO_CLAUSE_LABEL[clause] ?? clause}
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ opacity: 0.7 }}>
+            Leg diukur:{' '}
+            {card.macro.evaluated.length > 0 ? card.macro.evaluated.join(', ') : 'tidak ada'}
+          </div>
+          {card.macro.sectorUnmapped && (
+            <div style={{ opacity: 0.7 }}>
+              Sektor belum dipetakan ke komoditas — leg komoditas dilewati
+            </div>
+          )}
+          <div style={{ opacity: 0.7 }}>Mode G7: {G7_MODE_LABEL[card.macro.g7Profile]}</div>
+          {card.macro.g7Profile === 'veto' && (
+            <div style={{ opacity: 0.7 }}>
+              CAUTION menurunkan ENTER menjadi WAIT — tidak pernah AVOID
+            </div>
+          )}
         </div>
       )}
     </div>

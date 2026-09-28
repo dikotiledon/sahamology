@@ -2,6 +2,60 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.9.0 (draft) — Phase 4 Macro Regime (G7)
+
+Phase 4 adds **G7**, a macro-regime hold. **Default-off, not validated, and
+currently incapable of firing.** No threshold in this release has been shown to
+improve a single trade: G7 is off by default, and arming it changes nothing
+today because the empirical study that defines its bounds returned
+`ARMED_CLAUSES=0/3`.
+
+**The sample reality, stated first: the correlation study ran on 2,243 macro
+bars and 13 successful signals across 3 dates, and every clause fell below the
+30-observation floor a bound requires.** So `npm run macro:correlation` publishes
+the z-score distribution and refuses to publish a threshold, and
+`npm run walkforward:p4` reports `VERDICT_UNREACHABLE` — the gate is not
+adjudicable, not failed. Treat G7 as instrumentation collecting evidence, not as
+a feature that works.
+
+- **Correlation first (`scripts/run-macro-correlation.ts`)**: a clause may not
+  have a bound until an empirical study shows an adverse macro reading is
+  followed by worse forward returns, on at least 30 observations. The study ran
+  and armed nothing. That is the design working, not the feature failing.
+- **The classifier is pure** (`lib/macro/classifier.ts`): trailing z-score
+  against a strictly-prior 20-session window, no clock, no database, no
+  network. A bar may not appear in its own baseline.
+- **Unarmed means it cannot fire.** Bounds are `null` until measured, so a
+  half-measured phase reports `NOT_EVALUATED` rather than inventing a number
+  that would look rigorous and mean nothing.
+- **G7 is a single-notch hold, never a veto.** It can only turn `ENTER` into
+  `WAIT`. It never creates an `ENTER`, never softens a `WAIT`, and never
+  reaches `AVOID` — a hostile backdrop is not a broken thesis. The armed branch
+  is the last `else if` in the stance ladder, which is what makes that
+  structural rather than aspirational, and `scripts/check-g7-single-notch.mjs`
+  fails the build if that ordering changes.
+- **Fails open**, like G5 and unlike G4. A vendor outage or a missing snapshot
+  is an absence of evidence; failing closed on it would delete valid trades
+  every time the upstream had a bad day.
+- **Point-in-time everywhere.** Live reads use `bar_date <= asOf`; the replay
+  drops a forward-dated bar rather than clamping it. Clamping would be exactly
+  the lookahead this layer exists to prevent.
+- **USD/IDR is a JISDOR proxy, not JISDOR.** The feed is Stockbit's market spot
+  rate for US Dollar / Rupiah. Bank Indonesia's JISDOR is a volume-weighted
+  interbank benchmark computed at end of day and published under no ticker on
+  this feed. The series is named `USDIDR` everywhere and no claim depends on
+  the two being equal.
+- **Profiles** — `PLAYBOOK_G7_PROFILE` is `off` (default, G7 inert), `visible`
+  (reports a CAUTION without touching the stance), `veto` (armed; a CAUTION
+  downgrades `ENTER` to `WAIT`). An unrecognised value degrades to `off`.
+- **Capture is isolated**: `lib/jobs/macro-capture.ts` runs once per daily
+  session, before and outside the per-emiten loop. A failure marks
+  `macro_incomplete` and never aborts an emiten.
+- **Migrations 026/027**: `macro_snapshot` stores raw bars and no computed
+  verdict, so a future recalibration re-scores history without a backfill.
+  `stock_queries.macro_incomplete` is independent of the two existing
+  incomplete flags.
+
 ### Unreleased / v0.8.0 (draft) — Phase 3 Fundamental Veto (G5)
 
 Phase 3 adds **G5**, a fundamental health veto. **Default-off, and not
