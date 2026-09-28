@@ -70,3 +70,80 @@ export function partitionWatchlistUniverse(
 
   return { emitens, skipped };
 }
+
+export type EmitensSource = 'stockbit-watchlist' | 'env-fallback' | 'union' | 'none';
+
+export interface ResolvedEmitens {
+  /** Distinct IDX emiten codes to analyze, in stable order. */
+  emitens: string[];
+  /** Non-IDX / unusable watchlist items, retained for diagnostics. */
+  skipped: SkippedWatchlistItem[];
+  /** Where the final emiten list came from. */
+  source: EmitensSource;
+  /** Emiten contributed by the env fallback, for logging. */
+  fallbackEmitens: string[];
+}
+
+/** Parse a comma/whitespace separated emiten list from configuration. */
+export function parseEmitenList(raw: string | undefined | null): string[] {
+  if (!raw) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const part of raw.split(/[,\s]+/)) {
+    const code = normalize(part);
+    if (!code || !isIdxEmiten(code) || seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+  }
+  return out;
+}
+
+/**
+ * Decide which emitens the daily job analyzes.
+ *
+ * The Stockbit watchlist is the primary source. When it contains no usable IDX
+ * emiten (a common state, e.g. a watchlist holding only USDIDR), an operator-
+ * configured fallback list keeps the daily job productive instead of silently
+ * producing nothing. When both exist, the union is used.
+ */
+export function resolveEmitensToAnalyze(
+  items: readonly WatchlistUniverseItem[],
+  fallbackRaw: string | undefined | null
+): ResolvedEmitens {
+  const watchlist = partitionWatchlistUniverse(items);
+  const fallback = parseEmitenList(fallbackRaw);
+
+  if (watchlist.emitens.length === 0 && fallback.length === 0) {
+    return { emitens: [], skipped: watchlist.skipped, source: 'none', fallbackEmitens: [] };
+  }
+  if (watchlist.emitens.length === 0) {
+    return {
+      emitens: fallback,
+      skipped: watchlist.skipped,
+      source: 'env-fallback',
+      fallbackEmitens: fallback,
+    };
+  }
+  if (fallback.length === 0) {
+    return {
+      emitens: watchlist.emitens,
+      skipped: watchlist.skipped,
+      source: 'stockbit-watchlist',
+      fallbackEmitens: [],
+    };
+  }
+
+  const merged = [...watchlist.emitens];
+  const seen = new Set(merged);
+  for (const code of fallback) {
+    if (seen.has(code)) continue;
+    seen.add(code);
+    merged.push(code);
+  }
+  return {
+    emitens: merged,
+    skipped: watchlist.skipped,
+    source: 'union',
+    fallbackEmitens: fallback,
+  };
+}

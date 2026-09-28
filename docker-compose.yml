@@ -59,6 +59,11 @@ services:
       CRON_SECRET: ${CRON_SECRET:-}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       STOCKBIT_JWT_TOKEN: ${STOCKBIT_JWT_TOKEN:-}
+      # Fallback IDX emitens for the daily watchlist job, used only when the
+      # Stockbit watchlist contains no usable IDX emiten (e.g. it holds only a
+      # forex pair like USDIDR). Comma-separated. Leave empty to analyze the
+      # Stockbit watchlist only.
+      WATCHLIST_FALLBACK_EMITENS: ${WATCHLIST_FALLBACK_EMITENS:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_STORY_MODEL: ${GEMINI_STORY_MODEL:-gemini-3-flash-preview}
       GEMINI_STORY_THINKING_LEVEL: ${GEMINI_STORY_THINKING_LEVEL:-HIGH}

@@ -21,7 +21,10 @@ import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
 import { ymdOf } from '@/lib/date-ymd';
-import { partitionWatchlistUniverse, type WatchlistUniverseItem } from './watchlist-universe';
+import {
+  resolveEmitensToAnalyze,
+  type WatchlistUniverseItem,
+} from './watchlist-universe';
 import type { OhlcBar } from '@/lib/tape/ohlc';
 
 export interface WatchlistAnalysisOutcome {
@@ -51,12 +54,15 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   const watchlistResponse = await fetchWatchlist();
   const watchlistItems = watchlistResponse.data?.result || [];
 
-  // The Stockbit watchlist can hold non-IDX instruments (e.g. the USDIDR forex
-  // pair). Those cannot produce an IDX signal, so they are excluded here and
-  // reported, rather than analyzed and failed every trading day.
-  const { emitens, skipped } = partitionWatchlistUniverse(
-    watchlistItems as WatchlistUniverseItem[]
-  );
+  // The Stockbit watchlist is the primary emiten source. It can hold non-IDX
+  // instruments (e.g. the USDIDR forex pair) that can never produce an IDX
+  // signal; those are excluded and reported. When the watchlist yields no IDX
+  // emiten at all, WATCHLIST_FALLBACK_EMITENS keeps the daily job productive.
+  const { emitens, skipped, source: emitensSource, fallbackEmitens } =
+    resolveEmitensToAnalyze(
+      watchlistItems as WatchlistUniverseItem[],
+      process.env.WATCHLIST_FALLBACK_EMITENS
+    );
 
   if (emitens.length === 0) {
     const detail =
@@ -68,6 +74,15 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
             .join(', ')}). Add IDX stocks to the Stockbit All Watchlist.`;
     console.warn(`[Watchlist Job] No IDX emitens to analyze. ${detail}`);
     return { success: true, results: 0, errors: 0, jobLogId: null, date: today };
+  }
+
+  if (emitensSource !== 'stockbit-watchlist') {
+    console.log(
+      `[Watchlist Job] Emiten source: ${emitensSource}` +
+        (fallbackEmitens.length > 0
+          ? ` (WATCHLIST_FALLBACK_EMITENS contributed ${fallbackEmitens.join(', ')})`
+          : '')
+    );
   }
 
   // Create job log entry. The total is the number of IDX emitens actually
