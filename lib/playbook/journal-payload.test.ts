@@ -225,3 +225,206 @@ describe('buildJournalPayload — a pre-Phase-3 card serializes identically', ()
     assert.equal('fundamental' in g1, false);
   });
 });
+
+/**
+ * Phase 4 (G7) — the same two properties as Phase 3, and the same discipline.
+ *
+ *   FIDELITY      the G7 row records the regime that produced the stance, with
+ *                 MACHINE keys (CAUTION, IHSG_BROAD_WEAKNESS, insufficient-
+ *                 history) so a later audit can re-score it from the stored
+ *                 bars instead of re-reading prose.
+ *   COMPATIBILITY a signal with no macro reading must serialize BYTE for BYTE as
+ *                 a pre-Phase-4 row: the key is ABSENT, not null.
+ *
+ * The distinction that matters most is NOT_EVALUATED versus absent. "The regime
+ * layer exists and had nothing to measure" and "this journal predates G7" are
+ * different facts, and conflating them would make a vendor outage look
+ * identical to a system that never had the feature.
+ */
+
+const p4card = (over: Partial<Parameters<typeof evaluatePlaybook>[0]> = {}): PlaybookCard =>
+  evaluatePlaybook({
+    harga: 1000,
+    ara: 1400,
+    arb: 900,
+    totalBid: 100,
+    totalOffer: 100,
+    bandar: 'BK',
+    barangBandar: 5000,
+    rataRataBandar: 950,
+    calculated: {
+      ok: true,
+      totalPapan: 1.5,
+      rataRataBidOfer: 2,
+      a: 1200,
+      p: 3,
+      targetRealistis1: 1300,
+      targetMax: 1380,
+      fraksi: 25,
+    } as never,
+    brokerType: 'Smartmoney',
+    priorBandar: ['BK'],
+    isIdxSession: true,
+    tokenValid: true,
+    tape: {
+      ok: true,
+      reason: 'Tape valid',
+      asOf: '2026-09-24',
+      barsUsed: 25,
+      atr: 20,
+      ema20: 990,
+      ema20Prev: 985,
+      trendOk: true,
+      pattern: null,
+      completedDate: '2026-09-24',
+    } as never,
+    costs: defaultCostModel(),
+    ...over,
+  });
+
+const p4g7row = (payload: ReturnType<typeof buildJournalPayload>) =>
+  payload.gates.find((g) => (g as { id: string }).id === 'G7') as Record<string, unknown>;
+
+const macroReading = (over: Record<string, unknown> = {}) =>
+  ({
+    state: 'CAUTION',
+    clauses: ['IHSG_BROAD_WEAKNESS'],
+    reason: 'threshold-fired',
+    evaluated: ['IHSG', 'USDIDR'],
+    sectorUnmapped: true,
+    ...over,
+  }) as never;
+
+describe('buildJournalPayload — the macro regime rides on the G7 row', () => {
+  it('attaches the reading to the G7 row ONLY', () => {
+    const payload = buildJournalPayload(
+      'ASII',
+      '2026-09-28',
+      p4card({ g7Profile: 'veto', macro: macroReading() }),
+    );
+
+    assert.deepEqual(p4g7row(payload).macro, {
+      state: 'CAUTION',
+      clauses: ['IHSG_BROAD_WEAKNESS'],
+      reason: 'threshold-fired',
+      evaluated: ['IHSG', 'USDIDR'],
+      sectorUnmapped: true,
+      g7Profile: 'veto',
+    });
+
+    for (const gate of payload.gates) {
+      if ((gate as { id: string }).id !== 'G7') {
+        assert.equal(
+          (gate as Record<string, unknown>).macro,
+          undefined,
+          'the macro view leaked onto a non-G7 row',
+        );
+      }
+    }
+  });
+
+  it('records the profile even when off, so the row says what was armed', () => {
+    const payload = buildJournalPayload(
+      'ASII',
+      '2026-09-28',
+      p4card({ g7Profile: 'off', macro: macroReading({ state: 'NEUTRAL', clauses: [] }) }),
+    );
+    assert.equal((p4g7row(payload).macro as { g7Profile: string }).g7Profile, 'off');
+  });
+
+  it('serialises NOT_EVALUATED explicitly rather than omitting a failed capture', () => {
+    const payload = buildJournalPayload(
+      'ASII',
+      '2026-09-28',
+      p4card({
+        g7Profile: 'veto',
+        macro: macroReading({
+          state: 'NOT_EVALUATED',
+          clauses: [],
+          reason: 'insufficient-history',
+        }),
+      }),
+    );
+    const view = p4g7row(payload).macro as Record<string, unknown>;
+    assert.equal(view.state, 'NOT_EVALUATED');
+    assert.equal(view.reason, 'insufficient-history');
+  });
+
+  it('records sectorUnmapped, so a skipped commodity leg is auditable', () => {
+    // "We looked and this sector has no commodity exposure" and "we did not
+    // look" are different operational problems. Only the flag tells them
+    // apart, and only the flag tells an operator which one to repair.
+    const payload = buildJournalPayload(
+      'BBRI',
+      '2026-09-28',
+      p4card({ g7Profile: 'visible', macro: macroReading({ state: 'NOT_EVALUATED', clauses: [] }) }),
+    );
+    assert.equal((p4g7row(payload).macro as { sectorUnmapped: boolean }).sectorUnmapped, true);
+  });
+
+  it('uses machine keys, never prose', () => {
+    const payload = buildJournalPayload(
+      'ASII',
+      '2026-09-28',
+      p4card({ g7Profile: 'veto', macro: macroReading() }),
+    );
+    const view = p4g7row(payload).macro as Record<string, unknown>;
+    assert.equal(view.state, 'CAUTION');
+    for (const [key, value] of Object.entries(view)) {
+      if (typeof value !== 'string') continue;
+      if (key === 'state') {
+        assert.ok(/^[A-Z][A-Z0-9_]*$/.test(value), `non-machine state for ${key}: ${value}`);
+        continue;
+      }
+      // The profile is a closed enum whose values happen to be lower-case
+      // ('off' | 'visible' | 'veto') — same as g5Profile. It is a token, not
+      // prose, so it is held to the no-spaces rule rather than the enum-shape
+      // rule used for state and clauses.
+      if (key === 'g7Profile') {
+        assert.doesNotMatch(value, /\s/, `${key} looks like prose: ${value}`);
+        continue;
+      }
+      // Clauses are UPPER_SNAKE; the machine reasons are lower-kebab. What is
+      // forbidden is prose — a sentence, or anything with spaces.
+      const machine =
+        /^[A-Z][A-Z0-9_]*$/.test(value) || /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value);
+      assert.ok(machine, `non-machine value for ${key}: ${value}`);
+      assert.doesNotMatch(value, /\s/, `${key} looks like prose: ${value}`);
+    }
+  });
+});
+
+describe('buildJournalPayload — a pre-Phase-4 card serializes identically', () => {
+  it('omits the key entirely (not null) when there is no macro view', () => {
+    const row = p4g7row(buildJournalPayload('ASII', '2026-09-28', p4card()));
+    assert.equal('macro' in row, false, 'the key must be ABSENT, not null');
+  });
+
+  it('produces the same JSON with and without an explicit off profile', () => {
+    const none = buildJournalPayload('ASII', '2026-09-28', p4card());
+    const off = buildJournalPayload('ASII', '2026-09-28', p4card({ g7Profile: 'off' }));
+    assert.equal(JSON.stringify(off), JSON.stringify(none));
+  });
+
+  it('leaves the Phase 2 and Phase 3 key contracts intact alongside the new one', () => {
+    const payload = buildJournalPayload(
+      'ASII',
+      '2026-09-28',
+      p4card({
+        g1Profile: 'phase-2',
+        micro: { bandCode: 'BK', tier: 'spike', accdistState: 'DIST', flowState: 'bad' },
+        g5Profile: 'visible',
+        fundamental: { state: 'SOUND', clauses: [], isFinancialIssuer: false, reason: 'no-veto-clause-fired' },
+        g7Profile: 'veto',
+        macro: macroReading(),
+      }),
+    );
+    const g1 = payload.gates.find((g) => (g as { id: string }).id === 'G1') as Record<string, unknown>;
+    const g5 = payload.gates.find((g) => (g as { id: string }).id === 'G5') as Record<string, unknown>;
+    assert.ok(g1.micro, 'the Phase 2 micro key was lost');
+    assert.ok(g5.fundamental, 'the Phase 3 fundamental key was lost');
+    assert.equal('macro' in g1, false);
+    assert.equal('macro' in g5, false);
+    assert.ok(p4g7row(payload).macro, 'the Phase 4 macro key was lost');
+  });
+});

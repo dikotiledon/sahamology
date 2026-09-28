@@ -19,6 +19,8 @@ import type { BrokerFlowRow } from '../micro/types';
 import { classifyFundamentals } from '../fundamentals/rubric';
 import { isPointInTimeValid } from '../fundamentals/periods';
 import type { FundamentalInput, KeystatsSeries } from '../fundamentals/types';
+import { classifyRegime, REGIME_WINDOW, type SeriesBars } from '../macro/classifier';
+import type { MacroInput, MacroSeries } from '../macro/types';
 import type { MicroInput, PlaybookInput } from './types';
 
 export interface SignalRow {
@@ -60,6 +62,22 @@ export interface SignalRow {
    * dropped signal is invisible in the result.
    */
   fundamentals_incomplete?: boolean | null;
+  /**
+   * Phase 4 (D11/D14): true when the macro capture for this session degraded.
+   *
+   * Independent of the other two flags for the same reason: the three captures
+   * fail separately, and conflating them would silently drop signals from the
+   * Phase 4 denominator for an unrelated reason. A degraded macro capture
+   * unscored the row for system (4) ONLY.
+   */
+  macro_incomplete?: boolean | null;
+}
+
+/** A macro bar as the replay layer receives it: the trading date, not capture time. */
+export interface ReplayMacroBar {
+  symbol: string;
+  barDate: string;
+  close: number;
 }
 
 /** A snapshot as the replay layer receives it, with its capture date. */
@@ -160,6 +178,85 @@ export function buildReplayMicro(
   };
 }
 
+
+/**
+ * Build the Phase 4 macro reading for a historical row, or `null` when the row
+ * cannot support the treatment.
+ *
+ * Returns `null` — never a default, never a NEUTRAL stand-in — when ANY of
+ * these hold:
+ *  - `macro_incomplete` is true (D11: an unrepaired degraded capture),
+ *  - no bars were supplied at all,
+ *  - no applicable leg has a bar at or before the signal date,
+ *  - the emiten's sector is unknown.
+ *
+ * WHY NULL AND NOT `NOT_EVALUATED`: the live path already fails open, so a
+ * missing regime costs a WAIT and nothing more. In a WALK-FORWARD a `null` does
+ * something different — it removes the row from the system-(4) denominator
+ * entirely, and the reporter says so in its sample counts. Filling it with a
+ * neutral `NOT_EVALUATED` instead would score a row the experiment never
+ * observed, and the candidate system would be credited with a trade it never
+ * had the data to take.
+ *
+ * POINT-IN-TIME IS ENFORCED HERE, not upstream. Every bar must satisfy
+ * `barDate <= signal.from_date`, and each leg is truncated to the last
+ * `REGIME_WINDOW + 1` such bars so the trailing baseline is exactly the
+ * sessions before the signal. A bar dated after the signal is dropped, not
+ * clamped: clamping would let tomorrow's close grade today's decision.
+ *
+ * The rubric is DELEGATED to `classifyRegime`, the same single definition the
+ * live path uses, so a replayed card and a live card can never disagree about
+ * the same bars. There is no vendor call anywhere in this path: a replay must
+ * not re-fetch today's macro history and grade a past decision with it.
+ */
+export function buildReplayMacro(
+  signal: SignalRow,
+  bars: readonly ReplayMacroBar[] | null | undefined,
+  context?: { sector?: string | null; sectorCommodityLegs?: readonly MacroSeries[] },
+): MacroInput | null {
+  if (signal.macro_incomplete === true) return null;
+  if (!Array.isArray(bars) || bars.length === 0) return null;
+
+  // An unknown sector is unscored, not neutral. The commodity leg cannot be
+  // qualified without knowing what the emiten is exposed to, and guessing would
+  // manufacture the very exposure the study has not measured yet.
+  const sector = typeof context?.sector === 'string' ? context.sector.trim() : '';
+  if (sector === '') return null;
+
+  const fromDate = typeof signal.from_date === 'string' ? signal.from_date : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) return null;
+
+  const bySymbol = new Map<string, ReplayMacroBar[]>();
+  for (const bar of bars) {
+    if (!bar || typeof bar !== 'object') continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(bar.barDate ?? ''))) continue;
+    // The PIT cut. A forward-dated bar is DROPPED, never clamped.
+    if (String(bar.barDate) > fromDate) continue;
+    if (!Number.isFinite(bar.close)) continue;
+    const list = bySymbol.get(bar.symbol) ?? [];
+    list.push(bar);
+    bySymbol.set(bar.symbol, list);
+  }
+
+  const series: SeriesBars[] = [];
+  for (const [symbol, list] of bySymbol) {
+    // Oldest first, newest last — the order `classifyRegime` requires, and the
+    // order that makes the LAST element the bar at t.
+    list.sort((a, b) => (a.barDate < b.barDate ? -1 : a.barDate > b.barDate ? 1 : 0));
+    // REGIME_WINDOW + 1: the window itself is the trailing baseline, and the
+    // one extra bar is the bar being measured.
+    const closes = list.slice(-(REGIME_WINDOW + 1)).map((bar) => bar.close);
+    if (closes.length > 0) series.push({ symbol: symbol as MacroSeries, closes });
+  }
+  if (series.length === 0) return null;
+
+  return classifyRegime({
+    series,
+    sector,
+    ...(context?.sectorCommodityLegs ? { sectorCommodityLegs: context.sectorCommodityLegs } : {}),
+  });
+}
+
 /** Build a replay PlaybookInput, or null when required columns are missing. */
 export function buildReplayInput(
   signal: SignalRow,
@@ -170,6 +267,9 @@ export function buildReplayInput(
     /** Phase 3 (D1). Absent is 'off', matching the live default. */
     g5Profile?: 'off' | 'visible' | 'veto';
     fundamental?: FundamentalInput;
+    /** Phase 4 (D1). Absent is 'off', matching the live default. */
+    g7Profile?: 'off' | 'visible' | 'veto';
+    macro?: MacroInput;
   }
 ): PlaybookInput | null {
   if (
@@ -232,5 +332,9 @@ export function buildReplayInput(
     // pre-Phase-3 replay must produce the same input object as before.
     ...(options?.g5Profile ? { g5Profile: options.g5Profile } : {}),
     ...(options?.fundamental ? { fundamental: options.fundamental } : {}),
+    // Phase 4. Same spread discipline: the keys stay ABSENT when nothing was
+    // scored, so a pre-Phase-4 replay produces the same input object as before.
+    ...(options?.g7Profile ? { g7Profile: options.g7Profile } : {}),
+    ...(options?.macro ? { macro: options.macro } : {}),
   };
 }

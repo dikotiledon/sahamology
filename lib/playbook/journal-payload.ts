@@ -47,6 +47,13 @@ export function buildJournalPayload(
       // as `micro`: the key is ABSENT, not null, when there is no reading, so a
       // pre-Phase-3 row still serializes byte for byte.
       ...(gate.id === 'G5' && card.fundamental ? { fundamental: card.fundamental } : {}),
+      // Phase 4: the macro regime on the G7 row only, with the same discipline
+      // as `micro` and `fundamental` — MACHINE keys (CAUTION, no-macro-snapshot,
+      // insufficient-history) so an audit can re-score the regime from the bars
+      // rather than re-read prose, and the key is ABSENT, not null, when there
+      // was no reading. A pre-Phase-4 row therefore still serializes byte for
+      // byte, and `NOT_EVALUATED` stays distinguishable from "no macro layer".
+      ...(gate.id === 'G7' && card.macro ? { macro: card.macro } : {}),
     })),
     entry: card.entry,
     r1: card.r1,
