@@ -13,6 +13,7 @@
 
 import { sessionDateJakarta } from '@/lib/market-calendar';
 import { fetchWatchlist, fetchHistoricalSummaryPaged, type HistoricalSummaryItem } from '@/lib/stockbit';
+import { chunkDateRange, dedupeHistoryByDate } from '@/lib/stockbit-history';
 import {
   getCachedWatchlistGroups,
   getCachedWatchlistItems,
@@ -125,7 +126,12 @@ export async function runPriceHistoryBackfill(
 
   for (const symbol of symbols) {
     try {
-      const history = await fetchBars(symbol, fromDate, toDate);
+      const collected: HistoricalSummaryItem[] = [];
+      for (const [from, to] of chunkDateRange(fromDate, toDate, 365)) {
+        const window = await fetchBars(symbol, from, to);
+        collected.push(...window);
+      }
+      const history = dedupeHistoryByDate(collected);
       if (history.length === 0) continue;
       const rows = toPriceHistoryRows(symbol, history);
       await upsert(rows);

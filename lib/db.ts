@@ -837,14 +837,20 @@ export async function getSignalRecords(): Promise<
     emiten: string;
     from_date: string;
     harga: number;
+    ara: number | null;
+    arb: number;
+    total_bid: number | null;
+    total_offer: number | null;
+    bandar: string | null;
+    barang_bandar: number | null;
+    rata_rata_bandar: number;
     target_realistis: number;
     target_max: number;
-    rata_rata_bandar: number;
-    arb: number;
   }>
 > {
   const result = await query(
-    `SELECT emiten, from_date, harga, target_realistis, target_max, rata_rata_bandar, arb
+    `SELECT emiten, from_date, harga, ara, arb, total_bid, total_offer,
+            bandar, barang_bandar, rata_rata_bandar, target_realistis, target_max
      FROM stock_queries
      WHERE status = 'success'
        AND harga IS NOT NULL
@@ -856,16 +862,50 @@ export async function getSignalRecords(): Promise<
     const rawDate = r.from_date instanceof Date
       ? (r.from_date as Date).toISOString().slice(0, 10)
       : String(r.from_date).slice(0, 10);
+    const toNum = (v: unknown): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
     return {
       emiten: String(r.emiten),
       from_date: rawDate,
       harga: Number(r.harga),
+      ara: toNum(r.ara),
+      arb: Number(r.arb ?? 0),
+      total_bid: toNum(r.total_bid),
+      total_offer: toNum(r.total_offer),
+      bandar: r.bandar === null || r.bandar === undefined ? null : String(r.bandar).trim(),
+      barang_bandar: toNum(r.barang_bandar),
+      rata_rata_bandar: Number(r.rata_rata_bandar ?? 0),
       target_realistis: Number(r.target_realistis),
       target_max: Number(r.target_max ?? r.target_realistis),
-      rata_rata_bandar: Number(r.rata_rata_bandar ?? 0),
-      arb: Number(r.arb ?? 0),
     };
   });
+}
+
+/**
+ * Last 3 successful bandar codes for one emiten strictly before `asOf`,
+ * oldest first. Replay relies on these for the G1 persistence note and the
+ * G4 same-bandar streak.
+ */
+export async function getPriorBandarCodes(emiten: string, asOf: string): Promise<string[]> {
+  const result = await query(
+    `SELECT bandar, from_date
+     FROM stock_queries
+     WHERE emiten = $1
+       AND status = 'success'
+       AND from_date < $2
+       AND bandar IS NOT NULL
+       AND bandar <> ''
+     ORDER BY from_date DESC
+     LIMIT 3`,
+    [emiten.toUpperCase(), asOf]
+  );
+  return result.rows
+    .map((row) => String((row as Record<string, unknown>).bandar).trim())
+    .filter(Boolean)
+    .reverse(); // oldest first
 }
 
 // =====================================================================

@@ -11,13 +11,15 @@
  *              (stock_queries ∪ emiten_cache), or a comma-separated override.
  *
  * Each symbol is fetched with the paged historical-summary API (limit 50/day,
- * the Stockbit endpoint maximum) and upserted into price_history via ON CONFLICT
- * (emiten, date).
+ * the Stockbit endpoint maximum). The requested span is split into at-most
+ * 365-calendar-day windows because the endpoint accepts ~1 year of lookback
+ * per request; overlapping chunk boundaries are deduped by date.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fetchHistoricalSummaryPaged, HistoricalSummaryItem } from '../lib/stockbit';
+import { chunkDateRange, dedupeHistoryByDate } from '../lib/stockbit-history';
 import { getTrackedEmitens, upsertPriceHistory } from '../lib/db';
 
 // Minimal .env.local loader (mirrors scripts/run-migrations.js) so
@@ -43,20 +45,10 @@ function option(name: string, fallback: string): string {
   return index !== -1 && process.argv[index + 1] ? process.argv[index + 1] : fallback;
 }
 
-/** Stockbit historical-summary accepts at most ~1 year of lookback per request. */
-function clampStartDate(startDate: string, endDate: string): string {
-  const end = new Date(`${endDate}T00:00:00Z`);
-  const min = new Date(end);
-  min.setUTCDate(min.getUTCDate() - 365);
-  const requested = new Date(`${startDate}T00:00:00Z`);
-  return requested < min ? min.toISOString().slice(0, 10) : startDate;
-}
-
 async function main() {
-  const rawStartDate = option('--start', '2020-01-02');
+  const startDate = option('--start', '2020-01-02');
   const endDate = option('--end', new Date().toISOString().slice(0, 10));
   const symbolsArg = option('--symbols', '');
-  const startDate = clampStartDate(rawStartDate, endDate);
 
   const symbols = symbolsArg
     ? symbolsArg.split(',').map((s: string) => s.trim().toUpperCase()).filter(Boolean)
@@ -67,20 +59,25 @@ async function main() {
     process.exit(1);
   }
 
+  const chunks = chunkDateRange(startDate, endDate, 365);
+  if (chunks.length === 0) {
+    console.error(`Invalid date range: ${startDate} .. ${endDate}`);
+    process.exit(1);
+  }
+
   console.log(
-    `Backfilling ${symbols.length} symbols from ${startDate} to ${endDate}` +
-    (startDate !== rawStartDate ? ` (start clamped from ${rawStartDate}; API max ~1 year lookback)` : '')
+    `Backfilling ${symbols.length} symbols from ${startDate} to ${endDate} in ${chunks.length} window(s)`
   );
   let inserted = 0;
 
   for (const symbol of symbols) {
     try {
-      const bars: HistoricalSummaryItem[] = await fetchHistoricalSummaryPaged(
-        symbol,
-        startDate,
-        endDate,
-        50
-      );
+      const collected: HistoricalSummaryItem[] = [];
+      for (const [from, to] of chunks) {
+        const bars = await fetchHistoricalSummaryPaged(symbol, from, to, 50);
+        collected.push(...bars);
+      }
+      const bars = dedupeHistoryByDate(collected);
       if (bars.length === 0) {
         console.log(`  ${symbol}: no bars`);
         continue;
