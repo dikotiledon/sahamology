@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-09-28T22:18:14.673Z",
+  "baseUrl": "https://exodus.stockbit.com",
+  "note": "Recorded evidence for root gate G1. The FX leg is the MARKET USD/IDR rate used as the JISDOR proxy (plan D1); this is not BI's published reference rate.",
+  "symbols": {
+    "IHSG": {
+      "symbol": "IHSG",
+      "status": 200,
+      "type": "Index",
+      "name": "Index Harga Saham Gabungan",
+      "sector": "Indeks"
+    },
+    "USDIDR": {
+      "symbol": "USDIDR",
+      "status": 200,
+      "type": "FX",
+      "name": "US Dollar / Rupiah",
+      "sector": "Currencies"
+    },
+    "XAU": {
+      "symbol": "XAU",
+      "status": 200,
+      "type": "commodities",
+      "name": "Gold",
+      "sector": "Commodities"
+    },
+    "OIL": {
+      "symbol": "OIL",
+      "status": 200,
+      "type": "commodities",
+      "name": "Crude Oil",
+      "sector": "Commodities"
+    },
+    "BRENT": {
+      "symbol": "BRENT",
+      "status": 200,
+      "type": "commodities",
+      "name": "Brent Oil",
+      "sector": "Commodities"
+    },
+    "GOLD": {
+      "symbol": "GOLD",
+      "status": 200,
+      "type": "Saham",
+      "name": "Visi Telekomunikasi Infrastruktur Tbk.",
+      "sector": "Infrastruktur",
+      "note": "EXCLUDED: resolves to an IDX emiten, not a commodity (plan D13)"
+    }
+  },
+  "migrations": {
+    "keystats_snapshot": true,
+    "broker_flow_daily": true
+  },
+  "migrationsSource": "env-probe"
+}

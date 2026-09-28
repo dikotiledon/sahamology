@@ -301,6 +301,92 @@ function numOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Coerce a NUMERIC column to a finite number, or `null` when it is not one. */
+function macroNum(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+  if (!Number.isFinite(n)) throw new Error(`macro_snapshot column is not numeric: ${String(value)}`);
+  return n;
+}
+
+/**
+ * Phase 4 G7 — read one macro bar as of a signal date.
+ *
+ * POINT-IN-TIME, AND IT IS NOT OPTIONAL (plan D7). The predicate is
+ * `bar_date <= $2`, and the row returned is the NEWEST such bar. IDX trades
+ * Mon-Fri minus holidays while USDIDR emits a bar every calendar day, so the
+ * series do not share a calendar and an exact-date join would silently drop
+ * every weekend FX bar. The as-of join is the only correct way to line a macro
+ * leg up with a signal date.
+ *
+ * The failure this accessor exists to prevent is lookahead: a replay grading a
+ * signal dated D with a bar dated after D. That is the single error that
+ * silently inflates every backtest, because nothing about it looks wrong in
+ * the output — the numbers are all real, they are just from the future.
+ *
+ * `LIMIT 1` with `ORDER BY bar_date DESC` under that predicate is the whole
+ * contract. There is deliberately no `bar_date >= $2` anywhere: that would
+ * make the accessor look "complete" while reading the wrong side of the date.
+ *
+ * Returns `null` when nothing was captured at or before `asOf`, so the
+ * classifier can distinguish "no data" from "data with no caution" and fail
+ * open to NOT_EVALUATED instead of inventing a neutral reading.
+ */
+export async function getMacroSnapshot(
+  symbol: string,
+  asOf: string,
+): Promise<{ symbol: string; barDate: string; close: number; volume: number; value: number } | null> {
+  const result = await query(
+    `SELECT symbol, bar_date, close, volume, value
+     FROM macro_snapshot
+     WHERE symbol = $1 AND bar_date <= $2
+     ORDER BY bar_date DESC
+     LIMIT 1`,
+    [symbol.toUpperCase(), asOf],
+  );
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0] as Record<string, unknown>;
+  return {
+    symbol: String(row.symbol),
+    barDate: ymdOf(row.bar_date),
+    close: macroNum(row.close),
+    volume: macroNum(row.volume),
+    value: macroNum(row.value),
+  };
+}
+
+/**
+ * Phase 4 G7 — read the window of macro bars a classifier baseline needs.
+ *
+ * Returns the `limit` newest bars at or before `asOf`, OLDEST FIRST, so the
+ * caller's lookback reads the PRIOR sessions relative to the head. The same
+ * `bar_date <= asOf` boundary applies; a baseline built from any bar after the
+ * signal date is lookahead, however it is later aggregated.
+ *
+ * `null` rows are dropped by the query itself, so an unpriceable bar can never
+ * enter a baseline as a synthetic zero.
+ */
+export async function getMacroSnapshotWindow(
+  symbol: string,
+  asOf: string,
+  limit: number,
+): Promise<Array<{ symbol: string; barDate: string; close: number }>> {
+  const bounded = Math.max(1, Math.trunc(limit));
+  const result = await query(
+    `SELECT symbol, bar_date, close
+     FROM macro_snapshot
+     WHERE symbol = $1 AND bar_date <= $2
+     ORDER BY bar_date DESC
+     LIMIT $3`,
+    [symbol.toUpperCase(), asOf, bounded],
+  );
+  return result.rows
+    .map((row) => {
+      const r = row as Record<string, unknown>;
+      return { symbol: String(r.symbol), barDate: ymdOf(r.bar_date), close: macroNum(r.close) };
+    })
+    .reverse();
+}
+
 /**
  * Phase 3 G5 — persist one emiten's captured KeyStats items.
  *
