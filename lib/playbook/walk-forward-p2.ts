@@ -433,6 +433,182 @@ export function evaluatePhase3ShipGate(args: {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Phase 4 ship gate (D14)
+// ---------------------------------------------------------------------------
+
+export const MACRO_BOUNDS = {
+  /**
+   * A G7 hold that fires on more than a third of entries is a bug, not a
+   * regime. The bound is LOOSER than the Phase 3 veto cap (0.10) on purpose:
+   * G7 is a contextual overlay, not a filter, so a well-calibrated bound may
+   * legitimately hold a meaningful share of otherwise-valid setups. What it
+   * must never do is hold nearly all of them — that is collapse, and the
+   * noCollapse condition already catches it.
+   */
+  maxHoldRate: 1 / 3,
+  /**
+   * The Phase 4 comparison is only meaningful if most signals actually got a
+   * regime reading. Below this, "Phase 4 beat Phase 3" would really mean "we
+   * dropped the rows that happened to fall on calm days" — and since macro
+   * state is exactly what selects for adverse days, that is not a neutral
+   * sample loss, it is a survivorship bias pointed the wrong way.
+   */
+  minMacroScoredRate: 0.9,
+  /**
+   * Degraded macro captures are repairable but must not silently become a
+   * scored sample. Mirrors the Phase 2 and Phase 3 caps.
+   */
+  maxMacroIncompleteRate: 0.25,
+} as const;
+
+export const PHASE4_SAMPLE_FEASIBILITY = {
+  /** Same 30-ENTER floor as every prior phase. */
+  minOosEnterPhase4: 30,
+  /**
+   * The 0.60 no-collapse guard is measured against the Phase 3 baseline, so
+   * that baseline must itself clear 30 / 0.60 = 50 OOS ENTERs before the ratio
+   * means anything.
+   */
+  minOosEnterPhase3Baseline: Math.ceil(30 / 0.6),
+  noCollapseRatio: 0.6,
+} as const;
+
+export interface Phase4ShipConditions {
+  beatExpectancy: boolean;
+  beatPF: boolean;
+  sampleFloorMet: boolean;
+  noCollapse: boolean;
+  macroCoverageMet: boolean;
+  incompleteCapMet: boolean;
+  raisePlausibilityMet: boolean;
+  unscoredCapMet: boolean;
+}
+
+export interface Phase4ShipGateResult {
+  verdict: ShipVerdict;
+  sampleFeasible: boolean;
+  conditions: Phase4ShipConditions;
+  oosEnterPhase3: number;
+  oosEnterPhase4: number;
+  held: number;
+  holdRate: number;
+  reasons: string[];
+}
+
+/** Phase 4 coverage, mirroring {@link FundamentalCoverage} for the macro layer. */
+export interface MacroCoverage {
+  /** Share of the eligible set that got a scored regime reading. */
+  macroScoredRate: number;
+  /** Share of the eligible set whose macro capture degraded. */
+  macroIncompleteRate: number;
+}
+
+/**
+ * The Phase 4 gate, PAIRED against the Phase 3 baseline on identical signals.
+ *
+ * Written as its own function for the same D13 reason as Phase 3: an additive
+ * parameter would put a Phase 4 concept inside the function that produces the
+ * shipped Phase 2 and Phase 3 verdicts, and a caller that forgot to pass it
+ * would get a silent PASS-shaped result.
+ *
+ * The `raisePlausibilityMet` condition replaces Phase 3's veto cap and is
+ * deliberately NOT part of `sampleFeasible`. A hold rate is only interpretable
+ * once the sample can support it — before the floor, "0 holds" is what a tiny
+ * sample looks like, not a clean bill of health.
+ */
+export function evaluatePhase4ShipGate(args: {
+  coverage: CoverageSummary;
+  macroCoverage: MacroCoverage;
+  phase3: SystemScore;
+  phase4: SystemScore;
+  /** ENTERs on system (4) that the G7 hold removed, for the plausibility check. */
+  held: number;
+}): Phase4ShipGateResult {
+  const { coverage, macroCoverage, phase3, phase4, held } = args;
+  const reasons: string[] = [];
+
+  const baselineHasSignal = phase3.enterN >= PHASE4_SAMPLE_FEASIBILITY.minOosEnterPhase3Baseline;
+  const sampleFloorMet = phase4.enterN >= PHASE4_SAMPLE_FEASIBILITY.minOosEnterPhase4;
+  const noCollapse = phase4.enterN >= PHASE4_SAMPLE_FEASIBILITY.noCollapseRatio * phase3.enterN;
+  const sampleFeasible = sampleFloorMet && baselineHasSignal;
+
+  const beatExpectancy =
+    phase3.expectancyR !== null &&
+    phase4.expectancyR !== null &&
+    phase4.expectancyR > phase3.expectancyR;
+  const beatPF =
+    phase3.profitFactor !== null &&
+    phase4.profitFactor !== null &&
+    phase4.profitFactor >= phase3.profitFactor;
+
+  const macroCoverageMet = macroCoverage.macroScoredRate >= MACRO_BOUNDS.minMacroScoredRate;
+  const incompleteCapMet =
+    macroCoverage.macroIncompleteRate <= MACRO_BOUNDS.maxMacroIncompleteRate;
+  const unscoredCapMet = coverage.unscoredShare <= COVERAGE_BOUNDS.maxUnscoredShare;
+
+  // A hold rate is only interpretable once the sample can support it. See the
+  // Phase 3 note: deliberately NOT part of sampleFeasible.
+  const scoredN = phase4.enterN + held;
+  const holdRate = scoredN > 0 ? held / scoredN : 0;
+  const raisePlausibilityMet = holdRate <= MACRO_BOUNDS.maxHoldRate;
+
+  const conditions: Phase4ShipConditions = {
+    beatExpectancy,
+    beatPF,
+    sampleFloorMet,
+    noCollapse,
+    macroCoverageMet,
+    incompleteCapMet,
+    raisePlausibilityMet,
+    unscoredCapMet,
+  };
+
+  if (!beatExpectancy) reasons.push('expectancy(4) did not beat expectancy(3)');
+  if (!beatPF) reasons.push('PF(4) did not reach PF(3)');
+  if (!sampleFloorMet) {
+    reasons.push(
+      `enterN(4)=${phase4.enterN} below the ${PHASE4_SAMPLE_FEASIBILITY.minOosEnterPhase4} floor`,
+    );
+  }
+  if (!noCollapse) {
+    reasons.push(
+      `enterN(4)=${phase4.enterN} below ${PHASE4_SAMPLE_FEASIBILITY.noCollapseRatio} x enterN(3)=${phase3.enterN} (sample collapse)`,
+    );
+  }
+  if (!macroCoverageMet) {
+    reasons.push(
+      `macroScoredRate ${macroCoverage.macroScoredRate.toFixed(3)} < ${MACRO_BOUNDS.minMacroScoredRate}`,
+    );
+  }
+  if (!incompleteCapMet) {
+    reasons.push(
+      `macroIncompleteRate ${macroCoverage.macroIncompleteRate.toFixed(3)} > ${MACRO_BOUNDS.maxMacroIncompleteRate}`,
+    );
+  }
+  if (!raisePlausibilityMet) {
+    reasons.push(`holdRate ${holdRate.toFixed(3)} > ${MACRO_BOUNDS.maxHoldRate.toFixed(3)}`);
+  }
+  if (!unscoredCapMet) reasons.push(`unscoredShare ${coverage.unscoredShare.toFixed(3)} > 0.25`);
+
+  const verdict: ShipVerdict = !sampleFeasible
+    ? 'VERDICT_UNREACHABLE'
+    : Object.values(conditions).every(Boolean)
+      ? 'PASS'
+      : 'FAIL';
+
+  return {
+    verdict,
+    sampleFeasible,
+    conditions,
+    oosEnterPhase3: phase3.enterN,
+    oosEnterPhase4: phase4.enterN,
+    held,
+    holdRate,
+    reasons,
+  };
+}
+
 /** Re-exported so the reporter cannot drift from the scorer (D11). */
 export { roundTripCostRate };
 export type { CostModel };

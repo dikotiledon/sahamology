@@ -1200,6 +1200,15 @@ export async function getSignalRecords(): Promise<
     // A pre-Phase-3 row has this null, which replay reads as "not scored"
     // rather than fabricating a neutral verdict.
     fundamentals_incomplete: boolean | null;
+    // ---- Phase 4 (D11/D14). Same discipline as the two above: the macro
+    // capture fails independently, so its degradation must not be conflated
+    // with a missing acc/dist or keystats read. A pre-Phase-4 row has this
+    // null, which replay reads as "not scored" rather than a neutral regime.
+    macro_incomplete: boolean | null;
+    // The emiten's sector, as captured on the signal row. Read-only for the
+    // regime classifier's commodity leg; null on pre-Phase-4 rows, which the
+    // replay treats as "unknown sector" = unscored rather than "no exposure".
+    sector: string | null;
   }>
 > {
   const result = await query(
@@ -1207,7 +1216,7 @@ export async function getSignalRecords(): Promise<
             bandar, barang_bandar, rata_rata_bandar, target_realistis, target_max,
             accdist_overall, accdist_top1, accdist_top3, accdist_top5, accdist_avg,
             broker_total_buyer, broker_total_seller, broker_p, capture_incomplete,
-            fundamentals_incomplete
+            fundamentals_incomplete, macro_incomplete, sector
      FROM stock_queries
      WHERE status = 'success'
        AND harga IS NOT NULL
@@ -1246,6 +1255,8 @@ export async function getSignalRecords(): Promise<
       capture_incomplete: r.capture_incomplete === true || r.capture_incomplete === 'true',
       fundamentals_incomplete:
         r.fundamentals_incomplete === true || r.fundamentals_incomplete === 'true',
+      macro_incomplete: r.macro_incomplete === true || r.macro_incomplete === 'true',
+      sector: typeof r.sector === 'string' && r.sector.trim() !== '' ? r.sector.trim() : null,
     };
   });
 }

@@ -1,0 +1,156 @@
+{
+  "generatedAt": "2026-09-28T23:32:26.955Z",
+  "protocol": {
+    "horizon": 5,
+    "costRate": 0.006,
+    "split": "purged 80/20 chronological, 5-trading-day purge gap",
+    "comparator": "phase-3-card, paired on identical signal rows, tape snapshots and horizon bars",
+    "treatment": "G7 macro regime hold, armed, single-notch ENTER to WAIT downgrade only",
+    "pointInTime": "macro_snapshot read at as_of = signal.from_date; never re-fetched, never clamped forward",
+    "legsRead": [
+      "IHSG",
+      "USDIDR",
+      "XAU"
+    ],
+    "legsSkipped": [
+      "OIL",
+      "BRENT"
+    ]
+  },
+  "nSignals": 13,
+  "nEligibleDates": 0,
+  "nIS": 0,
+  "nPurged": 0,
+  "nOOS": 0,
+  "nTruncated": 13,
+  "nHeldAllDates": 0,
+  "micro": {
+    "denominator": 0,
+    "accdistUnknownRate": 0,
+    "flowCoverageRate": 0,
+    "unscoredShare": 0,
+    "sampleFeasible": false
+  },
+  "macro": {
+    "macroScoredRate": 0,
+    "macroIncompleteRate": 0
+  },
+  "systems": {
+    "phase-1-card": {
+      "is": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      },
+      "oos": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      }
+    },
+    "phase-2-card": {
+      "is": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      },
+      "oos": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      }
+    },
+    "phase-3-card": {
+      "is": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      },
+      "oos": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      }
+    },
+    "phase-4-card": {
+      "is": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      },
+      "oos": {
+        "enterN": 0,
+        "scoredN": 0,
+        "expectancyR": null,
+        "profitFactor": null,
+        "winRate": null,
+        "maxDrawdownR": null
+      }
+    }
+  },
+  "ship": {
+    "verdict": "VERDICT_UNREACHABLE",
+    "sampleFeasible": false,
+    "conditions": {
+      "beatExpectancy": false,
+      "beatPF": false,
+      "sampleFloorMet": false,
+      "noCollapse": true,
+      "macroCoverageMet": false,
+      "incompleteCapMet": true,
+      "raisePlausibilityMet": true,
+      "unscoredCapMet": true
+    },
+    "oosEnterPhase3": 0,
+    "oosEnterPhase4": 0,
+    "held": 0,
+    "holdRate": 0,
+    "reasons": [
+      "expectancy(4) did not beat expectancy(3)",
+      "PF(4) did not reach PF(3)",
+      "enterN(4)=0 below the 30 floor",
+      "macroScoredRate 0.000 < 0.9"
+    ]
+  },
+  "sampleFeasibility": {
+    "phase3": {
+      "minOosEnterPhase3": 30,
+      "minOosEnterPhase2Baseline": 50,
+      "noCollapseRatio": 0.6
+    },
+    "phase4": {
+      "minOosEnterPhase4": 30,
+      "minOosEnterPhase3Baseline": 50,
+      "noCollapseRatio": 0.6
+    }
+  },
+  "coverageBounds": {
+    "maxVetoRate": 0.1,
+    "minFundamentalsScoredRate": 0.9,
+    "maxFundamentalsIncompleteRate": 0.25,
+    "maxHoldRate": 0.3333333333333333,
+    "minMacroScoredRate": 0.9,
+    "maxMacroIncompleteRate": 0.25
+  }
+}
