@@ -55,3 +55,6 @@ artifacts/g4-walkforward.json
 .hermes/
 .unlazy/
 .superpowers/
+
+# local watch-forward build artifact
+scripts/.g4-watch.cjs
