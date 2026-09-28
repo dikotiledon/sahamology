@@ -52,6 +52,7 @@ npm run migrate       # apply supabase/*.sql via DATABASE_URL
 npm run backfill:history -- --start 2020-01-02 --symbols BBRI,TLKM   # populate price_history (CLI fallback)
 npm run baseline:backtest -- --horizon 5                              # Adi-only expectancy baseline
 npm run walkforward:g4                                               # Phase 1 vs Phase 0 card, purged 80/20 OOS
+npm run walkforward:p2                                               # Phase 2 vs Phase 1 card, 7-condition ship gate
 ```
 
 ### Continuous integration
@@ -88,6 +89,41 @@ The three data CLI scripts (`backfill:history`, `baseline:backtest`,
 `walkforward:g4`) require a reachable `DATABASE_URL` and a valid Stockbit JWT
 (`STOCKBIT_JWT_TOKEN`). The baseline script only makes sense after at least one
 watchlist analysis has run and price history has been backfilled.
+
+`walkforward:p2` is a reporter, not a CI gate: it always prints a verdict on
+its last line and `npm test` never greps it. If the database is unreachable it
+exits 1 and prints **no** `SHIP_GATE` token at all — an environment error is not
+a verdict.
+
+### Phase 2 persistence & micro notes
+
+Phase 2 deepens **G1** with three micro inputs — acc/dist, same-bandar
+persistence, and single-broker flow. **It ships default-off.**
+`PLAYBOOK_G1_PROFILE` defaults to `phase-1`, so a live install behaves exactly
+as it did in Phase 1 until the ship gate passes. Set
+`PLAYBOOK_G1_PROFILE=phase-2` only for parallel backtests, or to flip live
+after the gate clears.
+
+- **Capture is the real work.** Stockbit publishes no historical acc/dist or
+  broker-flow data, so the first ~14 months of `stock_queries` rows simply have
+  no micro columns. The daily watchlist job fills them from the `marketdetectors`
+  response it already fetched (zero extra HTTP calls, so the 4/s limiter is
+  untouched) plus one broker-flow call for the top accumulator.
+- **Degraded captures are repairable.** A 429 or timeout writes
+  `capture_incomplete = true` instead of a silent `null`, and
+  `tsx scripts/repair-captures.ts` refetches only the missing micro data —
+  never re-prices, never re-decides the stance. Such rows stay unscored for the
+  Phase 2 comparison until repaired, so a transient network fault does not
+  permanently poison a signal.
+- **The three coverage rates share one denominator.** `E` is the OOS eligible
+  signal set, fixed *before* any gate runs, so coverage cannot be flattered by
+  a denominator chosen after seeing the result.
+- **`SHIP_GATE=VERDICT_UNREACHABLE` is a normal, expected result.** The ship
+  gate needs ≥30 OOS Phase 2 ENTERs *and* ≥50 OOS Phase 1 ENTERs (the 0.60
+  no-collapse guard forces the baseline to clear `30 / 0.60 = 50`). At 8
+  emitens that is roughly 300 unique eligible dates, about 14 months. Until
+  then the reporter says it cannot judge — it never reports `FAIL` for a sample
+  it is not yet large enough to measure.
 
 ### Phase 1 tape filter notes
 

@@ -26,6 +26,49 @@ const PATTERN_LABEL: Record<string, string> = {
   break_prior_high: 'Break Prior High (P3)',
 };
 
+/** D15: micro labels are Indonesian; the state keys stay machine English. */
+const ACCDIST_LABEL: Record<string, { label: string; color: string }> = {
+  ACC: { label: 'Big Acc', color: '#16a34a' },
+  SMALL_ACC: { label: 'Small Acc', color: '#4ade80' },
+  NEUTRAL: { label: 'Neutral', color: '#94a3b8' },
+  SMALL_DIST: { label: 'Small Dist', color: '#fb923c' },
+  DIST: { label: 'Big Dist', color: '#dc2626' },
+  UNKNOWN: { label: 'Tidak tersedia', color: '#64748b' },
+};
+
+const TIER_LABEL: Record<string, { label: string; color: string }> = {
+  spike: { label: 'Spike (1)', color: '#f59e0b' },
+  building: { label: 'Bertahan 2', color: '#38bdf8' },
+  persistent: { label: 'Persist 3', color: '#16a34a' },
+};
+
+const FLOW_LABEL: Record<string, { label: string; color: string }> = {
+  ok: { label: 'Net buyer', color: '#16a34a' },
+  neutral: { label: 'Netral', color: '#94a3b8' },
+  bad: { label: 'Net seller', color: '#dc2626' },
+  NOT_EVALUATED: { label: 'Tidak dievaluasi', color: '#64748b' },
+};
+
+function Badge({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '0.1rem 0.45rem',
+        borderRadius: '999px',
+        background: `${color}26`,
+        border: `1px solid ${color}`,
+        color,
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        marginRight: '0.35rem',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 export default function DecisionCard({ card, emiten, priorBandar }: DecisionCardProps) {
   const style = STANCE_STYLE[card.stance];
 
@@ -114,6 +157,48 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
           <div style={{ opacity: 0.7 }}>
             Sumber invalidasi: {card.tape.invalidationSource === 'atr' ? 'ATR (Phase 1)' : 'Interim (Phase 0)'}
           </div>
+        </div>
+      )}
+
+      {card.micro && (
+        <div
+          style={{
+            margin: '0.75rem 0 0',
+            padding: '0.6rem 0.75rem',
+            borderRadius: '8px',
+            background: '#1e293b',
+            fontSize: '0.8rem',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Persistensi &amp; Micro</div>
+          <div>
+            <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Akumulasi:</span>
+            <Badge color={(ACCDIST_LABEL[card.micro.accdistState] ?? ACCDIST_LABEL.UNKNOWN).color}>
+              {(ACCDIST_LABEL[card.micro.accdistState] ?? ACCDIST_LABEL.UNKNOWN).label}
+            </Badge>
+            {!card.micro.accdistEvaluated && (
+              <span style={{ opacity: 0.7 }}>tidak dievaluasi</span>
+            )}
+          </div>
+          <div>
+            <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Streak:</span>
+            {card.micro.tier ? (
+              <Badge color={TIER_LABEL[card.micro.tier].color}>{TIER_LABEL[card.micro.tier].label}</Badge>
+            ) : (
+              <span style={{ opacity: 0.7 }}>—</span>
+            )}
+            {card.micro.bandCode && (
+              <span style={{ opacity: 0.7 }}>bandar {card.micro.bandCode}</span>
+            )}
+          </div>
+          <div>
+            <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Aliran broker:</span>
+            <Badge color={FLOW_LABEL[card.micro.flowState].color}>
+              {FLOW_LABEL[card.micro.flowState].label}
+            </Badge>
+          </div>
+          <div style={{ opacity: 0.7 }}>Profil G1: {card.micro.g1Profile === 'phase-2' ? 'Phase 2' : 'Phase 1'}</div>
         </div>
       )}
     </div>

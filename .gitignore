@@ -50,6 +50,7 @@ stockbit-token-extension/background.js
 # runtime artifacts
 artifacts/adi-baseline.json
 artifacts/g4-walkforward.json
+artifacts/phase2-walkforward.json
 
 # local plan/ledger scratch (not product code)
 .hermes/

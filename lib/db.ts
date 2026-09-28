@@ -966,11 +966,26 @@ export async function getSignalRecords(): Promise<
     rata_rata_bandar: number;
     target_realistis: number;
     target_max: number;
+    // ---- Phase 2 micro columns (D3). A pre-Phase-2 row has all of these null,
+    // which `buildReplayMicro` correctly reads as "not scored" rather than
+    // fabricating a neutral verdict. Omitting them here made every replayed
+    // signal invisible to system (3) regardless of what the daily job captured.
+    accdist_overall: string | null;
+    accdist_top1: string | null;
+    accdist_top3: string | null;
+    accdist_top5: string | null;
+    accdist_avg: string | null;
+    broker_total_buyer: number | null;
+    broker_total_seller: number | null;
+    broker_p: number | null;
+    capture_incomplete: boolean | null;
   }>
 > {
   const result = await query(
     `SELECT emiten, from_date, harga, ara, arb, total_bid, total_offer,
-            bandar, barang_bandar, rata_rata_bandar, target_realistis, target_max
+            bandar, barang_bandar, rata_rata_bandar, target_realistis, target_max,
+            accdist_overall, accdist_top1, accdist_top3, accdist_top5, accdist_avg,
+            broker_total_buyer, broker_total_seller, broker_p, capture_incomplete
      FROM stock_queries
      WHERE status = 'success'
        AND harga IS NOT NULL
@@ -998,6 +1013,15 @@ export async function getSignalRecords(): Promise<
       rata_rata_bandar: Number(r.rata_rata_bandar ?? 0),
       target_realistis: Number(r.target_realistis),
       target_max: Number(r.target_max ?? r.target_realistis),
+      accdist_overall: r.accdist_overall === null || r.accdist_overall === undefined ? null : String(r.accdist_overall),
+      accdist_top1: r.accdist_top1 === null || r.accdist_top1 === undefined ? null : String(r.accdist_top1),
+      accdist_top3: r.accdist_top3 === null || r.accdist_top3 === undefined ? null : String(r.accdist_top3),
+      accdist_top5: r.accdist_top5 === null || r.accdist_top5 === undefined ? null : String(r.accdist_top5),
+      accdist_avg: r.accdist_avg === null || r.accdist_avg === undefined ? null : String(r.accdist_avg),
+      broker_total_buyer: toNum(r.broker_total_buyer),
+      broker_total_seller: toNum(r.broker_total_seller),
+      broker_p: toNum(r.broker_p),
+      capture_incomplete: r.capture_incomplete === true || r.capture_incomplete === 'true',
     };
   });
 }

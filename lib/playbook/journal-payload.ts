@@ -37,6 +37,10 @@ export function buildJournalPayload(
       pass: gate.pass,
       skipped: gate.skipped ?? false,
       reason: gate.reason,
+      // M14: the micro state that produced the stance, on the G1 row only, with
+      // machine keys. The spread keeps the key ABSENT (not null) when there is
+      // no micro view, so every pre-Phase-2 journal row serializes identically.
+      ...(gate.id === 'G1' && card.micro ? { micro: card.micro } : {}),
     })),
     entry: card.entry,
     r1: card.r1,

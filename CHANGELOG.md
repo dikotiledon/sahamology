@@ -2,6 +2,36 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.8.0 (draft) — Phase 2 Persistence & Micro
+
+Phase 2 "Persistence & Micro" — akumulasi/distribusi, persistensi bandar
+berulang, dan aliran broker tunggal sebagai pendalaman G1. **Default-off.**
+
+- **Substrat capture (`lib/micro/`)**: kontrak acc/dist tertutup 6-state
+  (`parseAccDist`, tanpa substring matching sehingga perubahan kosakata vendor
+  tidak diam-diam mengarahkan gate), tier persistensi (`spike` / `building` /
+  `persistent`, jendela 3 print), dan `flowState` 5-sesi
+  (`flowWindow=5`, `consistencyPct>=60`, `activeDays>=3`).
+- **Mikro pada kartu**: G1 di bawah profil `phase-2` menolak `DIST` sebagai
+  `AVOID`, menunda `spike` (perlu konfirmasi hari kedua) dan flow `bad`,
+  semuanya **setelah** cek kategori broker — jadi broker ritel ditolak lebih
+  dulu, bukan setelah data mikro dibaca.
+- **Nol panggilan HTTP tambahan**: job watchlist harian memakai ulang respons
+  `marketdetectors` yang sudah diambil; hanya satu panggilan flow untuk
+  akumulator teratas. Limiter 4/detik tidak tersentuh.
+- **Perbaikan tangkapan (D18)**: fetch gagal (429/timeout) menandai
+  `capture_incomplete = true` alih-alih menulis `null` senyap;
+  `scripts/repair-captures.ts` melengkapi data mikro tanpa mengubah harga
+  maupun stance. Baris yang rusak tetap unscored sampai diperbaiki.
+- **Jurnal & UI**: `DecisionCard` menampilkan blok "Persistensi &
+  Micro" (badge Akumulasi / Streak / Aliran broker); payload jurnal G1
+  menyertakan snapshot mikro.
+- **Ship gate 7 kondisi** + `VERDICT_UNREACHABLE`: ONS minimum 30 Phase 2
+  dan 50 Phase 1 (dipaksa oleh rasio no-collapse 0.60), membutuhkan ~300
+  tanggal unik (±14 bulan) sebelum gate bisa dihakimi. `VERDICT_UNREACHABLE`
+  — bukan `FAIL` — dicetak selama periode itu, supaya kegagalan sample
+  tidak dilatih untuk diabaikan.
+
 ### Unreleased / v0.7.0 (draft) — Phase 1 Tape Filter
 
 Phase 1 "Tape Filter" — ATR(14) invalidation, 20-EMA trend gate, and the

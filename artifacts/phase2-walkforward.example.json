@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-10-02T09:15:00.000Z",
+  "protocol": {
+    "horizon": 5,
+    "costRate": 0.006,
+    "split": "purged 80/20 chronological, 5-trading-day purge gap",
+    "comparator": "phase-1-card, paired on identical signal rows and horizon bars",
+    "frozen": "flowWindow=5, flowConsistencyFloor=60, flowMinActiveDays=3, persistence window=3"
+  },
+  "nSignals": 318,
+  "nEligibleDates": 61,
+  "nIS": 48,
+  "nPurged": 5,
+  "nOOS": 8,
+  "nTruncated": 11,
+  "micro": {
+    "denominator": 42,
+    "accdistUnknownRate": 0.0238,
+    "flowCoverageRate": 0.8571,
+    "unscoredShare": 0.0476,
+    "sampleFeasible": false
+  },
+  "systems": {
+    "phase-1-card": {
+      "is": { "enterN": 61, "scoredN": 60, "expectancyR": 0.04, "profitFactor": 1.09, "winRate": 0.36, "maxDrawdownR": 4.1 },
+      "oos": { "enterN": 19, "scoredN": 19, "expectancyR": 0.11, "profitFactor": 1.28, "winRate": 0.42, "maxDrawdownR": 1.9 }
+    },
+    "phase-2-card": {
+      "is": { "enterN": 44, "scoredN": 43, "expectancyR": 0.09, "profitFactor": 1.24, "winRate": 0.44, "maxDrawdownR": 3.0 },
+      "oos": { "enterN": 14, "scoredN": 14, "expectancyR": 0.19, "profitFactor": 1.41, "winRate": 0.5, "maxDrawdownR": 1.4 }
+    }
+  },
+  "ship": {
+    "verdict": "VERDICT_UNREACHABLE",
+    "sampleFeasible": false,
+    "conditions": {
+      "beatExpectancy": true,
+      "beatPF": true,
+      "sampleFloorMet": false,
+      "noCollapse": true,
+      "accdistCoverageMet": true,
+      "flowCoverageMet": true,
+      "unscoredCapMet": true
+    },
+    "oosEnterPhase1": 19,
+    "oosEnterPhase2": 14,
+    "reasons": ["enterN(3)=14 below the 30 floor"]
+  },
+  "sampleFeasibility": {
+    "minOosEnterPhase2": 30,
+    "minOosEnterPhase1": 50,
+    "noCollapseRatio": 0.6
+  },
+  "coverageBounds": {
+    "maxAccdistUnknownRate": 0.1,
+    "minFlowCoverageRate": 0.8,
+    "maxUnscoredShare": 0.25
+  },
+  "note": "EXAMPLE FILE — illustrative shape only. Values are synthetic, not measured from the operator database. A real run overwrites artifacts/phase2-walkforward.json (gitignored). The example deliberately shows a VERDICT_UNREACHABLE run where the coverage conditions are all green but the OOS ENTER sample is still too small to judge the gate — the expected state until roughly 300 unique eligible dates accumulate."
+}
