@@ -6,6 +6,7 @@ import {
   evaluateShipGate,
   scoreSystem,
   SAMPLE_FEASIBILITY,
+  COVERAGE_BOUNDS,
 } from './walk-forward-p2';
 
 /**
@@ -80,6 +81,52 @@ describe('§6.1 — the three coverage rates share ONE denominator E', () => {
       { accdistState: 'ACC' as const, flowEvaluated: true, scored: true, unscoredReason: 'fail-closed-book' as const },
     ];
     assert.equal(computeMicroCoverage(rows).unscoredShare, 0, 'neither counts against the micro cap');
+  });
+
+  it('a gate REJECTION is not a data-availability miss', () => {
+    // Regression pin for a real defect found while wiring the reporter. The
+    // coverage row was built as `scored: card3.stance === 'ENTER'`, charging
+    // every G1 rejection to unscoredShare. On 100 fully-captured signals where
+    // the gate ENTERs on only 30, that form reported unscoredShare = 1.0 — so a
+    // gate working exactly as designed failed its own 0.25 cap purely for
+    // being strict. `scored` must mean "the micro layer had data".
+    const fullyCaptured = Array.from({ length: 100 }, () => ({
+      accdistState: 'ACC' as const,
+      flowEvaluated: true,
+      scored: true,
+    }));
+    const summary = computeMicroCoverage(fullyCaptured);
+    assert.equal(summary.denominator, 100);
+    assert.equal(summary.accdistUnknownRate, 0);
+    assert.equal(summary.flowCoverageRate, 1);
+    assert.equal(summary.unscoredShare, 0);
+
+    // Structural half of the pin, and the part the arithmetic test alone cannot
+    // catch: CoverageRow has NO field carrying a gate result. A stance cannot
+    // reach the coverage arithmetic even by mistake, so `scored` is structurally
+    // forced to describe data presence alone.
+    const fields = Object.keys(fullyCaptured[0]).sort();
+    assert.deepEqual(fields, ['accdistState', 'flowEvaluated', 'scored']);
+    for (const forbidden of ['stance', 'enterN', 'enter', 'card', 'g1Profile', 'failedGates']) {
+      assert.ok(
+        !fields.includes(forbidden),
+        `CoverageRow must not carry ${forbidden}: coverage measures capture, not gate results`
+      );
+    }
+  });
+
+  it('a genuinely missing micro reading IS charged as unscored', () => {
+    // The flip side: if `scored` were simply hardcoded true, a capture hole
+    // would never be counted and the 0.25 cap would be unmeetable.
+    const halfMissing = Array.from({ length: 100 }, (_, i) =>
+      i % 2 === 0
+        ? { accdistState: 'ACC' as const, flowEvaluated: true, scored: true }
+        : { accdistState: 'UNKNOWN' as const, flowEvaluated: false, scored: false }
+    );
+    const summary = computeMicroCoverage(halfMissing);
+    assert.equal(summary.accdistUnknownRate, 0.5);
+    assert.equal(summary.unscoredShare, 0.5);
+    assert.ok(summary.unscoredShare > COVERAGE_BOUNDS.maxUnscoredShare, 'a 50% capture hole must trip the cap');
   });
 });
 
