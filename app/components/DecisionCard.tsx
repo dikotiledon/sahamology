@@ -178,7 +178,9 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
               {(ACCDIST_LABEL[card.micro.accdistState] ?? ACCDIST_LABEL.UNKNOWN).label}
             </Badge>
             {!card.micro.accdistEvaluated && (
-              <span style={{ opacity: 0.7 }}>tidak dievaluasi</span>
+              <span style={{ opacity: 0.7, whiteSpace: 'nowrap', marginLeft: '0.35rem' }}>
+                tidak dievaluasi
+              </span>
             )}
           </div>
           <div>
@@ -186,7 +188,7 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
             {card.micro.tier ? (
               <Badge color={TIER_LABEL[card.micro.tier].color}>{TIER_LABEL[card.micro.tier].label}</Badge>
             ) : (
-              <span style={{ opacity: 0.7 }}>—</span>
+              <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>—</span>
             )}
             {card.micro.bandCode && (
               <span style={{ opacity: 0.7 }}>bandar {card.micro.bandCode}</span>
