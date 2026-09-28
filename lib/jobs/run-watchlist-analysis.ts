@@ -23,6 +23,8 @@ import { buildTapeSnapshot } from '@/lib/tape/snapshot';
 import { ymdOf } from '@/lib/date-ymd';
 import {
   resolveEmitensToAnalyze,
+  selectUncapturedEmitens,
+  countCapturedEmitens,
   type WatchlistUniverseItem,
 } from './watchlist-universe';
 import type { OhlcBar } from '@/lib/tape/ohlc';
@@ -99,7 +101,38 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   const results: { emiten: string; status: string }[] = [];
   const errors: { emiten: string; error: string }[] = [];
 
-  for (const emiten of emitens) {
+  // A session that already produced signals must not be re-captured. The
+  // upsert in saveWatchlistAnalysis keys on (from_date, emiten), so a weekend,
+  // holiday, or manual re-run would silently OVERWRITE the real close-of-day
+  // signal with a stale one instead of failing loudly. `today` is already
+  // rolled back to the last closed session by sessionDateJakarta, so a
+  // non-trading-day run resolves to a date we have already recorded.
+  const toAnalyze = [...emitens];
+  let skippedCaptured = 0;
+  try {
+    const existing = await getWatchlistAnalysisHistory({
+      fromDate: today,
+      toDate: today,
+      status: 'success',
+      limit: 500,
+    });
+    const rows = (existing.data ?? []) as Array<{ emiten?: string | null }>;
+    toAnalyze.splice(0, toAnalyze.length, ...selectUncapturedEmitens(emitens, rows));
+    skippedCaptured = countCapturedEmitens(emitens, rows);
+    if (skippedCaptured > 0) {
+      console.warn(
+        `[Watchlist Job] Session ${today} already has ${skippedCaptured} recorded signal(s); ` +
+          'skipping those emitens to avoid overwriting a closed session.'
+      );
+    }
+  } catch (historyError) {
+    console.error(
+      '[Watchlist Job] Failed to check for an existing session; proceeding without the guard',
+      historyError
+    );
+  }
+
+  for (const emiten of toAnalyze) {
     console.log(`[Watchlist Job] Analyzing ${emiten}...`);
 
     try {
@@ -292,7 +325,8 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
 
   const duration = (Date.now() - startTime) / 1000;
   console.log(
-    `[Watchlist Job] Completed in ${duration}s. Success: ${results.length}, Errors: ${errors.length}`
+    `[Watchlist Job] Completed in ${duration}s. Success: ${results.length}, Errors: ${errors.length}` +
+      (skippedCaptured > 0 ? `, Skipped (already captured): ${skippedCaptured}` : '')
   );
 
   if (jobLogId) {
@@ -302,7 +336,11 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
       success_count: results.length,
       error_count: errors.length,
       error_message: hasErrors ? `${errors.length} items failed` : undefined,
-      metadata: { duration_seconds: duration, date: today },
+      metadata: {
+        duration_seconds: duration,
+        date: today,
+        skipped_already_captured: skippedCaptured,
+      },
     });
   }
 

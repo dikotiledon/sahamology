@@ -147,3 +147,35 @@ export function resolveEmitensToAnalyze(
     fallbackEmitens: fallback,
   };
 }
+
+/**
+ * Emitens that already produced a signal for the resolved session date.
+ *
+ * `sessionDateJakarta` rolls back over weekends and holidays, so a run on a
+ * non-trading day resolves to the last CLOSED session. Without this filter the
+ * job would re-analyze that date and — because saveWatchlistAnalysis upserts on
+ * (from_date, emiten) — silently OVERWRITE a real close-of-day signal with a
+ * stale one instead of leaving it intact.
+ *
+ * Matching is case- and whitespace-insensitive so a ticker stored as 'bbca'
+ * still suppresses the 'BBCA' run.
+ */
+export function selectUncapturedEmitens(
+  emitens: readonly string[],
+  capturedRows: ReadonlyArray<{ emiten?: string | null }>
+): string[] {
+  const captured = new Set<string>();
+  for (const row of capturedRows) {
+    const code = normalize(String(row?.emiten ?? ''));
+    if (code) captured.add(code);
+  }
+  return emitens.filter((code) => !captured.has(normalize(code)));
+}
+
+/** Count of emitens suppressed because the session was already recorded. */
+export function countCapturedEmitens(
+  emitens: readonly string[],
+  capturedRows: ReadonlyArray<{ emiten?: string | null }>
+): number {
+  return emitens.length - selectUncapturedEmitens(emitens, capturedRows).length;
+}

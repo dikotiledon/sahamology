@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { partitionWatchlistUniverse, resolveEmitensToAnalyze } from './watchlist-universe';
+import {
+  partitionWatchlistUniverse,
+  resolveEmitensToAnalyze,
+  selectUncapturedEmitens,
+  countCapturedEmitens,
+} from './watchlist-universe';
 
 /**
  * The Stockbit "All Watchlist" can hold non-IDX instruments (forex pairs such
@@ -81,4 +86,33 @@ test('no watchlist and no fallback yields an empty universe', () => {
   const result = resolveEmitensToAnalyze([], '');
   assert.deepEqual(result.emitens, []);
   assert.equal(result.source, 'none');
+});
+
+/**
+ * sessionDateJakarta rolls back over weekends/holidays, so a Saturday or
+ * holiday run resolves to the last CLOSED session. saveWatchlistAnalysis
+ * upserts on (from_date, emiten), so re-analyzing that date would silently
+ * OVERWRITE the real close-of-day signal. Already-captured emitens must be
+ * filtered out before the job touches them.
+ */
+test('emitens already recorded for the session are excluded from the run', () => {
+  const captured = [{ emiten: 'BBCA' }, { emiten: 'TLKM' }];
+  assert.deepEqual(selectUncapturedEmitens(['BBCA', 'BBRI', 'TLKM'], captured), ['BBRI']);
+});
+
+test('a weekend re-run on a fully captured session analyzes nothing', () => {
+  const captured = [{ emiten: 'BBCA' }, { emiten: 'BBRI' }, { emiten: 'TLKM' }];
+  assert.deepEqual(selectUncapturedEmitens(['BBCA', 'BBRI', 'TLKM'], captured), []);
+  assert.equal(countCapturedEmitens(['BBCA', 'BBRI', 'TLKM'], captured), 3);
+});
+
+test('captured-emiten matching ignores case and surrounding whitespace', () => {
+  const captured = [{ emiten: '  bbca ' }, { emiten: null }, { emiten: '' }];
+  assert.deepEqual(selectUncapturedEmitens(['BBCA', 'ASII'], captured), ['ASII']);
+  assert.equal(countCapturedEmitens(['BBCA', 'ASII'], captured), 1);
+});
+
+test('an uncaptured session leaves the universe untouched', () => {
+  assert.deepEqual(selectUncapturedEmitens(['BBCA', 'TLKM'], []), ['BBCA', 'TLKM']);
+  assert.equal(countCapturedEmitens(['BBCA', 'TLKM'], []), 0);
 });

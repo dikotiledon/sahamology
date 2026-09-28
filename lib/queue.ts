@@ -10,7 +10,10 @@ export const WATCHLIST_QUEUE_NAME = 'watchlist-analysis';
 export const STORY_QUEUE_NAME = 'story-analysis';
 export const PRICE_HISTORY_QUEUE_NAME = 'price-history-backfill';
 export const DAILY_WATCHLIST_JOB_NAME = 'run-daily';
-export const DAILY_WATCHLIST_CRON = '0 11 * * *';
+// 11:00 UTC = 18:00 WIB, well after the 15:50 IDX close. Mon–Fri only: a
+// weekend run has no broker prints and sessionDateJakarta would resolve back
+// to the last closed session, re-capturing it.
+export const DAILY_WATCHLIST_CRON = '0 11 * * 1-5';
 
 /** Resolve Redis connection options from the environment. */
 export function resolveRedisOptions(): ConnectionOptions {
