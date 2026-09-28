@@ -27,7 +27,7 @@ import { ymdOf } from '../lib/date-ymd';
 import type { OhlcBar } from '../lib/tape/ohlc';
 import { nextTradingDay, addTradingDays } from '../lib/market-calendar';
 import { scorePath, type PathBar, type PathResult } from '../lib/playbook/path-outcome';
-import { splitChronological } from '../lib/playbook/walk-forward';
+import { splitChronological, isCompleteHorizon } from '../lib/playbook/walk-forward';
 
 function loadDotEnvLocal(): void {
   try {
@@ -136,6 +136,7 @@ async function main(): Promise<void> {
   };
 
   let nUnscored = 0;
+  let nTruncated = 0;
 
   for (const signal of signals) {
     const asOf = signal.from_date;
@@ -149,16 +150,19 @@ async function main(): Promise<void> {
       low: Number(row.low ?? row.close ?? 0),
       close: Number(row.close ?? 0),
     }));
-    if (bars.length === 0) {
+    // Plan §5.9: tail rows whose N-session horizon has not fully elapsed are
+    // unscored — neither IS nor OOS — never a fabricated expiry exit.
+    if (!isCompleteHorizon(asOf, bars.map((b) => b.date), horizon)) {
       nUnscored += 1;
+      nTruncated += 1;
       continue;
     }
     const hitR1 = bars[0].high >= signal.target_realistis;
 
     // System 0: Adi-only, Phase 0 interim stop, every success print is a trade.
-    // arb is required to size the interim stop; missing arb ⇒ unscored, never a
-    // fabricated zero stop.
-    if (signal.arb === null) {
+    // arb must be a positive price to size the interim stop; arb null or <= 0
+    // (degenerate no-bid book) ⇒ unscored, never a fabricated zero stop.
+    if (signal.arb === null || !(signal.arb > 0)) {
       nUnscored += 1;
       continue;
     }
@@ -268,6 +272,10 @@ async function main(): Promise<void> {
   const report = {
     nSignals: signals.length,
     nUnscored,
+    // Primary-reason classification: horizon truncation is checked first,
+    // so a row that is both truncated AND fail-closed counts as truncated.
+    nUnscoredTruncatedHorizon: nTruncated,
+    nUnscoredFailClosed: nUnscored - nTruncated,
     nIS: split.is.length,
     nOOS: split.oos.length,
     nPurged: split.purged.length,

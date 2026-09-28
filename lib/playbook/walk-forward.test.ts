@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { splitChronological } from './walk-forward';
+import { splitChronological, isCompleteHorizon, horizonSessions } from './walk-forward';
 
 test('purged 80/20 split drops a 5-trading-day purge gap', () => {
   // 30 weekdays 2026-01-01 .. 2026-02-11 (all trading days; no holidays in range)
@@ -94,4 +94,37 @@ test('empty series yields null cut and empty partitions', () => {
   assert.deepEqual(is, []);
   assert.deepEqual(purged, []);
   assert.deepEqual(oos, []);
+});
+
+test('isCompleteHorizon: 5 expected sessions all present', () => {
+  // Signal Mon 2026-01-05, horizon 5 → sessions 01-06..01-12? No: addTradingDays(+5) of 01-05 = 01-12.
+  // Expected sessions: 06, 07, 08, 09, 12.
+  assert.equal(
+    isCompleteHorizon('2026-01-05', ['2026-01-06','2026-01-07','2026-01-08','2026-01-09','2026-01-12'], 5),
+    true
+  );
+});
+
+test('isCompleteHorizon: truncated tail (missing sessions) is NOT complete', () => {
+  // Only one forward bar loaded → unscored per plan §5.9.
+  assert.equal(
+    isCompleteHorizon('2026-01-05', ['2026-01-06'], 5),
+    false
+  );
+});
+
+test('isCompleteHorizon: weekend-skipping window with a holiday', () => {
+  // Signal Fri 2026-01-02 → +5 trading days (Mon..Fri) = 01-09; but 01-08 is not an IDX holiday (assume none).
+  // Sessions: 05, 06, 07, 08, 09.
+  assert.equal(
+    isCompleteHorizon('2026-01-02', ['2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09'], 5),
+    true
+  );
+});
+
+test('horizonSessions returns the exact trading-day window', () => {
+  assert.deepEqual(
+    horizonSessions('2026-01-02', 5),
+    ['2026-01-05','2026-01-06','2026-01-07','2026-01-08','2026-01-09']
+  );
 });

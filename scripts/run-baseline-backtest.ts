@@ -17,6 +17,7 @@ import { getPriceHistory, getSignalRecords } from '../lib/db';
 import { evaluateAdiOnly, type BaselineTrade } from '../lib/playbook/baseline';
 import { defaultCostModel } from '../lib/playbook/costs';
 import { nextTradingDay, addTradingDays } from '../lib/market-calendar';
+import { isCompleteHorizon } from '../lib/playbook/walk-forward';
 import { ymdOf } from '../lib/date-ymd';
 
 try {
@@ -49,7 +50,7 @@ async function main() {
 
   for (const signal of signals) {
     const entryDate = signal.from_date;
-    if (signal.arb === null) continue; // unscored: interim stop cannot be sized
+    if (signal.arb === null || !(signal.arb > 0)) continue; // unscored: interim stop cannot be sized
     const from = nextTradingDay(entryDate);
     const to = addTradingDays(entryDate, horizonDays);
 
@@ -66,6 +67,10 @@ async function main() {
       }));
       cache.set(cacheKey, bars);
     }
+
+    // Plan §5.9: incomplete N-session horizon (truncated tail) is unscored,
+    // never a fabricated expiry exit at the last available close.
+    if (!isCompleteHorizon(entryDate, bars.map((b) => b.date), horizonDays)) continue;
 
     trades.push({
       emiten: signal.emiten,

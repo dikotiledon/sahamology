@@ -10,13 +10,43 @@
  * The purge is measured in trading days (via addTradingDays), not in positions.
  */
 
-import { addTradingDays } from '../market-calendar';
+import { addTradingDays, nextTradingDay } from '../market-calendar';
 
 export interface ChronologicalSplit {
   cut: string | null;
   is: string[];
   purged: string[];
   oos: string[];
+}
+
+/**
+ * The exact trading-day sessions that must exist on disk for a signal to have
+ * a complete N-session forward path (plan §5.9). Returned in session order.
+ */
+export function horizonSessions(signalDate: string, horizon: number): string[] {
+  const sessions: string[] = [];
+  let cursor = signalDate;
+  for (let i = 0; i < horizon; i += 1) {
+    cursor = nextTradingDay(cursor);
+    sessions.push(cursor);
+  }
+  return sessions;
+}
+
+/**
+ * Plan §5.9: a signal is scoreable only when its full N-session forward path
+ * can be loaded. A truncated tail (e.g. today's signal whose horizon has not
+ * elapsed) is unscored — never a fabricated "expiry" exit at the last
+ * available close.
+ */
+export function isCompleteHorizon(
+  signalDate: string,
+  barDates: string[],
+  horizon: number
+): boolean {
+  const required = horizonSessions(signalDate, horizon);
+  const present = new Set(barDates);
+  return required.every((d) => present.has(d));
 }
 
 export function splitChronological(
