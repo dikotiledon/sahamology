@@ -14,6 +14,7 @@ import type { BrokerType } from '../brokers';
 import type {
   GateId,
   GateResult,
+  MicroView,
   PlaybookCard,
   PlaybookInput,
   Stance,
@@ -188,15 +189,39 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   let g1Pass = false;
   let g1Reason: string;
   let g1Block = false; // AVOID-class failure (no bandar / Retail / Mix)
-  let g1Wait = false; // WAIT-class failure (harga already above R1)
+  let g1Wait = false; // WAIT-class failure (harga already above R1 / spike tier)
   let takeProfit = false;
+
+  // Phase 2 profile. D0/D1: absent is 'phase-1', and under 'phase-1' the micro
+  // snapshot is not consulted at all, so the card is byte-identical to Phase 1.
+  const g1Profile = input.g1Profile === 'phase-2' ? 'phase-2' : 'phase-1';
+  const micro = g1Profile === 'phase-2' ? input.micro : undefined;
 
   if (!bandar) {
     g1Block = true;
     g1Reason = 'Tidak ada akumulator teratas';
   } else if (brokerType !== 'Smartmoney' && brokerType !== 'Whale') {
+    // Step 2 runs BEFORE any micro rule: a `Mix` fold already AVOIDs on this
+    // stronger, already-shipped rule (plan §5.4 order, fixture 3).
     g1Block = true;
     g1Reason = `Akumulator teratas berkategori ${brokerType}`;
+  } else if (micro && micro.tier === 'spike') {
+    // Step 3 (D7): a one-day print is WAIT-class — the thesis is alive and
+    // needs a second day. It is deliberately NOT AVOID, which the brief
+    // reserves for a dead thesis.
+    g1Wait = true;
+    g1Reason = 'Bandar baru satu print — tunggu konfirmasi hari kedua';
+  } else if (micro && micro.flowState === 'bad') {
+    // Step 4 (D9): the same broker is a net seller on this very session.
+    // `flowState` only returns 'bad' when the broker_seen_in_detector
+    // cross-check passed, so an absent broker cannot land here.
+    g1Block = true;
+    g1Reason = 'Bandar yang sama kini net seller di sesi yang sama';
+  } else if (micro && micro.accdistState === 'DIST') {
+    // Step 5 (D8): only an unambiguous distribution blocks. SMALL_DIST is a
+    // weaker signal and is annotated instead (Option F rejected).
+    g1Block = true;
+    g1Reason = 'Distribusi jelas pada akumulator teratas';
   } else if (r1 !== null && input.harga > r1) {
     if (input.openCard?.stance === 'ENTER') {
       takeProfit = true;
@@ -209,6 +234,16 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   } else {
     g1Pass = true;
     g1Reason = `Akumulator ${bandar} berkategori ${brokerType}`;
+  }
+
+  // Annotations: the non-blocking micro readings are cited on the passing card
+  // so the operator can see WHY the tier/flow were acceptable (D15).
+  if (g1Pass && micro) {
+    const notes: string[] = [];
+    if (micro.tier === 'building') notes.push('persistensi 2 print');
+    if (micro.tier === 'persistent') notes.push('persistensi ≥3 print');
+    if (micro.flowState === 'ok') notes.push('alur bandar net buyer');
+    if (notes.length > 0) g1Reason = `${g1Reason} (${notes.join('; ')})`;
   }
   gates.push({ id: 'G1', pass: g1Pass, reason: g1Reason });
 
@@ -294,6 +329,24 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
       }
     : undefined;
 
+  // Phase 2 micro view (D15). Present only when a snapshot was supplied under
+  // the phase-2 profile. `accdistEvaluated` is false for UNKNOWN so the card
+  // can say "tidak dievaluasi" instead of silently rendering a neutral badge.
+  const microView: MicroView | undefined =
+    g1Profile === 'phase-2' && input.micro
+      ? {
+          g1Profile,
+          bandCode: input.micro.bandCode,
+          tier: input.micro.tier,
+          accdistState: input.micro.accdistState,
+          accdistEvaluated:
+            input.micro.accdistEvaluated !== undefined
+              ? input.micro.accdistEvaluated
+              : input.micro.accdistState !== 'UNKNOWN',
+          flowState: input.micro.flowState,
+        }
+      : undefined;
+
   return {
     stance,
     gates,
@@ -305,5 +358,6 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     thesis,
     failedGates,
     tape,
+    ...(microView ? { micro: microView } : {}),
   };
 }

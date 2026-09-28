@@ -10,6 +10,7 @@
 import { getBrokerInfo } from '../brokers';
 import { ymdOf } from '../date-ymd';
 import type { CalculateTargetsResult } from '../calculations';
+import type { MicroInput } from './types';
 import type { CostModel } from './costs';
 import type { PlaybookInput, Stance } from './types';
 import type { TapeSnapshot } from '../tape/snapshot';
@@ -42,10 +43,20 @@ export interface BuildPlaybookInputArgs {
   openCard?: { stance: Stance };
   /** Phase 1 tape view; passed through unchanged when supplied. */
   tape?: TapeSnapshot;
+  /**
+   * Phase 2 G1 profile (D1). Passed through unchanged. Absent is equivalent to
+   * 'phase-1', so every existing caller keeps byte-identical behaviour.
+   */
+  g1Profile?: 'phase-1' | 'phase-2';
+  /**
+   * Phase 2 micro snapshot (D1). Passed through unchanged; when absent the
+   * evaluator must behave exactly as Phase 1 (Task 7 fixture 2).
+   */
+  micro?: MicroInput;
 }
 
 export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): PlaybookInput {
-  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape } = args;
+  const { market, broker, calculated, priorRows, asOf, tokenValid, costs, openCard, isIdxSession, tape, g1Profile, micro } = args;
 
   const priorBandar = priorRows
     .filter((row) => {
@@ -74,5 +85,10 @@ export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): Playb
     costs,
     openCard,
     tape,
+    // D1: passed through unchanged. `undefined` is meaningful here — the
+    // evaluator treats an absent profile exactly as 'phase-1', which is what
+    // keeps every pre-Phase-2 caller byte-identical.
+    g1Profile,
+    micro,
   };
 }

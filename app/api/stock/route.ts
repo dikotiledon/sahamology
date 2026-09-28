@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchMarketDetector, fetchOrderbook, getTopBroker, parseLot, getBrokerSummary, fetchEmitenInfo } from '@/lib/stockbit';
+import { fetchMarketDetector, fetchOrderbook, getTopBroker, parseLot, getBrokerSummary, fetchEmitenInfo, fetchRunningTradeChartByBrokers } from '@/lib/stockbit';
 import { calculateTargets } from '@/lib/calculations';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { isWeekend, isIdxHoliday, jakartaYmd, addTradingDays } from '@/lib/market-calendar';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
+import { buildMicroSnapshot, isBandarSellerOn } from '@/lib/micro/snapshot';
+import { FLOW_WINDOW } from '@/lib/micro/flow';
+import { captureBandFlow } from '@/lib/jobs/micro-capture';
+import type { BrokerFlowRow } from '@/lib/micro/types';
 import { ymdOf } from '@/lib/date-ymd';
 import type { OhlcBar } from '@/lib/tape/ohlc';
 import {
@@ -217,6 +221,44 @@ export async function POST(request: NextRequest) {
       priorBandar
     );
 
+    // ---------------------------------------------------------------
+    // Phase 2 micro capture (D2 / D19 / D20)
+    //
+    // D2: the MarketDetectorResponse is already in hand (fetched above), so
+    // acc/dist costs zero extra calls.
+    //
+    // D19: the flow fetch is gated on `isToday`, exactly like the tape above.
+    // The route reads the band from the LIVE getTopBroker (line 79) even when
+    // `toDate` is a past date, while overriding price from the DB for
+    // !isToday. Requesting a historical flow window for today's band would
+    // fabricate a past-dated row whose broker was not the band then — and it
+    // would double authenticated traffic on the hottest browser endpoint.
+    //
+    // D20: a flow row is only produced for a broker seen in the detector.
+    const sellerState = isBandarSellerOn(marketDetectorData, brokerData.bandar);
+    let flowRow: BrokerFlowRow | null = null;
+    if (isToday && sellerState !== null) {
+      const flow = await captureBandFlow({
+        emiten,
+        brokerCode: brokerData.bandar,
+        from: addTradingDays(asOf, -FLOW_WINDOW),
+        to: asOf,
+        brokerSeenInDetector: true,
+        fetchFlow: fetchRunningTradeChartByBrokers,
+      });
+      flowRow = flow.row;
+    }
+
+    const micro = buildMicroSnapshot({
+      marketDetector: marketDetectorData,
+      bandCode: brokerData.bandar,
+      priorBandar,
+      flowRow,
+      isSeller: sellerState,
+      flowWindow: flowRow ? [flowRow] : [],
+      brokerP: calculated.p,
+    });
+
     const playbook = evaluatePlaybook(
       buildPlaybookInputFromStock({
         market: {
@@ -235,6 +277,10 @@ export async function POST(request: NextRequest) {
         costs: defaultCostModel(),
         openCard,
         tape,
+        // D1: the profile switch lives at the boundary, never inside the
+        // evaluator. Default is 'phase-1' so the live card is unchanged.
+        g1Profile: process.env.PLAYBOOK_G1_PROFILE === 'phase-2' ? 'phase-2' : 'phase-1',
+        micro,
       })
     );
 

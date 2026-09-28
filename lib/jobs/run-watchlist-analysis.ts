@@ -5,6 +5,7 @@ import {
   getTopBroker,
   fetchEmitenInfo,
   fetchHistoricalSummary,
+  fetchRunningTradeChartByBrokers,
 } from '@/lib/stockbit';
 import { sessionDateJakarta, addTradingDays } from '@/lib/market-calendar';
 import { calculateTargets } from '@/lib/calculations';
@@ -14,12 +15,16 @@ import {
   createBackgroundJobLog,
   appendBackgroundJobLogEntry,
   updateBackgroundJobLog,
+  saveBrokerFlowDaily,
 } from '@/lib/supabase';
-import { getPriceHistory, saveDecisionJournal, getWatchlistAnalysisHistory } from '@/lib/db';
+import { getPriceHistory, saveDecisionJournal, getWatchlistAnalysisHistory, getPriorBandarCodes } from '@/lib/db';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
+import { buildMicroSnapshot, isBandarSellerOn } from '@/lib/micro/snapshot';
+import { FLOW_WINDOW } from '@/lib/micro/flow';
+import { captureBandFlow } from './micro-capture';
 import { ymdOf } from '@/lib/date-ymd';
 import {
   resolveEmitensToAnalyze,
@@ -192,6 +197,56 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         continue;
       }
 
+      // ---------------------------------------------------------------
+      // Phase 2 micro capture (D2 / D4 / D18 / D20)
+      //
+      // D2: the MarketDetectorResponse is ALREADY in hand from the fetch above,
+      // so acc/dist costs ZERO extra HTTP calls. This is the single most
+      // important cost property in the plan — the detector is the hottest
+      // authenticated endpoint and the limiter budget is 4/s burst 8.
+      //
+      // D18: a failed capture sets capture_incomplete so scripts/repair-captures.ts
+      // can repair the row. Without it, the guard above would treat this
+      // session as captured forever and the signal would be permanently
+      // unscored for system (3) — a transient 429 deleting a sample.
+      //
+      // D20: a flow row is only ever written for a broker that appeared in
+      // that session's detector listing.
+      const priorBandar = await getPriorBandarCodes(emiten, today).catch(() => [] as string[]);
+      const brokerSeenInDetector =
+        isBandarSellerOn(marketDetectorData, brokerData.bandar) !== null;
+      const flow = await captureBandFlow({
+        emiten,
+        brokerCode: brokerData.bandar,
+        from: addTradingDays(today, -FLOW_WINDOW),
+        to: today,
+        brokerSeenInDetector,
+        fetchFlow: fetchRunningTradeChartByBrokers,
+      });
+      const micro = buildMicroSnapshot({
+        marketDetector: marketDetectorData,
+        bandCode: brokerData.bandar,
+        priorBandar,
+        flowRow: flow.row,
+        isSeller: isBandarSellerOn(marketDetectorData, brokerData.bandar),
+        flowWindow: flow.window,
+        brokerP: calculated.p,
+      });
+
+      if (flow.row) {
+        // Best-effort: a flow-row write failure must not lose the signal.
+        await saveBrokerFlowDaily({
+          emiten,
+          date: today,
+          brokerCode: brokerData.bandar,
+          netValue: flow.row.netValue,
+          buyDays: flow.row.buyDays,
+          activeDays: flow.row.activeDays,
+          consistencyPct: flow.row.consistencyPct,
+          brokerSeenInDetector: flow.brokerSeenInDetector,
+        }).catch((e) => console.error(`[Watchlist Job] flow row save failed for ${emiten}`, e));
+      }
+
       await saveWatchlistAnalysis({
         from_date: today,
         to_date: today,
@@ -213,6 +268,17 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         target_realistis: calculated.targetRealistis1,
         target_max: calculated.targetMax,
         status: 'success',
+        // Phase 2 micro columns (D3) — this is the ONE writer (D21).
+        accdist_overall: micro.raw?.accdistOverall ?? null,
+        accdist_top1: micro.raw?.accdistTop1 ?? null,
+        accdist_top3: micro.raw?.accdistTop3 ?? null,
+        accdist_top5: micro.raw?.accdistTop5 ?? null,
+        accdist_avg: micro.raw?.accdistAvg ?? null,
+        broker_total_buyer: micro.raw?.brokerTotalBuyer ?? null,
+        broker_total_seller: micro.raw?.brokerTotalSeller ?? null,
+        broker_p: micro.raw?.brokerP ?? null,
+        // D18: a degraded capture is repairable, not final.
+        capture_incomplete: micro.captureIncomplete,
       });
 
       // Update previous day's record with close and high from historical data.

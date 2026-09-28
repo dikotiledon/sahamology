@@ -1,6 +1,7 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { hitR1, hitMax } from './hits';
 import { ymdOf } from './date-ymd';
+import type { BrokerFlowRow } from './micro/types';
 
 /**
  * Native PostgreSQL data access layer.
@@ -177,6 +178,124 @@ export async function saveWatchlistAnalysis(data: StockQueryInput) {
     console.error('Error saving watchlist analysis:', error);
     throw error;
   }
+}
+
+// =====================================================================
+// Phase 2 — micro persistence (M7 / D3 / D4 / D18 / D20)
+// =====================================================================
+
+/**
+ * Persist one broker's daily flow row (plan D3, migration 022).
+ *
+ * D20 is enforced HERE, at the write, not only at the read: a row is written
+ * only when `brokerSeenInDetector` is true. A broker that was absent from that
+ * session's marketdetectors listing (negotiated-board-only activity, or simply
+ * not reported) would otherwise be stored as a legitimate zero-flow row and
+ * later read by D9's `net_value < 0` rule as *distribution*.
+ *
+ * Passing `undefined` for the numeric fields omits them from the statement via
+ * buildUpsert, so a partial capture never overwrites a good earlier reading
+ * with a null.
+ */
+export async function saveBrokerFlowDaily(data: {
+  emiten: string;
+  date: string;
+  brokerCode: string;
+  netValue?: number | null;
+  buyDays?: number | null;
+  activeDays?: number | null;
+  consistencyPct?: number | null;
+  brokerSeenInDetector: boolean;
+}) {
+  if (!data.brokerSeenInDetector) {
+    return []; // D20: never persist a row for a broker that was not observed
+  }
+  const payload: Record<string, unknown> = {
+    emiten: data.emiten.toUpperCase(),
+    date: data.date,
+    broker_code: data.brokerCode,
+    broker_seen_in_detector: true,
+    synced_at: new Date().toISOString(),
+  };
+  if (data.netValue != null) payload.net_value = data.netValue;
+  if (data.buyDays != null) payload.buy_days = data.buyDays;
+  if (data.activeDays != null) payload.active_days = data.activeDays;
+  if (data.consistencyPct != null) payload.consistency_pct = data.consistencyPct;
+
+  const { text, values } = buildUpsert(
+    'broker_flow_daily',
+    'emiten,date,broker_code',
+    payload,
+  );
+  try {
+    const result = await query(text, values);
+    return result.rows;
+  } catch (error) {
+    console.error('Error saving broker flow daily:', error);
+    throw error;
+  }
+}
+
+/** Fetch the flow row for one (emiten, session, broker). Used by replay. */
+export async function getFlowRow(
+  emiten: string,
+  date: string,
+  brokerCode: string,
+): Promise<BrokerFlowRow | null> {
+  const result = await query(
+    `SELECT net_value, buy_days, active_days, consistency_pct
+     FROM broker_flow_daily
+     WHERE emiten = $1 AND date = $2 AND broker_code = $3`,
+    [emiten.toUpperCase(), date, brokerCode],
+  );
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  if (!row) return null;
+  const netValue = numOrNull(row.net_value);
+  const buyDays = numOrNull(row.buy_days);
+  const activeDays = numOrNull(row.active_days);
+  const consistencyPct = numOrNull(row.consistency_pct);
+  if (netValue === null || buyDays === null || activeDays === null || consistencyPct === null) {
+    return null; // fail closed on a fabricated numeric (P2-D)
+  }
+  return { netValue, buyDays, activeDays, consistencyPct };
+}
+
+/**
+ * The decision-time lookback: up to `n` completed sessions for one broker,
+ * `date <= asOf`, oldest first (D5). The window is strictly historical, so a
+ * replay sees exactly the rows that existed at decision time.
+ */
+export async function getFlowWindow(
+  emiten: string,
+  brokerCode: string,
+  asOf: string,
+  n: number = 5,
+): Promise<BrokerFlowRow[]> {
+  const result = await query(
+    `SELECT net_value, buy_days, active_days, consistency_pct
+     FROM broker_flow_daily
+     WHERE emiten = $1 AND broker_code = $2 AND date <= $3
+     ORDER BY date DESC
+     LIMIT $4`,
+    [emiten.toUpperCase(), brokerCode, asOf, n],
+  );
+  const rows: BrokerFlowRow[] = [];
+  for (const raw of result.rows as Array<Record<string, unknown>>) {
+    const netValue = numOrNull(raw.net_value);
+    const buyDays = numOrNull(raw.buy_days);
+    const activeDays = numOrNull(raw.active_days);
+    const consistencyPct = numOrNull(raw.consistency_pct);
+    if (netValue === null || buyDays === null || activeDays === null || consistencyPct === null) continue;
+    rows.push({ netValue, buyDays, activeDays, consistencyPct });
+  }
+  return rows.reverse(); // oldest first
+}
+
+/** NUMERIC columns arrive from `pg` as strings; a non-finite value becomes null. */
+function numOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === 'number' ? value : Number(String(value).trim());
+  return Number.isFinite(n) ? n : null;
 }
 
 /**

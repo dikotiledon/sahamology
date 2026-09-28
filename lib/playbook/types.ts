@@ -10,6 +10,7 @@ import type { CalculateTargetsResult } from '../calculations';
 import type { BrokerType } from '../brokers';
 import type { CostModel } from './costs';
 import type { PatternName, TapeSnapshot } from '../tape/snapshot';
+import type { AccDistState, FlowState, PersistenceTier } from '../micro/types';
 
 export type Stance = 'ENTER' | 'WAIT' | 'AVOID' | 'TAKE_PROFIT' | 'INVALIDATED';
 
@@ -47,6 +48,34 @@ export interface PlaybookInput {
    * hard fail-closed gate.
    */
   replayG4Skipped?: boolean;
+  /**
+   * Phase 2 G1 profile (D1). Absent or 'phase-1' produces a BYTE-IDENTICAL
+   * Phase 1 card. The switch is read at the boundary (route / job), never
+   * inside this pure evaluator, and defaults to 'phase-1' everywhere (D0).
+   */
+  g1Profile?: 'phase-1' | 'phase-2';
+  /**
+   * Phase 2 prospective micro snapshot (D1). Absent means "no micro layer",
+   * which must never change a gate — a missing snapshot fails OPEN with a
+   * label, never closed (plan Task 7 fixture 2).
+   */
+  micro?: MicroInput;
+}
+
+/**
+ * The subset of the captured snapshot the evaluator reads. It is a display
+ * + gate input, not a re-derivation: the contracts in lib/micro already
+ * decided tier / accdistState / flowState at capture time, and the evaluator
+ * only consumes them. That keeps the evaluator pure and the capture
+ * reproducible.
+ */
+export interface MicroInput {
+  bandCode: string | null;
+  tier: PersistenceTier | null;
+  accdistState: AccDistState;
+  flowState: FlowState;
+  /** False when the acc/dist reading was absent — drives the "not evaluated" label. */
+  accdistEvaluated?: boolean;
 }
 
 /** Display-only tape fields surfaced on the card. */
@@ -71,4 +100,22 @@ export interface PlaybookCard {
   thesis: string;
   failedGates: GateId[];
   tape?: TapeView;
+  /**
+   * Phase 2 micro view (D15). Present only when a micro snapshot was
+   * supplied. It exists so the operator can tell whether a WAIT came from the
+   * shipped rules or from a state that was never evaluated — a gate that is
+   * silently inactive is the failure mode this project has been fighting
+   * since Phase 0.
+   */
+  micro?: MicroView;
+}
+
+/** Display-only projection of the captured micro snapshot (plan §5.5). */
+export interface MicroView {
+  g1Profile: 'phase-1' | 'phase-2';
+  bandCode: string | null;
+  tier: PersistenceTier | null;
+  accdistState: AccDistState;
+  accdistEvaluated: boolean;
+  flowState: FlowState;
 }
