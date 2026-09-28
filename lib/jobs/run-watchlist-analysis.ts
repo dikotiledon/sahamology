@@ -33,6 +33,9 @@ import { buildMicroSnapshot, isBandarSellerOn } from '@/lib/micro/snapshot';
 import { FLOW_WINDOW } from '@/lib/micro/flow';
 import { captureBandFlow } from './micro-capture';
 import { captureFundamentals } from './fundamentals-capture';
+import { captureMacro, type MacroCaptureResult } from './macro-capture';
+import { saveMacroSnapshot } from '../macro/store';
+import { buildMacroPageFetcher } from '../macro/store';
 import { ymdOf } from '@/lib/date-ymd';
 import {
   resolveEmitensToAnalyze,
@@ -41,6 +44,16 @@ import {
   type WatchlistUniverseItem,
 } from './watchlist-universe';
 import type { OhlcBar } from '@/lib/tape/ohlc';
+
+/**
+ * How far back the daily macro capture backfills.
+ *
+ * 120 trading days is chosen to cover the classifier's longest lookback with
+ * room to spare, while staying inside one vendor window (the measured 365-day
+ * cap) so a routine daily run never splits into a multi-window walk. A longer
+ * backfill is a one-off repair concern, not a per-run cost.
+ */
+const MACRO_BACKFILL_TRADING_DAYS = 120;
 
 export interface WatchlistAnalysisOutcome {
   success: boolean;
@@ -142,6 +155,41 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
     console.error(
       '[Watchlist Job] Failed to check for an existing session; proceeding without the guard',
       historyError
+    );
+  }
+
+  // Phase 4 G7 — macro capture, ONCE for the whole session.
+  // Deliberately ABOVE the per-emiten loop, and this is the whole point of the
+  // placement (D5). The four legs are market-wide: there is nothing an
+  // individual emiten changes about where IHSG closed or what gold did. A fetch
+  // inside the loop would multiply one read by the watchlist size and burn the
+  // shared rate limiter on every run, in a job whose other calls are already
+  // the hottest authenticated endpoints.
+  //
+  // `captureMacro` never throws, so a macro outage cannot abort the signal
+  // loop or land on its error list. It degrades to `incomplete: true`, which
+  // marks each signal `macro_incomplete` for the repair pass and leaves the
+  // regime NOT_EVALUATED — G7 fails open, so the trade decision is untouched.
+  const macroCapture: MacroCaptureResult = await captureMacro({
+    fetchPage: buildMacroPageFetcher(),
+    saveSnapshot: saveMacroSnapshot,
+    capturedAt: new Date().toISOString(),
+    from: addTradingDays(today, -MACRO_BACKFILL_TRADING_DAYS),
+    to: today,
+  });
+  if (macroCapture.incomplete) {
+    const detail = Object.entries(macroCapture.perSeries)
+      .filter(([, v]) => !v.ok)
+      .map(([k, v]) => `${k}: ${v.error ?? 'unknown'}`)
+      .join('; ');
+    console.warn(
+      `[Watchlist Job] Macro capture incomplete (${macroCapture.rowCount} row(s)); ` +
+        `G7 will report NOT_EVALUATED and signals are flagged macro_incomplete. ${detail}`,
+    );
+  } else {
+    console.log(
+      `[Watchlist Job] Macro capture complete: ${macroCapture.rowCount} bar(s) across ` +
+        `${Object.keys(macroCapture.perSeries).length} series.`,
     );
   }
 
@@ -308,6 +356,12 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         // D11: a SEPARATE flag, so a missed fundamental read is repairable
         // without re-running the micro/flow repair pass and vice versa.
         fundamentals_incomplete: fundamentals.incomplete,
+        // D14: likewise separate from both. The macro capture runs once per
+        // session, so this flag is identical on every row for a given day —
+        // which is correct: the outage was market-wide, not per-company, and a
+        // `--macro` repair pass can therefore re-fetch the whole session in one
+        // go rather than per emiten.
+        macro_incomplete: macroCapture.incomplete,
       });
 
       // Update previous day's record with close and high from historical data.

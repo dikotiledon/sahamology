@@ -442,6 +442,38 @@ export interface HistoricalSummaryFetchDeps {
 }
 
 /**
+ * Fetch ONE explicitly-numbered page of the historical-summary endpoint.
+ *
+ * `fetchHistoricalSummary` is hard-coded to page 1, which makes it unusable
+ * for a paged walk: every page would return the same rows, the caller's
+ * short-page stop would never fire, and a "complete" backfill would silently
+ * contain a single page. This is the page-aware primitive the macro pager
+ * binds to; the caller owns the pagination policy and the vendor limits.
+ */
+export async function fetchHistoricalSummaryPage(
+  emiten: string,
+  startDate: string,
+  endDate: string,
+  limit: number,
+  page: number,
+  deps: HistoricalSummaryFetchDeps = {}
+): Promise<HistoricalSummaryItem[]> {
+  const fetchImpl = deps.fetch ?? fetch;
+  const headersImpl = deps.getHeaders ?? getHeaders;
+  const url = `${STOCKBIT_BASE_URL}/company-price-feed/historical/summary/${emiten}?period=HS_PERIOD_DAILY&start_date=${startDate}&end_date=${endDate}&limit=${limit}&page=${page}`;
+
+  const response = await stockbitFetch(url, {
+    method: 'GET',
+    headers: await headersImpl(),
+  }, { fetch: fetchImpl });
+
+  await handleApiResponse(response, 'Historical Summary API');
+
+  const json = await response.json();
+  return json.data?.result || [];
+}
+
+/**
  * Page through the historical-summary endpoint until a short page, so backfill
  * can reach years of daily bars instead of the old single-request cap.
  * Page length is capped at `maxPages` (50) to bound a runaway cursor.
