@@ -299,6 +299,142 @@ function numOrNull(value: unknown): number | null {
 }
 
 /**
+ * Phase 3 G5 — persist one emiten's captured KeyStats items.
+ *
+ * Writes RAW items only, never a verdict (D7): the rubric runs at read time so
+ * a threshold or bank-rule fix re-scores history without a backfill. A stored
+ * verdict would freeze today's rules into yesterday's data and turn every
+ * rubric change into a migration.
+ *
+ * `value_num` is written as SQL NULL when the vendor gave no number. It is
+ * never coerced to 0 — a 0 would make NEGATIVE_EQUITY and EXTREME_LEVERAGE
+ * evaluate false and turn absent data into a healthy verdict.
+ */
+export async function saveKeystatsSnapshot(
+  rows: Array<{
+    emiten: string;
+    asOf: string;
+    itemName: string;
+    category: string | null;
+    valueText: string | null;
+    valueNum: number | null;
+    scale: string | null;
+    currency: string | null;
+  }>,
+) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  // One multi-row INSERT: the snapshot is ~94 items per emiten, and a
+  // per-row round trip would spend the shared limiter budget on the database
+  // rather than on the vendor call it is protecting.
+  const columns = [
+    'emiten',
+    'as_of',
+    'item_name',
+    'category',
+    'value_text',
+    'value_num',
+    'scale',
+    'currency',
+  ];
+  const tuples: string[] = [];
+  const values: unknown[] = [];
+  for (const row of rows) {
+    const i = values.length;
+    tuples.push(`($${i + 1}, $${i + 2}, $${i + 3}, $${i + 4}, $${i + 5}, $${i + 6}, $${i + 7}, $${i + 8})`);
+    const valueNum =
+      row.valueNum !== null && Number.isFinite(row.valueNum) ? row.valueNum : null;
+    values.push(
+      row.emiten.toUpperCase(),
+      row.asOf,
+      row.itemName,
+      row.category,
+      row.valueText,
+      valueNum,
+      row.scale,
+      row.currency,
+    );
+  }
+
+  const text = `INSERT INTO keystats_snapshot (${columns.join(', ')})
+     VALUES ${tuples.join(', ')}
+     ON CONFLICT (emiten, as_of, item_name) DO UPDATE SET
+       category = EXCLUDED.category,
+       value_text = EXCLUDED.value_text,
+       value_num = EXCLUDED.value_num,
+       scale = EXCLUDED.scale,
+       currency = EXCLUDED.currency,
+       captured_at = NOW()`;
+
+  const result = await query(text, values);
+  return result.rows;
+}
+
+/**
+ * Read the snapshot for one emiten on one capture date (D10).
+ *
+ * EXACT `as_of` match, no range predicate: the caller has already chosen a
+ * point-in-time row via `selectPointInTimeSnapshot`, and a range here would
+ * silently blend two capture days into one verdict.
+ *
+ * Returns `null` when nothing was captured, so the rubric can distinguish
+ * "no data" from "data with no landmine".
+ */
+export async function getKeystatsSnapshot(
+  emiten: string,
+  asOf: string,
+): Promise<{
+  emiten: string;
+  asOf: string;
+  entries: Array<{
+    itemName: string;
+    category: string | null;
+    valueText: string | null;
+    valueNum: number | null;
+    scale: string | null;
+  }>;
+} | null> {
+  const result = await query(
+    `SELECT item_name, category, value_text, value_num, scale
+     FROM keystats_snapshot
+     WHERE emiten = $1 AND as_of = $2
+     ORDER BY item_name`,
+    [emiten.toUpperCase(), asOf],
+  );
+  if (result.rows.length === 0) return null;
+
+  return {
+    emiten: emiten.toUpperCase(),
+    asOf,
+    entries: result.rows.map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        itemName: String(r.item_name ?? ''),
+        category: r.category === null || r.category === undefined ? null : String(r.category),
+        valueText: r.value_text === null || r.value_text === undefined ? null : String(r.value_text),
+        valueNum: numOrNull(r.value_num),
+        scale: r.scale === null || r.scale === undefined ? null : String(r.scale),
+      };
+    }),
+  };
+}
+
+/**
+ * List the capture dates available for one emiten, newest first. Used to
+ * choose a point-in-time row for a historical replay.
+ */
+export async function getKeystatsSnapshotDates(emiten: string): Promise<string[]> {
+  const result = await query(
+    `SELECT DISTINCT as_of
+     FROM keystats_snapshot
+     WHERE emiten = $1
+     ORDER BY as_of DESC`,
+    [emiten.toUpperCase()],
+  );
+  return result.rows.map((row) => ymdOf((row as Record<string, unknown>).as_of));
+}
+
+/**
  * Get watchlist analysis history with optional filters.
  * Preserves the old { data, count } return shape and sort semantics.
  */
@@ -979,13 +1115,20 @@ export async function getSignalRecords(): Promise<
     broker_total_seller: number | null;
     broker_p: number | null;
     capture_incomplete: boolean | null;
+    // ---- Phase 3 (D11). Kept SEPARATE from capture_incomplete: the micro and
+    // fundamentals captures fail independently, and collapsing them would make
+    // one signal's missing fundamental read look like a missing acc/dist read.
+    // A pre-Phase-3 row has this null, which replay reads as "not scored"
+    // rather than fabricating a neutral verdict.
+    fundamentals_incomplete: boolean | null;
   }>
 > {
   const result = await query(
     `SELECT emiten, from_date, harga, ara, arb, total_bid, total_offer,
             bandar, barang_bandar, rata_rata_bandar, target_realistis, target_max,
             accdist_overall, accdist_top1, accdist_top3, accdist_top5, accdist_avg,
-            broker_total_buyer, broker_total_seller, broker_p, capture_incomplete
+            broker_total_buyer, broker_total_seller, broker_p, capture_incomplete,
+            fundamentals_incomplete
      FROM stock_queries
      WHERE status = 'success'
        AND harga IS NOT NULL
@@ -1022,6 +1165,8 @@ export async function getSignalRecords(): Promise<
       broker_total_seller: toNum(r.broker_total_seller),
       broker_p: toNum(r.broker_p),
       capture_incomplete: r.capture_incomplete === true || r.capture_incomplete === 'true',
+      fundamentals_incomplete:
+        r.fundamentals_incomplete === true || r.fundamentals_incomplete === 'true',
     };
   });
 }

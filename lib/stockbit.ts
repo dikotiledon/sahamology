@@ -368,6 +368,32 @@ export async function fetchKeyStats(emiten: string): Promise<KeyStatsData> {
 }
 
 /**
+ * Fetch the RAW KeyStats payload for one emiten (Phase 3, G5 capture).
+ *
+ * Deliberately a SIBLING of `fetchKeyStats`, not a replacement. `fetchKeyStats`
+ * runs `parseKeyStatsResponse` for the display card and its flattened shape is
+ * consumed by KeyStatsCard; changing it would risk the UI for no benefit. G5
+ * needs the untouched JSON so the series parser can recover the number and the
+ * inline scale from each value string.
+ *
+ * Goes through the same `stockbitFetch` limiter bucket and the same
+ * `handleApiResponse` status handling, so the capture costs one slot from the
+ * shared 4/s budget and inherits the existing 401 token-invalidation path.
+ */
+export async function fetchKeyStatsRaw(emiten: string): Promise<unknown> {
+  const url = `${STOCKBIT_BASE_URL}/keystats/ratio/v1/${emiten}?year_limit=10`;
+
+  const response = await stockbitFetch(url, {
+    method: 'GET',
+    headers: await getHeaders(),
+  });
+
+  await handleApiResponse(response, 'KeyStats API');
+
+  return response.json();
+}
+
+/**
  * Historical summary item from Stockbit API
  */
 export interface HistoricalSummaryItem {

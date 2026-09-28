@@ -6,6 +6,7 @@ import {
   fetchEmitenInfo,
   fetchHistoricalSummary,
   fetchRunningTradeChartByBrokers,
+  fetchKeyStatsRaw,
 } from '@/lib/stockbit';
 import { sessionDateJakarta, addTradingDays } from '@/lib/market-calendar';
 import { calculateTargets } from '@/lib/calculations';
@@ -17,7 +18,13 @@ import {
   updateBackgroundJobLog,
   saveBrokerFlowDaily,
 } from '@/lib/supabase';
-import { getPriceHistory, saveDecisionJournal, getWatchlistAnalysisHistory, getPriorBandarCodes } from '@/lib/db';
+import {
+  getPriceHistory,
+  saveDecisionJournal,
+  getWatchlistAnalysisHistory,
+  getPriorBandarCodes,
+  saveKeystatsSnapshot,
+} from '@/lib/db';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
@@ -25,6 +32,7 @@ import { buildTapeSnapshot } from '@/lib/tape/snapshot';
 import { buildMicroSnapshot, isBandarSellerOn } from '@/lib/micro/snapshot';
 import { FLOW_WINDOW } from '@/lib/micro/flow';
 import { captureBandFlow } from './micro-capture';
+import { captureFundamentals } from './fundamentals-capture';
 import { ymdOf } from '@/lib/date-ymd';
 import {
   resolveEmitensToAnalyze,
@@ -247,6 +255,24 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         }).catch((e) => console.error(`[Watchlist Job] flow row save failed for ${emiten}`, e));
       }
 
+      // Phase 3 fundamentals capture (D11 / D12).
+      //
+      // Exactly ONE KeyStats call per emiten per run. It runs AFTER the market
+      // detector fetch rather than inside its Promise.all, because the detector
+      // is the hottest authenticated endpoint and a KeyStats 429 must not delay
+      // or perturb it.
+      //
+      // `captureFundamentals` never throws and never returns a rejected
+      // promise, so a rate limit here cannot reach `errors[]` and cannot abort
+      // the signal loop. G5 fails open, so the cost of a miss is one
+      // NOT_EVALUATED signal flagged for the repair pass — never a lost trade.
+      const fundamentals = await captureFundamentals({
+        emiten,
+        asOf: today,
+        fetchKeyStatsRaw,
+        saveSnapshot: saveKeystatsSnapshot,
+      });
+
       await saveWatchlistAnalysis({
         from_date: today,
         to_date: today,
@@ -279,6 +305,9 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         broker_p: micro.raw?.brokerP ?? null,
         // D18: a degraded capture is repairable, not final.
         capture_incomplete: micro.captureIncomplete,
+        // D11: a SEPARATE flag, so a missed fundamental read is repairable
+        // without re-running the micro/flow repair pass and vice versa.
+        fundamentals_incomplete: fundamentals.incomplete,
       });
 
       // Update previous day's record with close and high from historical data.
