@@ -11,6 +11,7 @@
 import { getFraksi } from '../calculations';
 import { roundTripCostRate } from './costs';
 import type { BrokerType } from '../brokers';
+import type { FundamentalInput, FundamentalView, G5Profile } from '../fundamentals/types';
 import type {
   GateId,
   GateResult,
@@ -24,9 +25,57 @@ import type {
 export type { PlaybookInput, PlaybookCard, Stance, GateId, GateResult } from './types';
 
 const PHASE_1_SKIPPED_REASON = 'phase-1';
+/** G6 and G7 are unimplemented future gates; they keep the Phase 1 label. */
+const PHASE_3_OFF_REASON = 'phase-3-off';
 
 function skippedLaterGate(id: GateId): GateResult {
   return { id, pass: true, skipped: true, reason: PHASE_1_SKIPPED_REASON };
+}
+
+/**
+ * G5 — the fundamental-health veto (Phase 3).
+ *
+ * A VETO, never a filter: this function can only report a failure, and only
+ * for a measured LANDMINE. It is deliberately unable to promote a setup,
+ * soften a WAIT, or rescue an AVOID — the stance logic below consumes it in
+ * one direction only.
+ *
+ * It FAILS OPEN, which is the opposite of G4. G4 fails closed because a setup
+ * with no tape cannot be judged as a trend. A fundamental reading is
+ * supplementary evidence, and its absence is not itself a red flag: a missing
+ * snapshot means NOT_EVALUATED, never a veto. A veto firing on absent data
+ * would be indistinguishable from a real finding, and would quietly delete
+ * trades during a vendor outage.
+ *
+ * Under 'visible' the row still reports the finding, so an operator can see a
+ * landmine coming without the gate acting on it.
+ */
+function evaluateGate5(input: PlaybookInput): GateResult {
+  const profile: G5Profile = input.g5Profile ?? 'off';
+  if (profile === 'off') {
+    return { id: 'G5', pass: true, skipped: true, reason: PHASE_3_OFF_REASON };
+  }
+
+  const fundamental: FundamentalInput | undefined = input.fundamental;
+  if (!fundamental || fundamental.state !== 'LANDMINE') {
+    // Includes every unmeasured case: no snapshot, an empty one, a financial
+    // issuer, or a reading that passed. None of them is a veto.
+    return {
+      id: 'G5',
+      pass: true,
+      reason:
+        fundamental?.state === 'SOUND'
+          ? 'Fundamental sehat — tidak ada veto'
+          : 'Fundamental tidak dievaluasi (gagal open)',
+    };
+  }
+
+  const clauses = fundamental.clauses.join(', ');
+  return {
+    id: 'G5',
+    pass: false,
+    reason: `Fundamental bermasalah: ${clauses}`,
+  };
 }
 
 /** Round an invalidation toward the entry for a long (up to the tick). */
@@ -267,12 +316,37 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   gates.push(evaluateGate4(input));
 
   // ---------------------------------------------------------------- G5-G7
-  gates.push(skippedLaterGate('G5'));
+  // D1: absent is 'off'. Independent of g1Profile by design, so a micro-profile
+  // flip can never change what the fundamental veto does.
+  const g5Profile: G5Profile = input.g5Profile ?? 'off';
+  // G5 is evaluated LAST (D4). An earlier failure means it is skipped below,
+  // so a technical rejection is never attributed to fundamentals.
+  gates.push(evaluateGate5(input));
   gates.push(skippedLaterGate('G6'));
   gates.push(skippedLaterGate('G7'));
 
+  // D4: G5 is only meaningful once G0–G4 have passed. If an earlier gate
+  // already rejected the setup, the G5 row is marked skipped so the card never
+  // blames fundamentals for what was a technical rejection — and so
+  // `failedGates` names the real cause.
+  const g5Row = gates.find((gate) => gate.id === 'G5')!;
+  const earlierFailure = gates.some(
+    (gate) => gate.id !== 'G5' && !gate.pass && !gate.skipped,
+  );
+  if (earlierFailure && !g5Row.skipped) {
+    gates[gates.indexOf(g5Row)] = {
+      id: 'G5',
+      pass: true,
+      skipped: true,
+      reason: 'Dilewati karena gate sebelumnya gagal',
+    };
+  }
+
+  // A gate that is only REPORTING (profile 'visible') is not a failure. It
+  // must not appear in `failedGates`, because that list names the reasons the
+  // stance is what it is, and under 'visible' the stance is unaffected.
   const failedGates = gates
-    .filter((gate) => !gate.pass && !gate.skipped)
+    .filter((gate) => !gate.pass && !gate.skipped && !(gate.id === 'G5' && g5Profile !== 'veto'))
     .map((gate) => gate.id);
 
   // ------------------------------------------------------- stance
@@ -291,15 +365,30 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     stance = g3.riskNonPositive ? 'AVOID' : 'WAIT';
   } else if (!gates.find((g) => g.id === 'G4')!.pass) {
     stance = 'WAIT';
+  } else if (g5Profile === 'veto' && !gates.find((g) => g.id === 'G5')!.pass) {
+    // D3: monotonic downgrade only. This branch is reachable ONLY from ENTER,
+    // because every earlier branch has already returned. G5 therefore cannot
+    // create an ENTER, soften a WAIT, or rescue an AVOID — it can only turn an
+    // otherwise-valid setup into AVOID.
+    //
+    // The `veto` guard is load-bearing: under 'visible' the gate row still
+    // REPORTS the landmine (so an operator can see it coming) but must not
+    // change the stance. Only the fully-armed profile may act.
+    stance = 'AVOID';
   } else {
     stance = 'ENTER';
   }
 
   // ------------------------------------------------------- thesis
-  const firstFailure = gates.find((gate) => !gate.pass && !gate.skipped);
+  const firstFailure = gates.find(
+    (gate) => !gate.pass && !gate.skipped && !(gate.id === 'G5' && g5Profile !== 'veto'),
+  );
   let thesis: string;
   if (stance === 'ENTER') {
-    thesis = 'G0–G4 lolos; G5–G7 skipped (phase-1).';
+    thesis =
+      g5Profile === 'veto'
+        ? 'G0–G4 lolos; G5 fundamental lolos. G6–G7 skipped (phase-1).'
+        : 'G0–G4 lolos; G5–G7 skipped (phase-1).';
   } else if (stance === 'TAKE_PROFIT') {
     thesis = 'Harga telah mencapai R1 kartu terbuka — kelola posisi, jangan tambah.';
   } else {
@@ -347,6 +436,14 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
         }
       : undefined;
 
+  // Phase 3 fundamental view (D15). Recorded under EVERY profile, including
+  // 'off' where it is inert. The card must be able to show that a fundamental
+  // reading exists and that G5 is not currently armed, rather than leaving the
+  // operator to infer it from a missing field.
+  const fundamentalView: FundamentalView | undefined = input.fundamental
+    ? { ...input.fundamental, g5Profile }
+    : undefined;
+
   return {
     stance,
     gates,
@@ -359,5 +456,6 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     failedGates,
     tape,
     ...(microView ? { micro: microView } : {}),
+    ...(fundamentalView ? { fundamental: fundamentalView } : {}),
   };
 }

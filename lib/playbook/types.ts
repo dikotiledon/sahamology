@@ -11,6 +11,7 @@ import type { BrokerType } from '../brokers';
 import type { CostModel } from './costs';
 import type { PatternName, TapeSnapshot } from '../tape/snapshot';
 import type { AccDistState, FlowState, PersistenceTier } from '../micro/types';
+import type { FundamentalInput, FundamentalView } from '../fundamentals/types';
 
 export type Stance = 'ENTER' | 'WAIT' | 'AVOID' | 'TAKE_PROFIT' | 'INVALIDATED';
 
@@ -60,6 +61,22 @@ export interface PlaybookInput {
    * label, never closed (plan Task 7 fixture 2).
    */
   micro?: MicroInput;
+  /**
+   * Phase 3 G5 profile (D1). Absent is 'off', and under 'off' the card is
+   * BYTE-IDENTICAL to Phase 2 — that default is what makes it safe to ship the
+   * capture layer while the gate is still being measured.
+   *
+   * Deliberately independent of `g1Profile`: the two gates are unrelated
+   * experiments, and coupling them would let a micro-profile flip silently
+   * change what the fundamental veto does.
+   */
+  g5Profile?: 'off' | 'visible' | 'veto';
+  /**
+   * Phase 3 fundamental reading (D11). Absent means "no fundamental layer",
+   * which fails OPEN: G5 reports NOT_EVALUATED and never vetoes. This is the
+   * deliberate opposite of G4, which fails closed on missing tape.
+   */
+  fundamental?: FundamentalInput;
 }
 
 /**
@@ -108,6 +125,14 @@ export interface PlaybookCard {
    * since Phase 0.
    */
   micro?: MicroView;
+  /**
+   * Phase 3 fundamental view (D15). Present whenever a fundamental reading
+   * was supplied, whatever the profile — including under 'off', where it is
+   * recorded but inert. Same reason as `micro`: an operator must be able to
+   * see that a gate exists and is not currently armed, rather than inferring
+   * it from its absence.
+   */
+  fundamental?: FundamentalView;
 }
 
 /** Display-only projection of the captured micro snapshot (plan §5.5). */

@@ -221,14 +221,17 @@ describe('nothing else moves (Task 7 fixture 10/11)', () => {
     assert.equal(g1(a).pass, g1(b).pass);
   });
 
-  it('G5–G7 remain skipped with reason "phase-1"', () => {
+  // Phase 3 (D15): G5's label moved to 'phase-3-off' — it is a designed gate
+  // that is deliberately not armed, unlike the unimplemented G6 and G7 which
+  // keep 'phase-1'. The micro layer still has no influence on it.
+  it('G5-G7 remain skipped; G5 reads phase-3-off, G6/G7 read phase-1', () => {
     const card = evaluatePlaybook(
       input({ g1Profile: 'phase-2', micro: { bandCode: SMART, tier: 'building', accdistState: 'ACC', flowState: 'ok' } }),
     );
     for (const id of ['G5', 'G6', 'G7'] as const) {
       const g = card.gates.find((x) => x.id === id)!;
       assert.equal(g.skipped, true);
-      assert.equal(g.reason, 'phase-1');
+      assert.equal(g.reason, id === 'G5' ? 'phase-3-off' : 'phase-1');
     }
   });
 
