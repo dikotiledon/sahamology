@@ -9,6 +9,7 @@
     "baseline:backtest": "tsx scripts/run-baseline-backtest.ts",
     "walkforward:g4": "tsx scripts/run-g4-walkforward.ts",
     "walkforward:p2": "tsx scripts/run-phase2-walkforward.ts",
+    "repair:captures": "tsx scripts/repair-captures.ts",
     "build": "next build",
     "start": "node scripts/start-standalone.js",
     "typecheck": "tsc --noEmit",

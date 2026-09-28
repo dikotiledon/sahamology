@@ -36,6 +36,11 @@ import { FLOW_WINDOW } from '../lib/micro/flow';
 import { captureBandFlow } from '../lib/jobs/micro-capture';
 import { addTradingDays } from '../lib/market-calendar';
 import type { BrokerFlowRow } from '../lib/micro/types';
+import {
+  REPAIR_SELECT_SQL,
+  REPAIR_UPDATE_SQL,
+  repairBlocker,
+} from '../lib/micro/repair';
 
 const APPLY = process.argv.includes('--apply');
 const LIMIT = Number(process.env.REPAIR_LIMIT ?? '50');
@@ -58,16 +63,7 @@ async function main(): Promise<void> {
   try {
     // Only incomplete rows. A complete row is never re-read, so this script
     // cannot overwrite a good capture with a fresh-but-different one.
-    const { rows } = await pool.query<PendingRow>(
-      `SELECT emiten, from_date, bandar, capture_incomplete
-         FROM stock_queries
-        WHERE status = 'success'
-          AND capture_incomplete = TRUE
-          AND from_date <= CURRENT_DATE
-        ORDER BY from_date DESC
-        LIMIT $1`,
-      [LIMIT],
-    );
+    const { rows } = await pool.query<PendingRow>(REPAIR_SELECT_SQL, [LIMIT]);
 
     console.log(
       `${APPLY ? 'APPLY' : 'DRY RUN'}: ${rows.length} incomplete capture(s) found (limit ${LIMIT}).`,
@@ -86,11 +82,12 @@ async function main(): Promise<void> {
 
     for (const row of rows) {
       const key = `${row.emiten}/${row.from_date}`;
-      const band = (row.bandar ?? '').toString().trim();
-      if (band === '') {
-        report.unrepairable.push({ key, reason: 'no band recorded; G1 would have blocked' });
+      const blocked = repairBlocker(row.bandar);
+      if (blocked) {
+        report.unrepairable.push({ key, reason: blocked });
         continue;
       }
+      const band = (row.bandar ?? '').toString().trim();
 
       let detector: unknown = null;
       try {
@@ -133,14 +130,7 @@ async function main(): Promise<void> {
       if (APPLY) {
         // ONLY the micro columns and the repair marker. Price, targets and
         // stance are untouched by construction.
-        await pool.query(
-          `UPDATE stock_queries
-              SET accdist_overall = $3, accdist_top1 = $4, accdist_top3 = $5,
-                  accdist_top5 = $6, accdist_avg = $7,
-                  broker_total_buyer = $8, broker_total_seller = $9,
-                  capture_incomplete = FALSE
-            WHERE emiten = $1 AND from_date = $2`,
-          [
+        await pool.query(REPAIR_UPDATE_SQL, [
             row.emiten,
             row.from_date,
             micro.raw.accdistOverall,
