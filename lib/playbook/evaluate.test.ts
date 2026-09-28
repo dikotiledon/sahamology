@@ -56,10 +56,15 @@ const baseInput: PlaybookInput = {
 //   rrGross = 7, costInR = 980 * 0.006 / 20 = 0.294 -> rr = 6.706
 
 // Phase 3 (D15): G5's skip label moved from 'phase-1' to 'phase-3-off',
-// because G5 is now a designed, implemented gate that is deliberately not
-// armed — not an unimplemented future placeholder like G6 and G7. G6 and G7
-// keep 'phase-1'. The STANCE, the numbers and every G0-G4 assertion are
-// unchanged: default-off means the card behaves exactly as it did in Phase 1.
+// because G5 is a designed, implemented gate that is deliberately not armed —
+// not an unimplemented future placeholder like G6. G6 keeps 'phase-1'.
+//
+// Phase 4 (D15) then moved G7's label to 'phase-4-off' for the same reason:
+// it is now a designed gate that is deliberately not armed, since every
+// threshold in it is still unmeasured. G6 is the only unimplemented gate left.
+//
+// The STANCE, the numbers and every G0-G4 assertion are unchanged throughout:
+// default-off means the card behaves exactly as it did in Phase 1.
 test('healthy Smartmoney/Whale setup is ENTER with G4 live, G5-G7 skipped', () => {
   const card = evaluatePlaybook(baseInput);
   assert.equal(card.stance, 'ENTER');
@@ -67,12 +72,14 @@ test('healthy Smartmoney/Whale setup is ENTER with G4 live, G5-G7 skipped', () =
   const g4 = card.gates.find((g) => g.id === 'G4');
   assert.equal(g4?.skipped, undefined);
   assert.equal(g4?.pass, true);
-  // G5 reports 'phase-3-off'; G6 and G7 remain 'phase-1'.
-  for (const id of ['G5', 'G6', 'G7']) {
+  // G5 reads 'phase-3-off', G7 reads 'phase-4-off', and G6 is the only
+  // unimplemented gate that still reads 'phase-1'.
+  for (const id of ['G5', 'G6', 'G7'] as const) {
     const gate = card.gates.find((g) => g.id === id);
     assert.equal(gate?.skipped, true);
     assert.equal(gate?.pass, true);
-    assert.equal(gate?.reason, id === 'G5' ? 'phase-3-off' : 'phase-1');
+    const expected = id === 'G5' ? 'phase-3-off' : id === 'G7' ? 'phase-4-off' : 'phase-1';
+    assert.equal(gate?.reason, expected);
   }
   assert.equal(card.entry, 980);
   assert.equal(card.invalidation, 960);

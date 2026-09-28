@@ -12,6 +12,7 @@ import { getFraksi } from '../calculations';
 import { roundTripCostRate } from './costs';
 import type { BrokerType } from '../brokers';
 import type { FundamentalInput, FundamentalView, G5Profile } from '../fundamentals/types';
+import type { G7Profile, MacroInput, MacroView } from '../macro/types';
 import type {
   GateId,
   GateResult,
@@ -25,11 +26,76 @@ import type {
 export type { PlaybookInput, PlaybookCard, Stance, GateId, GateResult } from './types';
 
 const PHASE_1_SKIPPED_REASON = 'phase-1';
-/** G6 and G7 are unimplemented future gates; they keep the Phase 1 label. */
+/** G6 is an unimplemented future gate; it keeps the Phase 1 label. */
 const PHASE_3_OFF_REASON = 'phase-3-off';
+/** G7 is off by default: absent or 'off' means the regime is not consulted. */
+const PHASE_4_OFF_REASON = 'phase-4-off';
 
 function skippedLaterGate(id: GateId): GateResult {
   return { id, pass: true, skipped: true, reason: PHASE_1_SKIPPED_REASON };
+}
+
+/**
+ * G7 — the macro-regime gate (Phase 4).
+ *
+ * A SINGLE-NOTCH HOLD, not a veto and not a filter. Two properties are the
+ * whole design, and both are load-bearing:
+ *
+ *   It can only DOWNGRADE ENTER to WAIT. It never creates an ENTER, never
+ *   softens a WAIT, and never reaches AVOID. A macro CAUTION says the broad
+ *   backdrop is hostile; it says nothing about whether THIS emiten's thesis is
+ *   broken. Demoting to AVOID would delete a setup that the structural,
+ *   flow, tape and fundamental gates all passed, and would make a day of broad
+ *   weakness indistinguishable from a dead thesis.
+ *
+ *   It FAILS OPEN. No macro snapshot, an incomplete capture, or an unarmed
+ *   threshold all yield NOT_EVALUATED and a passing row. This is the same
+ *   reasoning as G5 and the opposite of G4: a missing external read is an
+ *   absence of evidence, and failing closed on it would quietly delete valid
+ *   trades every time the vendor had a bad day.
+ *
+ * Under 'visible' the CAUTION is reported but cannot act — the operator sees a
+ * regime warning coming without the gate touching the stance. Only the fully
+ * armed 'veto' profile may downgrade, and even then only by one notch.
+ */
+function evaluateGate7(input: PlaybookInput): GateResult {
+  const profile: G7Profile = input.g7Profile ?? 'off';
+  if (profile === 'off') {
+    return { id: 'G7', pass: true, skipped: true, reason: PHASE_4_OFF_REASON };
+  }
+
+  const macro: MacroInput | undefined = input.macro;
+  if (!macro || macro.state === 'NOT_EVALUATED') {
+    // Includes every unmeasured case: no snapshot, too few bars, no threshold
+    // armed, or a sector with no commodity mapping. None of them is a warning.
+    return {
+      id: 'G7',
+      pass: true,
+      reason: 'Regime makro tidak dievaluasi (gagal open)',
+    };
+  }
+
+  if (macro.state === 'CAUTION') {
+    const clauses = macro.clauses.join(', ');
+    if (profile === 'veto') {
+      return {
+        id: 'G7',
+        pass: false,
+        reason: `Regime perlu diwaspadai: ${clauses}`,
+      };
+    }
+    return {
+      id: 'G7',
+      pass: false,
+      reason: `Regime CAUTION (hanya tampilan): ${clauses}`,
+    };
+  }
+
+  if (macro.state === 'NEUTRAL') {
+    return { id: 'G7', pass: true, reason: 'Regime netral — tidak ada klausa terpicu' };
+  }
+
+  return { id: 'G7', pass: true, reason: 'Regime mendukung' };
 }
 
 /**
@@ -319,23 +385,50 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   // D1: absent is 'off'. Independent of g1Profile by design, so a micro-profile
   // flip can never change what the fundamental veto does.
   const g5Profile: G5Profile = input.g5Profile ?? 'off';
-  // G5 is evaluated LAST (D4). An earlier failure means it is skipped below,
-  // so a technical rejection is never attributed to fundamentals.
+  // G5 and G7 are evaluated LAST (D4). An earlier failure means each is skipped
+  // below, so a technical rejection is never attributed to fundamentals or to
+  // the macro backdrop.
   gates.push(evaluateGate5(input));
   gates.push(skippedLaterGate('G6'));
-  gates.push(skippedLaterGate('G7'));
+  const g7Profile: G7Profile = input.g7Profile ?? 'off';
+  gates.push(evaluateGate7(input));
 
   // D4: G5 is only meaningful once G0–G4 have passed. If an earlier gate
   // already rejected the setup, the G5 row is marked skipped so the card never
   // blames fundamentals for what was a technical rejection — and so
   // `failedGates` names the real cause.
+  // A gate that is only REPORTING is not a failure. G5 and G7 both report
+  // without acting under 'visible', so neither may appear in `failedGates`:
+  // that list names the reasons the stance is what it is, and under 'visible'
+  // the stance is unaffected.
+  const isReportingOnly = (gate: GateResult): boolean =>
+    (gate.id === 'G5' && g5Profile !== 'veto') || (gate.id === 'G7' && g7Profile !== 'veto');
+
   const g5Row = gates.find((gate) => gate.id === 'G5')!;
   const earlierFailure = gates.some(
-    (gate) => gate.id !== 'G5' && !gate.pass && !gate.skipped,
+    (gate) => gate.id !== 'G5' && gate.id !== 'G7' && !gate.pass && !gate.skipped,
   );
   if (earlierFailure && !g5Row.skipped) {
     gates[gates.indexOf(g5Row)] = {
       id: 'G5',
+      pass: true,
+      skipped: true,
+      reason: 'Dilewati karena gate sebelumnya gagal',
+    };
+  }
+  // Same rule for G7: a CAUTION regime must never be cited as the reason a
+  // setup failed on the tape. The G7 row is skipped, not removed, so the card
+  // still shows that a regime reading existed.
+  const g7Row = gates.find((gate) => gate.id === 'G7')!;
+  // `isReportingOnly` is load-bearing here: under 'visible' G7 reports
+  // pass:false, and without the exemption it would skip ITSELF, destroying the
+  // very finding the operator asked to see.
+  const failureBeforeG7 = gates.some(
+    (gate) => gate.id !== 'G7' && !gate.pass && !gate.skipped && !isReportingOnly(gate),
+  );
+  if (failureBeforeG7 && !g7Row.skipped) {
+    gates[gates.indexOf(g7Row)] = {
+      id: 'G7',
       pass: true,
       skipped: true,
       reason: 'Dilewati karena gate sebelumnya gagal',
@@ -346,7 +439,7 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   // must not appear in `failedGates`, because that list names the reasons the
   // stance is what it is, and under 'visible' the stance is unaffected.
   const failedGates = gates
-    .filter((gate) => !gate.pass && !gate.skipped && !(gate.id === 'G5' && g5Profile !== 'veto'))
+    .filter((gate) => !gate.pass && !gate.skipped && !isReportingOnly(gate))
     .map((gate) => gate.id);
 
   // ------------------------------------------------------- stance
@@ -375,20 +468,39 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     // REPORTS the landmine (so an operator can see it coming) but must not
     // change the stance. Only the fully-armed profile may act.
     stance = 'AVOID';
+  } else if (g7Profile === 'veto' && !gates.find((g) => g.id === 'G7')!.pass) {
+    // D3: a CAUTION regime costs exactly ONE notch, and only from ENTER. This
+    // branch is reachable only from ENTER because every earlier branch has
+    // already returned, so G7 can never soften a WAIT, never rescue an AVOID,
+    // and never create an ENTER. It downgrades to WAIT, never AVOID: a hostile
+    // backdrop is not a broken thesis, and the setup is preserved on the card
+    // for the operator to watch rather than deleted.
+    stance = 'WAIT';
   } else {
     stance = 'ENTER';
   }
 
   // ------------------------------------------------------- thesis
   const firstFailure = gates.find(
-    (gate) => !gate.pass && !gate.skipped && !(gate.id === 'G5' && g5Profile !== 'veto'),
+    (gate) => !gate.pass && !gate.skipped && !isReportingOnly(gate),
   );
   let thesis: string;
   if (stance === 'ENTER') {
-    thesis =
-      g5Profile === 'veto'
-        ? 'G0–G4 lolos; G5 fundamental lolos. G6–G7 skipped (phase-1).'
-        : 'G0–G4 lolos; G5–G7 skipped (phase-1).';
+    // Name the gates that actually ran. Under Phase 4 an ENTER with the regime
+    // evaluated must say so, otherwise the card looks identical to one produced
+    // before the macro layer existed and an operator cannot tell which system
+    // they are reading.
+    const ranG5 = g5Profile !== 'off';
+    const ranG7 = g7Profile !== 'off';
+    const entered = ['G0–G4 lolos'];
+    if (ranG5) entered.push('G5 fundamental lolos');
+    if (ranG7) entered.push('G7 regime lolos');
+    const skipped = ['G5', 'G6', 'G7'].filter((id) => {
+      if (id === 'G5') return !ranG5;
+      if (id === 'G7') return !ranG7;
+      return true;
+    });
+    thesis = `${entered.join('; ')}. ${skipped.join(', ')} skipped.`;
   } else if (stance === 'TAKE_PROFIT') {
     thesis = 'Harga telah mencapai R1 kartu terbuka — kelola posisi, jangan tambah.';
   } else {
@@ -444,6 +556,14 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     ? { ...input.fundamental, g5Profile }
     : undefined;
 
+  // Phase 4 macro view (D15). Recorded under EVERY profile, including 'off'
+  // where it is inert. Same reason as `fundamental`: the card must be able to
+  // show that a regime reading exists and that G7 is not currently armed,
+  // rather than leaving the operator to infer it from a missing field.
+  const macroView: MacroView | undefined = input.macro
+    ? { ...input.macro, g7Profile }
+    : undefined;
+
   return {
     stance,
     gates,
@@ -457,5 +577,6 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     tape,
     ...(microView ? { micro: microView } : {}),
     ...(fundamentalView ? { fundamental: fundamentalView } : {}),
+    ...(macroView ? { macro: macroView } : {}),
   };
 }

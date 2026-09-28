@@ -12,6 +12,7 @@ import type { CostModel } from './costs';
 import type { PatternName, TapeSnapshot } from '../tape/snapshot';
 import type { AccDistState, FlowState, PersistenceTier } from '../micro/types';
 import type { FundamentalInput, FundamentalView } from '../fundamentals/types';
+import type { G7Profile, MacroInput, MacroView } from '../macro/types';
 
 export type Stance = 'ENTER' | 'WAIT' | 'AVOID' | 'TAKE_PROFIT' | 'INVALIDATED';
 
@@ -77,6 +78,23 @@ export interface PlaybookInput {
    * deliberate opposite of G4, which fails closed on missing tape.
    */
   fundamental?: FundamentalInput;
+  /**
+   * Phase 4 G7 profile (D1). Absent is 'off', and under 'off' the card is
+   * BYTE-IDENTICAL to Phase 3 — the default that makes it safe to ship the
+   * capture and classification layers before any bound is measured.
+   *
+   * Independent of `g5Profile` for the same reason: the fundamental veto and
+   * the macro regime are unrelated experiments, and coupling them would let a
+   * G5 profile flip silently change what G7 does.
+   */
+  g7Profile?: G7Profile;
+  /**
+   * Phase 4 macro regime reading (D11). Absent means "no macro layer", which
+   * fails OPEN: G7 reports NOT_EVALUATED and never holds a trade back. Same
+   * reason as G5 — an unmeasured macro regime is an absence of evidence, and
+   * a vendor outage must not silently delete ENTER signals.
+   */
+  macro?: MacroInput;
 }
 
 /**
@@ -133,6 +151,13 @@ export interface PlaybookCard {
    * it from its absence.
    */
   fundamental?: FundamentalView;
+  /**
+   * Phase 4 macro regime view. Present whenever a macro reading was supplied,
+   * whatever the profile — including under 'off', where it is recorded but
+   * inert. Same reason as `fundamental`: an operator must be able to see that
+   * a regime reading exists and that G7 is not currently armed.
+   */
+  macro?: MacroView;
 }
 
 /** Display-only projection of the captured micro snapshot (plan §5.5). */
