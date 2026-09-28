@@ -1,14 +1,15 @@
 /**
- * Canonical playbook types for the Phase 0 G0–G3 decision evaluator.
+ * Canonical playbook types for the G0–G4 decision evaluator.
  *
  * The gate vocabulary matches the accepted spec exactly:
  *   Stance  = ENTER | WAIT | AVOID | TAKE_PROFIT | INVALIDATED
- *   GateId  = G0..G7; G4–G7 are present in the card but skipped in Phase 0.
+ *   GateId  = G0..G7; G4 is live in Phase 1, G5–G7 are skipped rows.
  */
 
 import type { CalculateTargetsResult } from '../calculations';
 import type { BrokerType } from '../brokers';
 import type { CostModel } from './costs';
+import type { PatternName, TapeSnapshot } from '../tape/snapshot';
 
 export type Stance = 'ENTER' | 'WAIT' | 'AVOID' | 'TAKE_PROFIT' | 'INVALIDATED';
 
@@ -38,6 +39,19 @@ export interface PlaybookInput {
   tokenValid: boolean;
   costs: CostModel;
   openCard?: { stance: Stance };
+  /** Phase 1 tape view; absent = Phase 0 semantics (G4 skipped). */
+  tape?: TapeSnapshot;
+}
+
+/** Display-only tape fields surfaced on the card. */
+export interface TapeView {
+  atr: number | null;
+  ema20: number | null;
+  emaSlope: 'up' | 'down' | null;
+  trendOk: boolean;
+  pattern: PatternName | null;
+  barsUsed: number;
+  invalidationSource: 'atr' | 'interim';
 }
 
 export interface PlaybookCard {
@@ -50,4 +64,5 @@ export interface PlaybookCard {
   rr: number | null;
   thesis: string;
   failedGates: GateId[];
+  tape?: TapeView;
 }

@@ -1,12 +1,14 @@
 /**
- * Canonical Phase 0 playbook evaluator: gates G0–G3 decide ENTER/WAIT/AVOID,
- * and an already-open card can exit to TAKE_PROFIT. G4–G7 exist in the card
- * as skipped rows so the gate vocabulary matches the accepted spec exactly.
+ * Canonical playbook evaluator: gates G0–G3 decide ENTER/WAIT/AVOID, G4 is the
+ * Phase 1 tape filter (fail-closed WAIT), and an already-open card can exit to
+ * TAKE_PROFIT. G5–G7 exist in the card as skipped rows so the gate vocabulary
+ * matches the accepted spec exactly.
  *
  * Subjective narration is forbidden: every non-ENTER stance names the exact
  * gate that blocked the trade and why.
  */
 
+import { getFraksi } from '../calculations';
 import { roundTripCostRate } from './costs';
 import type { BrokerType } from '../brokers';
 import type {
@@ -15,26 +17,49 @@ import type {
   PlaybookCard,
   PlaybookInput,
   Stance,
+  TapeView,
 } from './types';
 
 export type { PlaybookInput, PlaybookCard, Stance, GateId, GateResult } from './types';
 
-const SKIPPED_REASON = 'phase-0';
+const PHASE_1_SKIPPED_REASON = 'phase-1';
 
-function skippedGate(id: GateId): GateResult {
-  return { id, pass: true, skipped: true, reason: SKIPPED_REASON };
+function skippedLaterGate(id: GateId): GateResult {
+  return { id, pass: true, skipped: true, reason: PHASE_1_SKIPPED_REASON };
+}
+
+/** Round an invalidation toward the entry for a long (up to the tick). */
+function roundTowardEntry(raw: number, fraksi: number): number {
+  return Math.ceil(raw / fraksi) * fraksi;
+}
+
+function gate3Interim(input: PlaybookInput): { entry: number; invalidation: number } {
+  const entry = Math.min(input.harga, input.rataRataBandar);
+  const invalidation = Math.min(input.arb, input.rataRataBandar * 0.97);
+  return { entry, invalidation };
 }
 
 /**
- * G3 reward/risk using the spec's exact formulas:
- *   entry       = min(harga, rataRataBandar)
- *   invalidation = min(arb, rataRataBandar * 0.97)
- *   R           = entry - invalidation
- *   rr          = (r1 - entry) / R - (entry * roundTripCostRate) / R
+ * G3 reward/risk. When a finite ATR tape exists, the stop is
+ * rataRataBandar - 1*ATR tick-rounded toward entry (Phase 1). Otherwise the
+ * Phase 0 interim stop min(arb, bandar*0.97) applies.
  */
 function evaluateGate3(input: PlaybookInput, r1: number | null) {
-  const entry = Math.min(input.harga, input.rataRataBandar);
-  const invalidation = Math.min(input.arb, input.rataRataBandar * 0.97);
+  const fraksi = getFraksi(input.harga);
+  const tape = input.tape;
+  const interim = gate3Interim(input);
+
+  let entry = interim.entry;
+  let invalidation = interim.invalidation;
+  let invalidationSource: TapeView['invalidationSource'] = 'interim';
+
+  if (tape && tape.ok && tape.atr !== null) {
+    entry = interim.entry;
+    const raw = input.rataRataBandar - 1 * tape.atr;
+    invalidation = roundTowardEntry(raw, fraksi);
+    invalidationSource = 'atr';
+  }
+
   const risk = entry - invalidation;
 
   if (r1 === null) {
@@ -44,6 +69,7 @@ function evaluateGate3(input: PlaybookInput, r1: number | null) {
       rr: null,
       entry,
       invalidation,
+      invalidationSource,
       riskNonPositive: true,
     };
   }
@@ -54,6 +80,7 @@ function evaluateGate3(input: PlaybookInput, r1: number | null) {
       rr: null,
       entry,
       invalidation,
+      invalidationSource,
       riskNonPositive: true,
     };
   }
@@ -70,6 +97,7 @@ function evaluateGate3(input: PlaybookInput, r1: number | null) {
       rr: null,
       entry,
       invalidation,
+      invalidationSource,
       riskNonPositive: false,
     };
   }
@@ -80,6 +108,7 @@ function evaluateGate3(input: PlaybookInput, r1: number | null) {
       rr,
       entry,
       invalidation,
+      invalidationSource,
       riskNonPositive: false,
     };
   }
@@ -89,8 +118,32 @@ function evaluateGate3(input: PlaybookInput, r1: number | null) {
     rr,
     entry,
     invalidation,
+    invalidationSource,
     riskNonPositive: false,
   };
+}
+
+/** G4 tape filter. Missing/short tape is a WAIT-class failure, never AVOID. */
+function evaluateGate4(input: PlaybookInput): GateResult {
+  const tape = input.tape;
+
+  if (!tape) {
+    return {
+      id: 'G4',
+      pass: false,
+      reason: 'Tape filter tidak tersedia (riwayat harga belum dimuat)',
+    };
+  }
+  if (!tape.ok) {
+    return { id: 'G4', pass: false, reason: tape.reason };
+  }
+  if (tape.trendOk) {
+    return { id: 'G4', pass: true, reason: 'Tren 20-EMA tidak collapse' };
+  }
+  if (tape.pattern) {
+    return { id: 'G4', pass: true, reason: `Reclaim ${tape.pattern} pada tren lemah` };
+  }
+  return { id: 'G4', pass: false, reason: 'Tape collapse tanpa spring/HL/BO-EMA' };
 }
 
 export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
@@ -172,11 +225,13 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   const g3 = evaluateGate3(input, r1);
   gates.push({ id: 'G3', pass: g3.pass, reason: g3.reason });
 
-  // ---------------------------------------------------------------- G4-G7
-  gates.push(skippedGate('G4'));
-  gates.push(skippedGate('G5'));
-  gates.push(skippedGate('G6'));
-  gates.push(skippedGate('G7'));
+  // ---------------------------------------------------------------- G4
+  gates.push(evaluateGate4(input));
+
+  // ---------------------------------------------------------------- G5-G7
+  gates.push(skippedLaterGate('G5'));
+  gates.push(skippedLaterGate('G6'));
+  gates.push(skippedLaterGate('G7'));
 
   const failedGates = gates
     .filter((gate) => !gate.pass && !gate.skipped)
@@ -196,6 +251,8 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     stance = 'WAIT';
   } else if (!g3.pass) {
     stance = g3.riskNonPositive ? 'AVOID' : 'WAIT';
+  } else if (!gates.find((g) => g.id === 'G4')!.pass) {
+    stance = 'WAIT';
   } else {
     stance = 'ENTER';
   }
@@ -204,7 +261,7 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
   const firstFailure = gates.find((gate) => !gate.pass && !gate.skipped);
   let thesis: string;
   if (stance === 'ENTER') {
-    thesis = 'G0–G3 lolos; G4–G7 skipped (phase-0).';
+    thesis = 'G0–G4 lolos; G5–G7 skipped (phase-1).';
   } else if (stance === 'TAKE_PROFIT') {
     thesis = 'Harga telah mencapai R1 kartu terbuka — kelola posisi, jangan tambah.';
   } else {
@@ -216,6 +273,24 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     thesis += ` Akumulator ${bandar} persisten (>=2 dari 3 print terakhir).`;
   }
 
+  const tape: TapeView | undefined = input.tape
+    ? {
+        atr: input.tape.atr,
+        ema20: input.tape.ema20,
+        emaSlope: input.tape.ok
+          ? input.tape.ema20 !== null && input.tape.ema20Prev !== null
+            ? input.tape.ema20 >= input.tape.ema20Prev
+              ? 'up'
+              : 'down'
+            : null
+          : null,
+        trendOk: input.tape.trendOk,
+        pattern: input.tape.pattern,
+        barsUsed: input.tape.barsUsed,
+        invalidationSource: g3.invalidationSource,
+      }
+    : undefined;
+
   return {
     stance,
     gates,
@@ -226,5 +301,6 @@ export function evaluatePlaybook(input: PlaybookInput): PlaybookCard {
     rr: g3.rr,
     thesis,
     failedGates,
+    tape,
   };
 }

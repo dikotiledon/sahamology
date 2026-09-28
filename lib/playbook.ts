@@ -15,4 +15,5 @@ export type {
   Stance,
   GateId,
   GateResult,
+  TapeView,
 } from './playbook/types';
