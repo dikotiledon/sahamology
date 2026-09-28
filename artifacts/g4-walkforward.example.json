@@ -1,0 +1,28 @@
+{
+  "nSignals": 142,
+  "nUnscored": 7,
+  "nIS": 113,
+  "nOOS": 23,
+  "nPurged": 6,
+  "cut": "2026-08-19",
+  "params": "frozen: atrPeriod=14 emaPeriod=20 k=1.0; no IS tuning; comparator=phase-0-card; p3=close>prev.high AND close>=ema20",
+  "is": {
+    "adi-only": { "enterN": 113, "scoredN": 110, "expectancyR": -0.12, "profitFactor": 0.81, "nextDayHitR1": 31, "winRate": 0.27, "maxDD": 9.4 },
+    "phase-0-card": { "enterN": 61, "scoredN": 60, "expectancyR": 0.04, "profitFactor": 1.09, "nextDayHitR1": 22, "winRate": 0.36, "maxDD": 4.1 },
+    "phase-1-card": { "enterN": 49, "scoredN": 48, "expectancyR": 0.11, "profitFactor": 1.28, "nextDayHitR1": 21, "winRate": 0.43, "maxDD": 2.7 }
+  },
+  "oos": {
+    "adi-only": { "enterN": 29, "scoredN": 28, "expectancyR": -0.08, "profitFactor": 0.88, "nextDayHitR1": 8, "winRate": 0.28, "maxDD": 3.2 },
+    "phase-0-card": { "enterN": 16, "scoredN": 15, "expectancyR": 0.06, "profitFactor": 1.12, "nextDayHitR1": 6, "winRate": 0.38, "maxDD": 1.8 },
+    "phase-1-card": { "enterN": 14, "scoredN": 14, "expectancyR": 0.14, "profitFactor": 1.35, "nextDayHitR1": 7, "winRate": 0.5, "maxDD": 1.1 }
+  },
+  "ship": {
+    "beatExpectancy": true,
+    "beatPF": true,
+    "sampleFloorMet": false,
+    "pass": false,
+    "oosEnterPhase0": 16,
+    "oosEnterPhase1": 14
+  },
+  "note": "EXAMPLE FILE — illustrative shape only. Values are synthetic, not measured from the operator database. A real run overwrites artifacts/g4-walkforward.json (gitignored)."
+}

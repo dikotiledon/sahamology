@@ -46,11 +46,12 @@ Copy `.env.example` → `.env` and fill values for your topology.
 
 ```bash
 npm run typecheck     # tsc --noEmit
-npm test              # full lib/**/*.test.ts suite (89 tests at Phase 0 remediation)
+npm test              # full lib/**/*.test.ts suite (160 tests on phase-1-tape-filter)
 npm run lint          # eslint flat config
 npm run migrate       # apply supabase/*.sql via DATABASE_URL
 npm run backfill:history -- --start 2020-01-02 --symbols BBRI,TLKM   # populate price_history (CLI fallback)
 npm run baseline:backtest -- --horizon 5                              # Adi-only expectancy baseline
+npm run walkforward:g4                                               # Phase 1 vs Phase 0 card, purged 80/20 OOS
 ```
 
 ### Continuous integration
@@ -83,10 +84,32 @@ remains as a no-session fallback.
 deny-list includes `dev-secret` — so a production compose with the dev example
 value will refuse to start.
 
-The two data CLI scripts (`backfill:history`, `baseline:backtest`) require a
-reachable `DATABASE_URL` and a valid Stockbit JWT (`STOCKBIT_JWT_TOKEN`). The
-baseline script only makes sense after at least one watchlist analysis has run
-and price history has been backfilled.
+The two data CLI scripts (`backfill:history`, `baseline:backtest`,
+`walkforward:g4`) require a reachable `DATABASE_URL` and a valid Stockbit JWT
+(`STOCKBIT_JWT_TOKEN`). The baseline script only makes sense after at least one
+watchlist analysis has run and price history has been backfilled.
+
+### Phase 1 tape filter notes
+
+- **Backfill chunking**: `backfill:history` and the BullMQ
+  `price-history-backfill` worker split any multi-year range into ≤365-day
+  windows before calling Stockbit. `--start` means what it says — it is no
+  longer silently clamped.
+- **21-bar floor**: the G4 tape filter needs ≥21 completed `price_history`
+  sessions for an emiten. Fewer → G4 fails closed as `WAIT` (`Tape tidak cukup`).
+- **G3 stop**: when tape ATR is available the invalidation is
+  `rataRataBandar − 1.0×ATR` tick-rounded toward entry on IDX fraksi; otherwise
+  the Phase 0 interim `min(arb, bandar×0.97)` applies.
+- **Walk-forward ship gate** (`npm run walkforward:g4`): read-only against the
+  DB. It scores three systems — (0) Adi-only with interim stop, (1) Phase 0
+  card (G0–G3, G4 skipped), (2) Phase 1 card (G0–G4, ATR stop) — on the same
+  N=5 first-touch scorer, splits signals chronologically 80/20 with a 5-session
+  purge gap, and prints `SHIP_GATE=PASS` only if system (2) beats system (1)
+  on the OOS fold in both expectancy and profit factor with **≥30 OOS ENTER
+  trades**. Below that floor the gate fails (`SHIP_GATE=FAIL` with
+  `sampleFloorMet: false` and the measured OOS ENTER count in
+  `artifacts/g4-walkforward.json`); G4 must then not be merged as a hard gate.
+  The script always exits 0; the last line is the gate verdict.
 
 ---
 
