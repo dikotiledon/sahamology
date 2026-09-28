@@ -21,6 +21,7 @@ import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
 import { ymdOf } from '@/lib/date-ymd';
+import { partitionWatchlistUniverse, type WatchlistUniverseItem } from './watchlist-universe';
 import type { OhlcBar } from '@/lib/tape/ohlc';
 
 export interface WatchlistAnalysisOutcome {
@@ -50,13 +51,30 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   const watchlistResponse = await fetchWatchlist();
   const watchlistItems = watchlistResponse.data?.result || [];
 
-  if (watchlistItems.length === 0) {
+  // The Stockbit watchlist can hold non-IDX instruments (e.g. the USDIDR forex
+  // pair). Those cannot produce an IDX signal, so they are excluded here and
+  // reported, rather than analyzed and failed every trading day.
+  const { emitens, skipped } = partitionWatchlistUniverse(
+    watchlistItems as WatchlistUniverseItem[]
+  );
+
+  if (emitens.length === 0) {
+    const detail =
+      watchlistItems.length === 0
+        ? 'Stockbit watchlist is empty: add IDX stocks to the All Watchlist so the daily job can analyze them.'
+        : `Watchlist has no IDX emitens (${skipped.length} non-IDX item(s), e.g. ${skipped
+            .slice(0, 3)
+            .map((s) => s.symbol)
+            .join(', ')}). Add IDX stocks to the Stockbit All Watchlist.`;
+    console.warn(`[Watchlist Job] No IDX emitens to analyze. ${detail}`);
     return { success: true, results: 0, errors: 0, jobLogId: null, date: today };
   }
 
-  // Create job log entry.
+  // Create job log entry. The total is the number of IDX emitens actually
+  // analyzed, not the raw watchlist size, so an all-forex watchlist reads as
+  // zero rather than as a day of failures.
   try {
-    const jobLog = await createBackgroundJobLog('analyze-watchlist', watchlistItems.length);
+    const jobLog = await createBackgroundJobLog('analyze-watchlist', emitens.length);
     jobLogId = jobLog.id;
     console.log(`[Watchlist Job] Created job log with ID: ${jobLogId}`);
   } catch (logError) {
@@ -66,8 +84,7 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   const results: { emiten: string; status: string }[] = [];
   const errors: { emiten: string; error: string }[] = [];
 
-  for (const item of watchlistItems) {
-    const emiten = item.symbol || item.company_code;
+  for (const emiten of emitens) {
     console.log(`[Watchlist Job] Analyzing ${emiten}...`);
 
     try {
