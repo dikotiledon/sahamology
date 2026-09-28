@@ -31,6 +31,13 @@ RUN apk add --no-cache python3 make g++
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# `next build` statically evaluates route modules (e.g. /api/decision-journal),
+# which reads AUTH_SECRET at module load and throws in production when absent.
+# Supply a build-time placeholder so the build can complete; the real secret is
+# injected at RUNTIME from the environment and is never baked into the image.
+ARG AUTH_SECRET=build-time-placeholder-not-a-runtime-secret
+ENV AUTH_SECRET=${AUTH_SECRET}
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
