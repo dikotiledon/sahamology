@@ -15,7 +15,7 @@ test('next-day winner hits both targets', () => {
       max: 1100,
       invalidation: 970,
       nextDayHigh: 1060,
-      path: [{ date: '2026-09-25', high: 1060, low: 990 }],
+      path: [{ date: '2026-09-25', high: 1060, low: 990, close: 1040 }],
     },
   ];
   const report = evaluateAdiOnly(trades, costs);
@@ -37,8 +37,8 @@ test('invalidation on day 2 loses', () => {
       invalidation: 970,
       nextDayHigh: 1010,
       path: [
-        { date: '2026-09-25', high: 1010, low: 990 },
-        { date: '2026-09-26', high: 1000, low: 960 },
+        { date: '2026-09-25', high: 1010, low: 990, close: 1000 },
+        { date: '2026-09-26', high: 1000, low: 960, close: 970 },
       ],
     },
   ];
@@ -58,7 +58,7 @@ test('costs reduce R on the winner', () => {
         max: 1100,
         invalidation: 970,
         nextDayHigh: 1060,
-        path: [{ date: '2026-09-25', high: 1060, low: 990 }],
+        path: [{ date: '2026-09-25', high: 1060, low: 990, close: 1040 }],
       },
     ],
     { buyFeeRate: 0, sellFeeRate: 0, spreadHaircutRate: 0 }
@@ -73,7 +73,7 @@ test('costs reduce R on the winner', () => {
         max: 1100,
         invalidation: 970,
         nextDayHigh: 1060,
-        path: [{ date: '2026-09-25', high: 1060, low: 990 }],
+        path: [{ date: '2026-09-25', high: 1060, low: 990, close: 1040 }],
       },
     ],
     costs

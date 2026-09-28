@@ -2,7 +2,7 @@
  * Adi-Only Baseline Backtest.
  *
  * Pulls every successful daily analysis from stock_queries, simulates each
- * signal against the following 5 trading-day candles in price_history using the
+ * signal against the following N trading-day candles in price_history using the
  * canonical playbook baseline evaluator, and writes the benchmark to
  * artifacts/adi-baseline.json. Every future signal layer must beat this number
  * out-of-sample before it is merged.
@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { getPriceHistory, getSignalRecords } from '../lib/db';
 import { evaluateAdiOnly, type BaselineTrade } from '../lib/playbook/baseline';
 import { defaultCostModel } from '../lib/playbook/costs';
+import { nextTradingDay, addTradingDays } from '../lib/market-calendar';
 
 try {
   const envContent = readFileSync(join(process.cwd(), '.env.local'), 'utf8');
@@ -42,26 +43,24 @@ async function main() {
   const horizonDays = Number(option('--horizon', '5'));
 
   const signals = await getSignalRecords();
-  const cache = new Map<string, { high: number; low: number }[]>();
+  const cache = new Map<string, { date: string; high: number; low: number; close: number }[]>();
   const trades: BaselineTrade[] = [];
 
   for (const signal of signals) {
     const entryDate = signal.from_date;
-    const start = new Date(entryDate);
-    start.setDate(start.getDate() + 1);
-    const end = new Date(entryDate);
-    end.setDate(end.getDate() + horizonDays + 1);
+    const from = nextTradingDay(entryDate);
+    const to = addTradingDays(entryDate, horizonDays);
 
-    const from = start.toISOString().slice(0, 10);
-    const to = end.toISOString().slice(0, 10);
     const cacheKey = `${signal.emiten}|${from}|${to}`;
 
     let bars = cache.get(cacheKey);
     if (!bars) {
       const rows = await getPriceHistory(signal.emiten, from, to);
       bars = rows.map((row) => ({
+        date: String(row.date ?? ''),
         high: Number(row.high ?? row.close ?? 0),
         low: Number(row.low ?? row.close ?? 0),
+        close: Number(row.close ?? 0),
       }));
       cache.set(cacheKey, bars);
     }
@@ -72,13 +71,10 @@ async function main() {
       entry: signal.harga,
       r1: signal.target_realistis,
       max: signal.target_max,
-      invalidation: Math.max(signal.arb, Math.round(signal.rata_rata_bandar * 0.97)),
+      // Phase 0 evaluator parity: min(arb, rataRataBandar * 0.97), not max.
+      invalidation: Math.min(signal.arb, Math.round(signal.rata_rata_bandar * 0.97)),
       nextDayHigh: bars[0]?.high ?? null,
-      path: bars.map((bar, i) => ({
-        date: new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10),
-        high: bar.high,
-        low: bar.low,
-      })),
+      path: bars.map((bar) => ({ date: bar.date, high: bar.high, low: bar.low, close: bar.close })),
     });
   }
 

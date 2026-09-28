@@ -1,12 +1,20 @@
 /**
- * Unified trade evaluation engine.
+ * Unified trade evaluation engine — thin wrapper over the canonical
+ * path-outcome scorer (lib/playbook/path-outcome.ts).
  *
- * Every signal layer must be scored through this engine so a hit is a real
+ * Every signal layer must be scored through one engine so a hit is a real
  * simulated trade, not a next-day high watermark. The legacy "next-day touch"
- * metric remains available as `touchR1` / `touchMax` for /summary parity.
+ * metric remains available as `touchR1` for /summary parity.
+ *
+ * Empty paths and non-positive risk are unscored (return null), never a 0R
+ * win at entry.
  */
 
+import { roundTripCostRate, defaultCostModel, type CostModel } from './playbook/costs';
+import { scorePath } from './playbook/path-outcome';
+
 export interface CandleInput {
+  date: string;
   open: number;
   high: number;
   low: number;
@@ -22,6 +30,8 @@ export interface TradeEvaluationInput {
   invalidation: number;
   /** Maximum holding period in trading days. */
   horizonDays: number;
+  /** Round-trip cost rate override; defaults to the documented IDX stand-in (0.006). */
+  costRate?: number;
 }
 
 export interface TradeEvaluationResult {
@@ -32,60 +42,37 @@ export interface TradeEvaluationResult {
   netPnl: number;
   /** Same-day touch of Target R1 (legacy /summary Hit R1). */
   touchR1: boolean;
-  /** Same-day touch of Target Max is tracked separately by the caller. */
+  costRate: number;
 }
-
-/** IDX round-trip friction estimate: buy ~0.15% + sell ~0.25% incl. VAT/PPh. */
-export const IDX_FRICTION = 0.004;
 
 export function evaluateTrade(
   input: TradeEvaluationInput,
   bars: CandleInput[]
-): TradeEvaluationResult {
-  const { entryPrice, targetR1, invalidation } = input;
+): TradeEvaluationResult | null {
+  const costRate = input.costRate ?? roundTripCostRate(defaultCostModel());
+  const result = scorePath({
+    entry: input.entryPrice,
+    r1: input.targetR1,
+    max: input.targetR1, // legacy surface has no max target
+    invalidation: input.invalidation,
+    costRate,
+    bars,
+  });
 
-  if (bars.length === 0) {
-    return {
-      exit: 'expiry',
-      exitPrice: entryPrice,
-      daysHeld: 0,
-      grossPnl: 0,
-      netPnl: 0,
-      touchR1: false,
-    };
-  }
+  if (result.unscored) return null;
 
-  let exitPrice = entryPrice;
-  let exit: TradeEvaluationResult['exit'] = 'expiry';
-  let daysHeld = bars.length;
+  const exit =
+    result.exit === 'max' || result.exit === 'r1' ? 'target' : result.exit;
 
-  for (let i = 0; i < bars.length; i += 1) {
-    const bar = bars[i];
-    // Conservative same-bar sequencing: stop is checked first because a bar
-    // that trades through both levels must be assumed to stop out first.
-    if (bar.low <= invalidation) {
-      exit = 'invalidation';
-      exitPrice = invalidation;
-      daysHeld = i + 1;
-      break;
-    }
-    if (bar.high >= targetR1) {
-      exit = 'target';
-      exitPrice = targetR1;
-      daysHeld = i + 1;
-      break;
-    }
-  }
-
-  if (exit === 'expiry' && bars.length > 0) {
-    exitPrice = bars[bars.length - 1].close;
-  }
-
-  const grossPnl = exitPrice - entryPrice;
-  const netPnl = grossPnl - (entryPrice + exitPrice) * IDX_FRICTION;
-  const touchR1 = bars.some((bar) => bar.high >= targetR1);
-
-  return { exit, exitPrice, daysHeld, grossPnl, netPnl, touchR1 };
+  return {
+    exit,
+    exitPrice: result.exitPrice,
+    daysHeld: result.daysHeld,
+    grossPnl: result.pnl,
+    netPnl: result.pnlAfterCosts,
+    touchR1: result.touchR1,
+    costRate,
+  };
 }
 
 export interface BacktestSummary {
@@ -98,17 +85,18 @@ export interface BacktestSummary {
   avgNetPnl: number;
 }
 
-export function summarizeTrades(results: TradeEvaluationResult[]): BacktestSummary {
-  const trades = results.length;
-  const wins = results.filter((r) => r.netPnl > 0).length;
-  const losses = results.filter((r) => r.netPnl <= 0).length;
-  const grossProfits = results
+export function summarizeTrades(results: Array<TradeEvaluationResult | null>): BacktestSummary {
+  const scored = results.filter((r): r is TradeEvaluationResult => r !== null);
+  const trades = scored.length;
+  const wins = scored.filter((r) => r.netPnl > 0).length;
+  const losses = scored.filter((r) => r.netPnl <= 0).length;
+  const grossProfits = scored
     .filter((r) => r.netPnl > 0)
     .reduce((sum, r) => sum + r.netPnl, 0);
-  const grossLosses = results
+  const grossLosses = scored
     .filter((r) => r.netPnl <= 0)
     .reduce((sum, r) => sum + Math.abs(r.netPnl), 0);
-  const totalNet = results.reduce((sum, r) => sum + r.netPnl, 0);
+  const totalNet = scored.reduce((sum, r) => sum + r.netPnl, 0);
 
   return {
     trades,
@@ -120,3 +108,5 @@ export function summarizeTrades(results: TradeEvaluationResult[]): BacktestSumma
     avgNetPnl: trades > 0 ? totalNet / trades : 0,
   };
 }
+
+export type { CostModel };

@@ -2,9 +2,14 @@
  * Adi-only baseline: "take every successful Adi print" scored on next-day hit
  * and N=5 expectancy after costs. This is the benchmark every future gate
  * (G1–G3 included) must beat out-of-sample. No gates are applied here.
+ *
+ * Path scoring delegates to the canonical scorer (lib/playbook/path-outcome.ts):
+ * stop-first, max-before-r1, expiry at the last bar's close. Empty paths and
+ * non-positive risk are unscored — never a fake 0R win.
  */
 
 import { roundTripCostRate, type CostModel } from './costs';
+import { scorePath, type PathBar } from './path-outcome';
 
 export type BaselineTrade = {
   emiten: string;
@@ -14,7 +19,7 @@ export type BaselineTrade = {
   max: number;
   invalidation: number;
   nextDayHigh?: number | null;
-  path?: { date: string; high: number; low: number }[];
+  path?: PathBar[];
 };
 
 export type BaselineReport = {
@@ -49,40 +54,21 @@ export function evaluateAdiOnly(trades: BaselineTrade[], costs: CostModel): Base
     }
 
     if (!trade.path || trade.path.length === 0) continue;
+
+    const result = scorePath({
+      entry: trade.entry,
+      r1: trade.r1,
+      max: trade.max,
+      invalidation: trade.invalidation,
+      costRate,
+      bars: trade.path,
+    });
+    if (result.unscored) continue;
+
     pathTrades += 1;
-
-    const entry = trade.entry;
-    const risk = entry - trade.invalidation;
-    if (risk <= 0) continue;
-
-    let exitPrice: number | null = null;
-    for (const bar of trade.path) {
-      // Stop-first sequencing: a bar that trades through both levels stops out.
-      if (bar.low <= trade.invalidation) {
-        exitPrice = trade.invalidation;
-        break;
-      }
-      if (bar.high >= trade.max) {
-        exitPrice = trade.max;
-        break;
-      }
-      if (bar.high >= trade.r1) {
-        exitPrice = trade.r1;
-        break;
-      }
-    }
-
-    if (exitPrice === null) {
-      const last = trade.path[trade.path.length - 1];
-      exitPrice = last.low > 0 ? last.high : entry; // no close in path; approximate
-    }
-
-    const pnl = exitPrice - entry;
-    const pnlAfterCosts = pnl - (entry + exitPrice) * costRate;
-    const rMultiple = pnlAfterCosts / risk;
-    sumR += rMultiple;
-    if (pnlAfterCosts > 0) grossProfits += pnlAfterCosts;
-    else grossLosses += Math.abs(pnlAfterCosts);
+    sumR += result.rMultiple;
+    if (result.pnlAfterCosts > 0) grossProfits += result.pnlAfterCosts;
+    else grossLosses += Math.abs(result.pnlAfterCosts);
   }
 
   return {
@@ -94,7 +80,7 @@ export function evaluateAdiOnly(trades: BaselineTrade[], costs: CostModel): Base
     profitFactor: pathTrades > 0 ? (grossLosses > 0 ? grossProfits / grossLosses : grossProfits > 0 ? Infinity : 0) : null,
     notes: [
       'Adi-only: every status=success print is a trade; no G1–G3 applied.',
-      'Path outcome is first-touch wins: stop before target; max before r1.',
+      'Path outcome is first-touch wins: stop before max before r1; expiry at close.',
       `Costs: buy ${costs.buyFeeRate}, sell ${costs.sellFeeRate}, haircut ${costs.spreadHaircutRate}.`,
       'expectancyR is null when price_history path data is missing.',
     ],
