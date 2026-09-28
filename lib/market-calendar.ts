@@ -64,3 +64,76 @@ export function sessionDateJakarta(
 
   return ymd;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const CURSOR_GUARD = 400;
+
+/** Parse "YYYY-MM-DD" into a UTC Date at 00:00 (timezone-drift safe). */
+function ymdToUtc(ymd: string): Date {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/** Format a UTC Date at 00:00 back to "YYYY-MM-DD". */
+function utcToYmd(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function shiftYmd(ymd: string, deltaDays: number): string {
+  return utcToYmd(new Date(ymdToUtc(ymd).getTime() + deltaDays * DAY_MS));
+}
+
+/**
+ * The next IDX trading session strictly after `ymd` (skipping weekends and
+ * configured holidays). Guards against a misconfigured all-holiday calendar.
+ */
+export function nextTradingDay(
+  ymd: string,
+  holidays: ReadonlySet<string> = IDX_HOLIDAYS
+): string {
+  let cursor = shiftYmd(ymd, 1);
+  let guard = 0;
+  while ((isWeekend(cursor) || isIdxHoliday(cursor, holidays)) && guard < CURSOR_GUARD) {
+    cursor = shiftYmd(cursor, 1);
+    guard += 1;
+  }
+  return cursor;
+}
+
+/**
+ * The previous IDX trading session strictly before `ymd` (skipping weekends
+ * and configured holidays). Guards against a misconfigured all-holiday calendar.
+ */
+export function prevTradingDay(
+  ymd: string,
+  holidays: ReadonlySet<string> = IDX_HOLIDAYS
+): string {
+  let cursor = shiftYmd(ymd, -1);
+  let guard = 0;
+  while ((isWeekend(cursor) || isIdxHoliday(cursor, holidays)) && guard < CURSOR_GUARD) {
+    cursor = shiftYmd(cursor, -1);
+    guard += 1;
+  }
+  return cursor;
+}
+
+/**
+ * The session `n` trading days from `ymd`. `n = 0` is identity (even on a
+ * weekend or holiday — it never normalizes). Positive walks forward, negative
+ * walks backward; each step skips weekends and configured holidays.
+ */
+export function addTradingDays(
+  ymd: string,
+  n: number,
+  holidays: ReadonlySet<string> = IDX_HOLIDAYS
+): string {
+  let cursor = ymd;
+  const steps = Math.abs(n);
+  for (let i = 0; i < steps; i += 1) {
+    cursor = n > 0 ? nextTradingDay(cursor, holidays) : prevTradingDay(cursor, holidays);
+  }
+  return cursor;
+}

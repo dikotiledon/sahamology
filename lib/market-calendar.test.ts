@@ -5,6 +5,9 @@ import {
   isWeekend,
   isIdxHoliday,
   sessionDateJakarta,
+  nextTradingDay,
+  prevTradingDay,
+  addTradingDays,
 } from './market-calendar';
 
 // Fixed instants expressed in UTC.
@@ -44,4 +47,36 @@ test('sessionDateJakarta rolls back over weekends and holidays', () => {
   assert.equal(sessionDateJakarta(utc('2026-09-26T03:00:00Z'), holidays), '2026-09-24');
   // Normal Thursday evening Jakarta (Friday already) with no holiday stays Friday.
   assert.equal(sessionDateJakarta(utc('2026-09-24T18:00:00Z')), '2026-09-25');
+});
+
+test('nextTradingDay skips weekend', () => {
+  assert.equal(nextTradingDay('2026-09-25'), '2026-09-28'); // Fri → Mon
+});
+
+test('nextTradingDay skips seeded holiday', () => {
+  assert.equal(nextTradingDay('2025-12-31'), '2026-01-02'); // Wed → Thu(holiday) → Fri
+});
+
+test('prevTradingDay walks backward over a weekend', () => {
+  assert.equal(prevTradingDay('2026-09-28'), '2026-09-25'); // Mon → Fri
+});
+
+test('addTradingDays +5 from a Friday lands five sessions later', () => {
+  assert.equal(addTradingDays('2026-09-25', 5), '2026-10-02');
+});
+
+test('addTradingDays 0 is identity on a session', () => {
+  assert.equal(addTradingDays('2026-09-25', 0), '2026-09-25');
+});
+
+test('addTradingDays 0 is identity even on a weekend', () => {
+  assert.equal(addTradingDays('2026-09-26', 0), '2026-09-26'); // Saturday
+});
+
+test('addTradingDays negative walks backward over weekend', () => {
+  assert.equal(addTradingDays('2026-09-28', -1), '2026-09-25');
+});
+
+test('addTradingDays negative crosses a holiday', () => {
+  assert.equal(addTradingDays('2026-01-02', -1), '2025-12-31'); // Fri → Thu(holiday) → Wed
 });
