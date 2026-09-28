@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-10-15T09:15:00.000Z",
+  "protocol": {
+    "horizon": 5,
+    "costRate": 0.006,
+    "split": "purged 80/20 chronological, 5-trading-day purge gap",
+    "comparator": "phase-2-card, paired on identical signal rows, tape snapshots and horizon bars",
+    "treatment": "G5 fundamental veto, armed, monotonic downgrade only",
+    "pointInTime": "keystats_snapshot read at as_of = signal.from_date; never re-fetched"
+  },
+  "nSignals": 412,
+  "nEligibleDates": 78,
+  "nIS": 62,
+  "nPurged": 5,
+  "nOOS": 11,
+  "nTruncated": 14,
+  "nVetoedAllDates": 3,
+  "micro": {
+    "denominator": 48,
+    "accdistUnknownRate": 0.0208,
+    "flowCoverageRate": 0.875,
+    "unscoredShare": 0.0417,
+    "sampleFeasible": false
+  },
+  "fundamentals": {
+    "fundamentalsScoredRate": 0.9167,
+    "fundamentalsIncompleteRate": 0.0833
+  },
+  "systems": {
+    "phase-1-card": {
+      "is": { "enterN": 78, "scoredN": 76, "expectancyR": 0.05, "profitFactor": 1.11, "winRate": 0.37, "maxDrawdownR": 4.4 },
+      "oos": { "enterN": 24, "scoredN": 24, "expectancyR": 0.12, "profitFactor": 1.31, "winRate": 0.42, "maxDrawdownR": 2.0 }
+    },
+    "phase-2-card": {
+      "is": { "enterN": 58, "scoredN": 57, "expectancyR": 0.10, "profitFactor": 1.28, "winRate": 0.44, "maxDrawdownR": 3.1 },
+      "oos": { "enterN": 19, "scoredN": 19, "expectancyR": 0.18, "profitFactor": 1.44, "winRate": 0.47, "maxDrawdownR": 1.6 }
+    },
+    "phase-3-card": {
+      "is": { "enterN": 56, "scoredN": 55, "expectancyR": 0.11, "profitFactor": 1.33, "winRate": 0.45, "maxDrawdownR": 2.9 },
+      "oos": { "enterN": 17, "scoredN": 17, "expectancyR": 0.21, "profitFactor": 1.52, "winRate": 0.47, "maxDrawdownR": 1.3 }
+    }
+  },
+  "ship": {
+    "verdict": "VERDICT_UNREACHABLE",
+    "sampleFeasible": false,
+    "conditions": {
+      "beatExpectancy": true,
+      "beatPF": true,
+      "sampleFloorMet": false,
+      "noCollapse": true,
+      "fundamentalsCoverageMet": true,
+      "incompleteCapMet": true,
+      "vetoPlausibilityMet": true,
+      "unscoredCapMet": true
+    },
+    "oosEnterPhase2": 19,
+    "oosEnterPhase3": 17,
+    "vetoed": 3,
+    "reasons": [
+      "enterN(3)=17 below the 30 floor"
+    ]
+  },
+  "sampleFeasibility": {
+    "minOosEnterPhase3": 30,
+    "minOosEnterPhase2Baseline": 50,
+    "noCollapseRatio": 0.6
+  },
+  "coverageBounds": {
+    "maxVetoRate": 0.1,
+    "minFundamentalsScoredRate": 0.9,
+    "maxFundamentalsIncompleteRate": 0.25
+  },
+  "note": "EXAMPLE FILE — illustrative shape only. Values are synthetic, not measured from the operator database. A real run overwrites artifacts/phase3-walkforward.json (which is gitignored). Read this file as the SHAPE of a report, never as a result: the verdict shown here is VERDICT_UNREACHABLE, and the real run will report the same until roughly 300 unique eligible dates (~14 months) of captured fundamentals exist. Neither VERDICT_UNREACHABLE nor FAIL is evidence that the fundamental veto works."
+}

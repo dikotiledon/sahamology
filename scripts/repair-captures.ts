@@ -23,9 +23,31 @@
  * reports honestly which rows it could not repair. A row that stays
  * unrepaired remains unscored — which is the honest state, not a default.
  *
+ * SCOPES (D14). This script repairs captures, and there are now two kinds that
+ * fail independently: the micro capture (acc/dist + broker flow, flagged by
+ * `capture_incomplete`) and the fundamentals capture (KeyStats, flagged by
+ * `fundamentals_incomplete`). Each has its own SELECT, its own UPDATE, and its
+ * own set of columns, because a repair that cleared the other scope's flag would
+ * report a gap as filled when nothing was fetched for it.
+ *
+ *   --micro         re-fetch micro columns for rows with capture_incomplete
+ *   --fundamentals  re-fetch KeyStats for rows with fundamentals_incomplete
+ *   (neither)       a usage error. This script will not guess which capture you
+ *                   meant, because "repair everything" is not a thing it can
+ *                   honestly do.
+ *
+ * THE FUNDAMENTALS REPAIR IS MOSTLY GOING TO REPORT FAILURE, AND THAT IS
+ * CORRECT. The KeyStats endpoint serves a CURRENT snapshot with no fiscal period
+ * and no publication date, so a row whose capture failed on a day now past
+ * cannot be backfilled: fetching today would grade a past decision with
+ * present-day data, which is the exact lookahead this phase exists to exclude.
+ * Those rows stay UNSCORED permanently. That is the honest state, and it is why
+ * the ship gate carries an unscored cap instead of pretending coverage is
+ * complete.
+ *
  * Usage:
- *   npm run repair:captures              # dry run: report only, writes nothing
- *   npm run repair:captures -- --apply   # actually re-fetch and write
+ *   npm run repair:captures -- --micro --fundamentals            # dry run
+ *   npm run repair:captures -- --micro --fundamentals --apply    # re-fetch + write
  */
 
 import { Pool } from 'pg';
@@ -41,15 +63,141 @@ import {
   REPAIR_UPDATE_SQL,
   repairBlocker,
 } from '../lib/micro/repair';
+import {
+  FUNDAMENTALS_REPAIR_SELECT_SQL,
+  FUNDAMENTALS_REPAIR_UPDATE_SQL,
+} from '../lib/fundamentals/repair';
+import { fetchKeyStatsRaw } from '../lib/stockbit';
+import { toSnapshotEntries, buildKeystatsSnapshotRows } from '../lib/jobs/fundamentals-capture';
+import { saveKeystatsSnapshot } from '../lib/db';
 
 const APPLY = process.argv.includes('--apply');
 const LIMIT = Number(process.env.REPAIR_LIMIT ?? '50');
+
+/**
+ * D14 scope split. `--micro` and `--fundamentals` repair independent captures:
+ * the two flags are set by different vendor endpoints, fail for different
+ * reasons, and are written by different columns. Running both together is
+ * allowed and is the normal invocation; running NEITHER is a usage error rather
+ * than a silent default, because "repair everything" is not a thing this script
+ * can honestly do — each scope has its own SELECT and its own UPDATE.
+ */
+const WANT_MICRO = process.argv.includes('--micro');
+const WANT_FUNDAMENTALS = process.argv.includes('--fundamentals');
+
+function resolveScopes(): { micro: boolean; fundamentals: boolean } {
+  const scopes = { micro: WANT_MICRO, fundamentals: WANT_FUNDAMENTALS };
+  if (!WANT_MICRO && !WANT_FUNDAMENTALS) {
+    console.error(
+      'No scope requested. Pass --micro, --fundamentals, or both.\n' +
+        '  --micro        re-fetch acc/dist and broker flow for rows with capture_incomplete\n' +
+        '  --fundamentals re-fetch KeyStats for rows with fundamentals_incomplete\n' +
+        'Neither flag means no repair; this script will not guess which capture you meant.',
+    );
+    process.exit(2);
+  }
+  return scopes;
+}
+
+const SCOPES = resolveScopes();
 
 interface PendingRow {
   emiten: string;
   from_date: string;
   bandar: string | null;
   capture_incomplete: boolean;
+}
+
+interface FundamentalPendingRow {
+  from_date: string;
+  emiten: string;
+  fundamentals_incomplete: boolean;
+}
+
+/**
+ * The fundamentals scope, kept strictly apart from the micro one.
+ *
+ * The honest limit of this repair has to be stated up front: the KeyStats
+ * endpoint serves a CURRENT snapshot, with no fiscal period and no publication
+ * date. A row whose capture failed on a day now past therefore CANNOT be
+ * backfilled — fetching today would grade a past decision with present-day
+ * data, which is the exact lookahead this phase exists to exclude. Those rows
+ * are reported as unrepairable and stay UNSCORED, which is the correct answer
+ * and not a defect to work around.
+ */
+async function repairFundamentals(pool: Pool): Promise<void> {
+  const { rows } = await pool.query<FundamentalPendingRow>(
+    FUNDAMENTALS_REPAIR_SELECT_SQL,
+    [LIMIT],
+  );
+
+  console.log(
+    `\n[fundamentals] ${APPLY ? 'APPLY' : 'DRY RUN'}: ${rows.length} degraded KeyStats capture(s) found (limit ${LIMIT}).`,
+  );
+  if (rows.length === 0) {
+    console.log('[fundamentals] nothing to repair.');
+    return;
+  }
+
+  const report = {
+    scanned: rows.length,
+    repaired: [] as string[],
+    unrepairable: [] as { key: string; reason: string }[],
+    dryRun: !APPLY,
+  };
+
+  for (const row of rows) {
+    const key = `${row.emiten}/${row.from_date}`;
+
+    if (!APPLY) {
+      report.unrepairable.push({
+        key,
+        reason:
+          'vendor serves a current snapshot only; a past session cannot be backfilled without lookahead',
+      });
+      continue;
+    }
+
+    try {
+      const payload = await fetchKeyStatsRaw(row.emiten);
+      const { entries, currency } = toSnapshotEntries(payload, row.emiten);
+      if (entries.length === 0) {
+        report.unrepairable.push({ key, reason: 'no keystats items in vendor response' });
+        continue;
+      }
+      // The snapshot is written for `from_date` — the date the signal was
+      // journaled — not for today. The UPDATE's EXISTS guard then refuses to
+      // clear the flag unless a row for that exact date actually landed, so a
+      // failed re-fetch cannot mark the row repaired.
+      await saveKeystatsSnapshot(
+        buildKeystatsSnapshotRows(entries, row.from_date, row.emiten, currency),
+      );
+      const cleared = await pool.query(FUNDAMENTALS_REPAIR_UPDATE_SQL, [
+        row.from_date,
+        row.emiten,
+      ]);
+      if ((cleared.rowCount ?? 0) === 0) {
+        report.unrepairable.push({
+          key,
+          reason: 'snapshot write did not produce a row for this exact date',
+        });
+        continue;
+      }
+      report.repaired.push(key);
+    } catch (error) {
+      report.unrepairable.push({ key, reason: `keystats fetch failed: ${String(error)}` });
+    }
+  }
+
+  console.log(JSON.stringify({ scope: 'fundamentals', ...report }, null, 2));
+  if (report.unrepairable.length > 0) {
+    console.error(
+      `\n[fundamentals] ${report.unrepairable.length} capture(s) remain unrepairable and stay UNSCORED for the Phase 3 comparison.`,
+    );
+  }
+  if (!APPLY) {
+    console.log('\n[fundamentals] Dry run: nothing was written. Re-run with --apply to repair.');
+  }
 }
 
 async function main(): Promise<void> {
@@ -61,6 +209,8 @@ async function main(): Promise<void> {
 
   const pool = new Pool({ connectionString: databaseUrl });
   try {
+    if (SCOPES.fundamentals) await repairFundamentals(pool);
+    if (!SCOPES.micro) return;
     // Only incomplete rows. A complete row is never re-read, so this script
     // cannot overwrite a good capture with a fresh-but-different one.
     const { rows } = await pool.query<PendingRow>(REPAIR_SELECT_SQL, [LIMIT]);
