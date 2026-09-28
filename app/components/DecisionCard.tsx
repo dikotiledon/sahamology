@@ -27,6 +27,35 @@ const PATTERN_LABEL: Record<string, string> = {
 };
 
 /** D15: micro labels are Indonesian; the state keys stay machine English. */
+
+/**
+ * Phase 3. Same rule for the fundamental block: the LABEL is Indonesian, the
+ * underlying state key stays machine English so the journal and the replay
+ * agree with what the operator sees.
+ *
+ * NOT_EVALUATED is given a badge rather than hidden, for the reason this project
+ * has been fighting since Phase 0: a gate that is silently inactive is
+ * indistinguishable from a gate that ran and found nothing. "Tidak
+ * dievaluasi" is a real, different answer from "Sehat".
+ */
+const FUNDAMENTAL_LABEL = {
+  SOUND: { label: 'Sehat', color: 'green' as const },
+  WEAK: { label: 'Lemah', color: 'yellow' as const },
+  LANDMINE: { label: 'Bahaya', color: 'red' as const },
+  NOT_EVALUATED: { label: 'Tidak dievaluasi', color: 'gray' as const },
+} as const;
+
+const CLAUSE_LABEL = {
+  NEGATIVE_EQUITY: 'Ekuitas negatif',
+  EXTREME_LEVERAGE: 'Leverage ekstrem',
+  DISTRESS_SCORE: 'Skor classically distress',
+} as const;
+
+const G5_MODE_LABEL = {
+  off: 'Nonaktif',
+  visible: 'Skor saja',
+  veto: 'Veto aktif',
+} as const;
 const ACCDIST_LABEL: Record<string, { label: string; color: string }> = {
   ACC: { label: 'Big Acc', color: '#16a34a' },
   SMALL_ACC: { label: 'Small Acc', color: '#4ade80' },
@@ -201,6 +230,51 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
             </Badge>
           </div>
           <div style={{ opacity: 0.7 }}>Profil G1: {card.micro.g1Profile === 'phase-2' ? 'Phase 2' : 'Phase 1'}</div>
+        </div>
+      )}
+
+      {/*
+        Phase 3 G5. Rendered whenever a fundamental reading exists, INCLUDING
+        under the 'off' profile, where it is inert. The mode row is always
+        shown so the operator can see that the gate exists and what it is
+        currently armed to do — never left to be inferred from its absence.
+      */}
+      {card.fundamental && (
+        <div
+          style={{
+            margin: '0.75rem 0 0',
+            padding: '0.6rem 0.75rem',
+            borderRadius: '8px',
+            background: '#1e293b',
+            fontSize: '0.8rem',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Kesehatan Fundamental</div>
+          <div>
+            <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Status:</span>
+            <Badge color={FUNDAMENTAL_LABEL[card.fundamental.state].color}>
+              {FUNDAMENTAL_LABEL[card.fundamental.state].label}
+            </Badge>
+          </div>
+          {card.fundamental.clauses.length > 0 && (
+            <div>
+              <span style={{ opacity: 0.7, marginRight: '0.35rem' }}>Pemicu:</span>
+              {card.fundamental.clauses.map((clause) => (
+                <span key={clause} style={{ marginRight: '0.35rem', whiteSpace: 'nowrap' }}>
+                  {CLAUSE_LABEL[clause] ?? clause}
+                </span>
+              ))}
+            </div>
+          )}
+          {card.fundamental.isFinancialIssuer && (
+            <div style={{ opacity: 0.7 }}>
+              Emiten keuangan: rasio leverage tidak setara dengan non-keuangan
+            </div>
+          )}
+          <div style={{ opacity: 0.7 }}>
+            Mode G5: {G5_MODE_LABEL[card.fundamental.g5Profile]}
+          </div>
         </div>
       )}
     </div>

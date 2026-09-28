@@ -3,6 +3,11 @@ import { fetchMarketDetector, fetchOrderbook, getTopBroker, parseLot, getBrokerS
 import { calculateTargets } from '@/lib/calculations';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
+import { classifyFundamentals } from '@/lib/fundamentals/rubric';
+import type { ReplayKeystatsSeries } from '@/lib/playbook/replay';
+import { isFinancialIssuerEntries } from '@/lib/fundamentals/keystats-series';
+import { getKeystatsSnapshot } from '@/lib/db';
+import type { FundamentalInput } from '@/lib/fundamentals/types';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { isWeekend, isIdxHoliday, jakartaYmd, addTradingDays } from '@/lib/market-calendar';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
@@ -259,6 +264,52 @@ export async function POST(request: NextRequest) {
       brokerP: calculated.p,
     });
 
+    // Phase 3 fundamental reading.
+    //
+    // Gated on `isToday` for the same reason the tape and the flow are: the
+    // KeyStats feed is a CURRENT snapshot with no fiscal period and no
+    // publication date, so there is nothing date-addressable to request for a
+    // historical session. A historical review reads the PERSISTED snapshot
+    // (see the replay path) rather than re-fetching, because re-fetching would
+    // grade a past decision with present-day data.
+    //
+    // Best effort by design: any failure yields `undefined`, which G5 treats as
+    // NOT_EVALUATED and fails OPEN. A fundamentals problem must never break the
+    // calculator.
+    let fundamental: FundamentalInput | undefined;
+    if (isToday) {
+      try {
+        const snapshot = await getKeystatsSnapshot(emiten, asOf);
+        if (snapshot && snapshot.entries.length > 0) {
+          // The issuer flag is DERIVED by the same helper the capture path
+          // uses, never hard-coded. Hard-coding it false would re-introduce the
+          // measured failure: every healthy bank (BBCA 5.14, BBNI 7.89, BMRI
+          // 7.85, BBTN 13.52 liabilities/equity) would be vetoed on a
+          // non-bank test — a 50% sample collapse on the live watchlist.
+          const series: ReplayKeystatsSeries = {
+            emiten: snapshot.emiten,
+            isFinancialIssuer: isFinancialIssuerEntries(snapshot.entries),
+            currency: null,
+            entries: snapshot.entries,
+            asOf: snapshot.asOf,
+          };
+          fundamental = classifyFundamentals(series);
+        }
+      } catch (error) {
+        console.error('[stock route] fundamental snapshot read failed', error);
+      }
+    }
+
+    // Phase 3: resolve the G5 profile HERE, at the boundary, never inside the
+    // pure evaluator. Anything unrecognised — including an unset variable —
+    // degrades to 'off', so a typo in the deployment can never arm a veto.
+    const g5Profile: 'off' | 'visible' | 'veto' =
+      process.env.PLAYBOOK_G5_PROFILE === 'veto'
+        ? 'veto'
+        : process.env.PLAYBOOK_G5_PROFILE === 'visible'
+          ? 'visible'
+          : 'off';
+
     const playbook = evaluatePlaybook(
       buildPlaybookInputFromStock({
         market: {
@@ -281,6 +332,8 @@ export async function POST(request: NextRequest) {
         // evaluator. Default is 'phase-1' so the live card is unchanged.
         g1Profile: process.env.PLAYBOOK_G1_PROFILE === 'phase-2' ? 'phase-2' : 'phase-1',
         micro,
+        g5Profile,
+        fundamental,
       })
     );
 

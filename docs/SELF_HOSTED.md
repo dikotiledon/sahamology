@@ -95,6 +95,44 @@ its last line and `npm test` never greps it. If the database is unreachable it
 exits 1 and prints **no** `SHIP_GATE` token at all — an environment error is not
 a verdict.
 
+### Phase 3 fundamental veto notes
+
+Phase 3 adds **G5**, a fundamental health veto. **It ships default-off and
+unvalidated.** `PLAYBOOK_G5_PROFILE` is `off` by default; set it to `visible`
+to see the score without arming the veto, or `veto` to arm it. An unset or
+unrecognised value degrades to `off`, so a typo in the deployment can never arm
+a veto by accident.
+
+**The honest sample reality:** the first ~14 months of `stock_queries` rows
+have no fundamental columns, and the OOS signal sample G5 needs is still
+growing from zero. `npm run walkforward:p3` therefore reports
+`SHIP_GATE=VERDICT_UNREACHABLE`, not `FAIL` — the gate is not adjudicable yet.
+Do not read that as encouragement any more than you would read `FAIL`.
+
+- **Financial issuers are excluded, and that matters more than the thresholds.**
+  A bank with liabilities/equity of 5.14 (BBCA) or 13.52 (BBTN) is healthy, not
+  distressed; deposit liabilities are its business model. G5 detects a
+  financial issuer by the presence of a bank-exclusive regulatory metric
+  (NPL, capital adequacy, loan-to-deposit, NIM) and skips the non-bank solvency
+  tests for it. Half the live watchlist is banks, so skipping this does not
+  refine the rubric — it is the difference between a working gate and one that
+  discards half its own candidates by construction.
+- **Missing data fails open.** No snapshot, an undated snapshot, or a failed
+  capture all yield `NOT_EVALUATED`, and G5 passes. This is deliberate: a
+  vendor outage must not block a technically valid setup. The trade-off is that
+  a broken capture is invisible in the verdict, which is why such signals stay
+  *unscored* for the Phase 3 comparison rather than being scored as healthy.
+- **`fundamentals_incomplete` is not `capture_incomplete`.** They are separate
+  columns because the captures fail independently. `tsx
+  scripts/repair-captures.ts --fundamentals` refetches only KeyStats and never
+  touches the micro columns or the stance; `--micro` is the Phase 2 repair.
+- **Point-in-time is the capture date, because the feed has no other.** The
+  KeyStats endpoint returns a current flat snapshot with no fiscal period and
+  no publication timestamp, so the only thing that makes a reading provably
+  knowable at decision time is when it was captured. Replay reads the persisted
+  snapshot and never re-fetches, since re-fetching would grade a past decision
+  with present-day data.
+
 ### Phase 2 persistence & micro notes
 
 Phase 2 deepens **G1** with three micro inputs — acc/dist, same-bandar

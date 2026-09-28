@@ -2,6 +2,9 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
 import { hitR1, hitMax } from './hits';
 import { ymdOf } from './date-ymd';
 import type { BrokerFlowRow } from './micro/types';
+import { rowsToKeystatsSeries } from './fundamentals/snapshot-rows';
+import type { ReplayKeystatsSeries } from './playbook/replay';
+import type { KeystatsSnapshotRow } from './fundamentals/snapshot-rows';
 
 /**
  * Native PostgreSQL data access layer.
@@ -383,17 +386,13 @@ export async function saveKeystatsSnapshot(
 export async function getKeystatsSnapshot(
   emiten: string,
   asOf: string,
-): Promise<{
-  emiten: string;
-  asOf: string;
-  entries: Array<{
-    itemName: string;
-    category: string | null;
-    valueText: string | null;
-    valueNum: number | null;
-    scale: string | null;
-  }>;
-} | null> {
+): Promise<ReplayKeystatsSeries | null> {
+  // Returned as the same `ReplayKeystatsSeries` the rubric consumes, so a row
+  // read here can be scored directly and cannot be quietly reshaped in between.
+  // The financial-issuer flag is derived at read time by the same helper the
+  // capture path uses — never hard-coded, and never persisted, because a stored
+  // flag would go stale the moment an issuer changes sector or a metric is
+  // renamed upstream.
   const result = await query(
     `SELECT item_name, category, value_text, value_num, scale
      FROM keystats_snapshot
@@ -403,20 +402,14 @@ export async function getKeystatsSnapshot(
   );
   if (result.rows.length === 0) return null;
 
-  return {
+  // The row -> entry mapping lives in lib/fundamentals/snapshot-rows.ts so the
+  // capture path and this read path cannot drift apart. See that file for why
+  // the drift would be dangerous rather than merely untidy.
+  return rowsToKeystatsSeries({
     emiten: emiten.toUpperCase(),
     asOf,
-    entries: result.rows.map((row) => {
-      const r = row as Record<string, unknown>;
-      return {
-        itemName: String(r.item_name ?? ''),
-        category: r.category === null || r.category === undefined ? null : String(r.category),
-        valueText: r.value_text === null || r.value_text === undefined ? null : String(r.value_text),
-        valueNum: numOrNull(r.value_num),
-        scale: r.scale === null || r.scale === undefined ? null : String(r.scale),
-      };
-    }),
-  };
+    rows: result.rows as unknown as KeystatsSnapshotRow[],
+  });
 }
 
 /**

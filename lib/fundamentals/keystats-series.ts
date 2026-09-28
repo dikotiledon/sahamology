@@ -120,6 +120,23 @@ function asArray(value: unknown): unknown[] {
 }
 
 /**
+ * Is this a financial issuer? Detected by POSITIVE evidence — the presence of
+ * a bank-exclusive regulatory metric.
+ *
+ * Exported so every reader derives this the SAME way, whoever supplies the
+ * entries. The live card reads a raw payload and the API route reads persisted
+ * rows, and if those two paths disagreed about whether a company is a bank they
+ * would disagree about whether it is vetoable — which is precisely the failure
+ * that vetoes healthy banks on a non-bank leverage test.
+ */
+export function isFinancialIssuerEntries(
+  entries: ReadonlyArray<{ itemName: string }>,
+): boolean {
+  const names = new Set(entries.map((entry) => entry.itemName));
+  return FINANCIAL_ISSUER_METRICS.some((metric) => names.has(metric));
+}
+
+/**
  * Flatten the payload into one entry per item, tagged with its category.
  *
  * Never throws. A malformed category contributes nothing; a malformed item
@@ -155,8 +172,7 @@ export function parseKeyStatsSeries(json: unknown, emiten: string): KeystatsSeri
     }
   }
 
-  const names = new Set(entries.map((entry) => entry.itemName));
-  const isFinancialIssuer = FINANCIAL_ISSUER_METRICS.some((metric) => names.has(metric));
+  const isFinancialIssuer = isFinancialIssuerEntries(entries);
 
   const currencyList = asArray(root.financial_report_currency);
   const currency =

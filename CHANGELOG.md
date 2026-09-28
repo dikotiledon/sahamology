@@ -2,6 +2,49 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.8.0 (draft) — Phase 3 Fundamental Veto (G5)
+
+Phase 3 adds **G5**, a fundamental health veto. **Default-off, and not
+validated.** No fundamental rule in this release has been shown to improve a
+single trade: G5 is off by default, and turning it on does not make the desk
+better — it makes a specific, testable claim that is still waiting on data.
+
+**The sample reality, stated first: the first ~14 months of `stock_queries`
+rows have no fundamental columns, and the OOS signal sample Phase 3 needs is
+still growing from zero.** A ship verdict cannot be reached yet, so
+`npm run walkforward:p3` reports `VERDICT_UNREACHABLE` — the gate is not
+adjudicable, not failed. Treat G5 as instrumentation that is quietly collecting
+evidence, not as a feature that works.
+
+- **Rubric (`lib/fundamentals/rubric.ts`)**: three frozen clauses —
+  `NEGATIVE_EQUITY` (total equity < 0), `EXTREME_LEVERAGE` (liabilities/equity
+  > 5.0, non-financials only), `DISTRESS_SCORE` (modified Altman Z < 0, or
+  Z < 1.1 with negative operating cash flow). Pure: no clock, no env, no I/O.
+- **Financial issuers are excluded, by positive evidence.** If a
+  bank-exclusive regulatory metric is present (NPL, capital adequacy, loan to
+  deposit, NIM), the non-bank solvency tests are bypassed. This is not
+  cosmetic. Half the live watchlist is major banks whose liabilities/equity runs
+  5.14 to 13.52 and is perfectly healthy; a naive leverage veto would discard
+  5 of 10 emitens and collapse the sample by half before a single trade was
+  scored. Calibrated against 26 live payloads: 2 real landmines caught
+  (`POLY` equity −18,252 B, Altman −183.50; `TBIG` Altman −1.14), no false
+  positives.
+- **G5 is monotone**: it can only turn `ENTER` into `AVOID`. It can never
+  create an entry, soften a `WAIT`, or override an earlier gate. Missing data
+  fails **open** to `NOT_EVALUATED` — a fundamentals outage must never block an
+  otherwise valid technical setup.
+- **Profiles** — `PLAYBOOK_G5_PROFILE` is `off` (default, G5 inert), `visible`
+  (score shown, never vetoes) or `veto` (armed). Read at the route boundary;
+  the evaluator stays pure and reads no environment.
+- **Capture**: one KeyStats fetch per emiten per session, inside the existing
+  4/s limiter, with no extra market-detector calls. A failure writes
+  `fundamentals_incomplete` — separate from Phase 2's `capture_incomplete`,
+  because the two captures fail independently.
+- **Point-in-time**: the feed is a current snapshot with no fiscal period and
+  no publication date, so the capture date is the only thing that makes a
+  reading knowable at decision time. Replay reads the persisted snapshot and
+  never re-fetches; a snapshot dated after its signal is rejected as lookahead.
+
 ### Unreleased / v0.8.0 (draft) — Phase 2 Persistence & Micro
 
 Phase 2 "Persistence & Micro" — akumulasi/distribusi, persistensi bandar
