@@ -5,7 +5,9 @@
  * Phase 0 card (G0–G3, interim stop, G4 skipped) and the Phase 1 card
  * (G0–G4, ATR stop), scores both on the same canonical path-outcome scorer
  * over the following N trading-day bars, and applies a purged 80/20 split
- * (5-session purge gap). Comparator is the Phase 0 card, not Adi-only.
+ * (5-session purge gap). The ship gate is computed on the OOS fold only;
+ * IS and purge-fold stats are reported for transparency but never gate.
+ * Comparator is the Phase 0 card, not Adi-only.
  *
  * This script never fails npm test: it prints SHIP_GATE=PASS/FAIL and exits 0
  * even when the gate fails or the database is unavailable.
@@ -64,35 +66,46 @@ interface SystemStats {
   maxDD: number;
 }
 
-function summarize(rMultiples: number[], nextDayHits: number, enterN: number): SystemStats {
-  const grossProfits = rMultiples.filter((x) => x > 0).reduce((s, x) => s + x, 0);
-  const grossLosses = rMultiples.filter((x) => x <= 0).reduce((s, x) => s + Math.abs(x), 0);
+interface SystemSample {
+  enterN: number;
+  hits: number;
+  r: number[];
+}
+
+function summarize(sample: SystemSample): SystemStats {
+  const r = sample.r;
+  const grossProfits = r.filter((x) => x > 0).reduce((s, x) => s + x, 0);
+  const grossLosses = r.filter((x) => x <= 0).reduce((s, x) => s + Math.abs(x), 0);
 
   let maxDD = 0;
   let equity = 0;
   let peak = 0;
-  for (const x of rMultiples) {
+  for (const x of r) {
     equity += x;
     peak = Math.max(peak, equity);
     maxDD = Math.max(maxDD, peak - equity);
   }
 
   return {
-    enterN,
-    scoredN: rMultiples.length,
-    expectancyR: rMultiples.length > 0 ? rMultiples.reduce((s, x) => s + x, 0) / rMultiples.length : null,
+    enterN: sample.enterN,
+    scoredN: r.length,
+    expectancyR: r.length > 0 ? r.reduce((s, x) => s + x, 0) / r.length : null,
     profitFactor:
-      rMultiples.length > 0
+      r.length > 0
         ? grossLosses > 0
           ? grossProfits / grossLosses
           : grossProfits > 0
             ? Infinity
             : 0
         : null,
-    nextDayHitR1: nextDayHits,
-    winRate: rMultiples.length > 0 ? rMultiples.filter((x) => x > 0).length / rMultiples.length : 0,
+    nextDayHitR1: sample.hits,
+    winRate: r.length > 0 ? r.filter((x) => x > 0).length / r.length : 0,
     maxDD,
   };
+}
+
+function emptySample(): SystemSample {
+  return { enterN: 0, hits: 0, r: [] };
 }
 
 function rMultipleOf(result: PathResult): number | null {
@@ -105,16 +118,28 @@ async function main(): Promise<void> {
   const costRate = roundTripCostRate(costs);
 
   const signals = await getSignalRecords();
-  const stats: Record<SystemKey, { r: number[]; hits: number; enterN: number }> = {
-    'adi-only': { r: [], hits: 0, enterN: 0 },
-    'phase-0-card': { r: [], hits: 0, enterN: 0 },
-    'phase-1-card': { r: [], hits: 0, enterN: 0 },
+
+  // Date-partitioned samples so the ship gate can be OOS-only.
+  const perDate = new Map<string, Record<SystemKey, SystemSample>>();
+  const ensureDate = (date: string): Record<SystemKey, SystemSample> => {
+    let entry = perDate.get(date);
+    if (!entry) {
+      entry = {
+        'adi-only': emptySample(),
+        'phase-0-card': emptySample(),
+        'phase-1-card': emptySample(),
+      };
+      perDate.set(date, entry);
+    }
+    return entry;
   };
 
   let nUnscored = 0;
 
   for (const signal of signals) {
     const asOf = signal.from_date;
+    const buckets = ensureDate(asOf);
+
     const bars: PathBar[] = (
       await getPriceHistory(signal.emiten, nextTradingDay(asOf), addTradingDays(asOf, horizon))
     ).map((row) => ({
@@ -129,6 +154,7 @@ async function main(): Promise<void> {
     }
     const hitR1 = bars[0].high >= signal.target_realistis;
 
+    // System 0: Adi-only, Phase 0 interim stop, every success print is a trade.
     const interimStop = Math.min(signal.arb, Math.round(signal.rata_rata_bandar * 0.97));
     const adiOnly = rMultipleOf(
       scorePath({
@@ -140,10 +166,11 @@ async function main(): Promise<void> {
         bars,
       })
     );
-    stats['adi-only'].enterN += 1;
-    if (hitR1) stats['adi-only'].hits += 1;
-    if (adiOnly !== null) stats['adi-only'].r.push(adiOnly);
+    buckets['adi-only'].enterN += 1;
+    if (hitR1) buckets['adi-only'].hits += 1;
+    if (adiOnly !== null) buckets['adi-only'].r.push(adiOnly);
 
+    // Systems 1 and 2 share the G0–G3 replay input.
     const priorBandar = await getPriorBandarCodes(signal.emiten, asOf);
     const replay = buildReplayInput(signal, priorBandar);
     if (!replay) {
@@ -151,6 +178,9 @@ async function main(): Promise<void> {
       continue;
     }
 
+    // Tape for replay mirrors the live watchlist job exactly: the signal was
+    // journaled during the session, so today's (from_date) running bar was
+    // excluded at decision time. liveIncompleteToday=true ⇒ date < asOf.
     const tapeBars: OhlcBar[] = (
       await getPriceHistory(signal.emiten, addTradingDays(asOf, -40), addTradingDays(asOf, -1))
     ).map((row) => ({
@@ -187,9 +217,9 @@ async function main(): Promise<void> {
           bars,
         })
       );
-      stats[system].enterN += 1;
-      if (hitR1) stats[system].hits += 1;
-      if (r !== null) stats[system].r.push(r);
+      buckets[system].enterN += 1;
+      if (hitR1) buckets[system].hits += 1;
+      if (r !== null) buckets[system].r.push(r);
     }
   }
 
@@ -198,29 +228,59 @@ async function main(): Promise<void> {
     { isFraction: 0.8, purgeSessions: 5 }
   );
 
+  const fold = (
+    dates: string[]
+  ): Record<SystemKey, SystemSample> => {
+    const acc: Record<SystemKey, SystemSample> = {
+      'adi-only': emptySample(),
+      'phase-0-card': emptySample(),
+      'phase-1-card': emptySample(),
+    };
+    for (const date of dates) {
+      const entry = perDate.get(date);
+      if (!entry) continue;
+      for (const system of ['adi-only', 'phase-0-card', 'phase-1-card'] as const) {
+        acc[system].enterN += entry[system].enterN;
+        acc[system].hits += entry[system].hits;
+        acc[system].r.push(...entry[system].r);
+      }
+    }
+    return acc;
+  };
+
+  const isSample = fold(split.is);
+  const oosSample = fold(split.oos);
+
   const report = {
     nSignals: signals.length,
     nUnscored,
     nIS: split.is.length,
     nOOS: split.oos.length,
     nPurged: split.purged.length,
+    cut: split.cut,
     params:
       'frozen: atrPeriod=14 emaPeriod=20 k=1.0; no IS tuning; comparator=phase-0-card; p3=close>prev.high AND close>=ema20',
-    systems: {} as Record<SystemKey, SystemStats>,
+    is: {} as Record<SystemKey, SystemStats>,
+    oos: {} as Record<SystemKey, SystemStats>,
     ship: {
       beatExpectancy: false,
       beatPF: false,
       sampleFloorMet: false,
       pass: false,
+      oosEnterPhase0: 0,
+      oosEnterPhase1: 0,
     },
   };
 
   for (const system of ['adi-only', 'phase-0-card', 'phase-1-card'] as const) {
-    report.systems[system] = summarize(stats[system].r, stats[system].hits, stats[system].enterN);
+    report.is[system] = summarize(isSample[system]);
+    report.oos[system] = summarize(oosSample[system]);
   }
 
-  const p0 = report.systems['phase-0-card'];
-  const p1 = report.systems['phase-1-card'];
+  const p0 = report.oos['phase-0-card'];
+  const p1 = report.oos['phase-1-card'];
+  report.ship.oosEnterPhase0 = p0.enterN;
+  report.ship.oosEnterPhase1 = p1.enterN;
   report.ship.beatExpectancy =
     p1.expectancyR !== null && p0.expectancyR !== null && p1.expectancyR > p0.expectancyR;
   report.ship.beatPF =
