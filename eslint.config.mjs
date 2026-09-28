@@ -16,6 +16,9 @@ export default tseslint.config(
       '**/*.example',
       'scripts/run-migrations.js',
       'scripts/start-standalone.js',
+      // Generated esbuild bundles from local scratch/verification tooling
+      // (e.g. scripts/.g4-watch.cjs) — build output, not source.
+      'scripts/.*.cjs',
       // Built extension artifact — lint only the .example sources.
       'stockbit-token-extension/dist/**',
     ],
