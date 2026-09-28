@@ -5,9 +5,9 @@
  * Phase 0 card (G0–G3, interim stop, G4 skipped) and the Phase 1 card
  * (G0–G4, ATR stop), scores both on the same canonical path-outcome scorer
  * over the following N trading-day bars, and applies a purged 80/20 split
- * (5-session purge gap). The ship gate is computed on the OOS fold only;
- * IS and purge-fold stats are reported for transparency but never gate.
- * Comparator is the Phase 0 card, not Adi-only.
+ * (5-trading-day purge gap per plan §5.9). The ship gate is computed on the
+ * OOS fold only; IS and purge-fold stats are reported for transparency but
+ * never gate. Comparator is the Phase 0 card, not Adi-only.
  *
  * This script never fails npm test: it prints SHIP_GATE=PASS/FAIL and exits 0
  * even when the gate fails or the database is unavailable.
@@ -23,6 +23,7 @@ import { evaluatePlaybook } from '../lib/playbook';
 import { buildReplayInput } from '../lib/playbook/replay';
 import { defaultCostModel, roundTripCostRate } from '../lib/playbook/costs';
 import { buildTapeSnapshot } from '../lib/tape/snapshot';
+import { ymdOf } from '../lib/date-ymd';
 import type { OhlcBar } from '../lib/tape/ohlc';
 import { nextTradingDay, addTradingDays } from '../lib/market-calendar';
 import { scorePath, type PathBar, type PathResult } from '../lib/playbook/path-outcome';
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
     const bars: PathBar[] = (
       await getPriceHistory(signal.emiten, nextTradingDay(asOf), addTradingDays(asOf, horizon))
     ).map((row) => ({
-      date: String(row.date).slice(0, 10),
+      date: ymdOf(row.date),
       high: Number(row.high ?? row.close ?? 0),
       low: Number(row.low ?? row.close ?? 0),
       close: Number(row.close ?? 0),
@@ -155,6 +156,12 @@ async function main(): Promise<void> {
     const hitR1 = bars[0].high >= signal.target_realistis;
 
     // System 0: Adi-only, Phase 0 interim stop, every success print is a trade.
+    // arb is required to size the interim stop; missing arb ⇒ unscored, never a
+    // fabricated zero stop.
+    if (signal.arb === null) {
+      nUnscored += 1;
+      continue;
+    }
     const interimStop = Math.min(signal.arb, Math.round(signal.rata_rata_bandar * 0.97));
     const adiOnly = rMultipleOf(
       scorePath({
@@ -184,7 +191,7 @@ async function main(): Promise<void> {
     const tapeBars: OhlcBar[] = (
       await getPriceHistory(signal.emiten, addTradingDays(asOf, -40), addTradingDays(asOf, -1))
     ).map((row) => ({
-      date: String(row.date).slice(0, 10),
+      date: ymdOf(row.date),
       open: Number(row.open ?? row.close ?? 0),
       high: Number(row.high ?? row.close ?? 0),
       low: Number(row.low ?? row.close ?? 0),
@@ -199,7 +206,9 @@ async function main(): Promise<void> {
       priorBandar,
     });
 
-    const phase0 = evaluatePlaybook({ ...replay });
+    // Phase 0 card: G0–G3 live, G4 skipped (replay flag only).
+    const phase0 = evaluatePlaybook({ ...replay, replayG4Skipped: true });
+    // Phase 1 card: G0–G4 with the tape filter and ATR stop.
     const phase1 = evaluatePlaybook({ ...replay, tape });
 
     for (const [system, card] of [
@@ -210,8 +219,8 @@ async function main(): Promise<void> {
       const r = rMultipleOf(
         scorePath({
           entry: card.entry,
-          r1: signal.target_realistis,
-          max: signal.target_max,
+          r1: card.r1 ?? signal.target_realistis,
+          max: card.max ?? signal.target_max,
           invalidation: card.invalidation,
           costRate,
           bars,
@@ -223,10 +232,15 @@ async function main(): Promise<void> {
     }
   }
 
-  const split = splitChronological(
-    signals.map((s) => s.from_date),
-    { isFraction: 0.8, purgeSessions: 5 }
-  );
+  // Universe for the split: only dates that produced at least one scorable
+  // system sample (plan §5.9: unscored tail rows are neither IS nor OOS).
+  const eligibleDates: string[] = [];
+  for (const [date, entry] of perDate) {
+    const hasSample = entry['adi-only'].enterN > 0 || entry['phase-0-card'].enterN > 0 || entry['phase-1-card'].enterN > 0;
+    if (hasSample) eligibleDates.push(date);
+  }
+
+  const split = splitChronological(eligibleDates, { isFraction: 0.8, purgeSessions: 5 });
 
   const fold = (
     dates: string[]

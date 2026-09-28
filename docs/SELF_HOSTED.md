@@ -84,7 +84,7 @@ remains as a no-session fallback.
 deny-list includes `dev-secret` — so a production compose with the dev example
 value will refuse to start.
 
-The two data CLI scripts (`backfill:history`, `baseline:backtest`,
+The three data CLI scripts (`backfill:history`, `baseline:backtest`,
 `walkforward:g4`) require a reachable `DATABASE_URL` and a valid Stockbit JWT
 (`STOCKBIT_JWT_TOKEN`). The baseline script only makes sense after at least one
 watchlist analysis has run and price history has been backfilled.

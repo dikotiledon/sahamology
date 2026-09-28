@@ -125,6 +125,9 @@ function evaluateGate3(input: PlaybookInput, r1: number | null) {
 
 /** G4 tape filter. Missing/short tape is a WAIT-class failure, never AVOID. */
 function evaluateGate4(input: PlaybookInput): GateResult {
+  if (input.replayG4Skipped) {
+    return { id: 'G4', pass: true, skipped: true, reason: 'phase-0' };
+  }
   const tape = input.tape;
 
   if (!tape) {

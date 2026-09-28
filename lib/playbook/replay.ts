@@ -19,7 +19,7 @@ export interface SignalRow {
   from_date: string;
   harga: number;
   ara?: number | null;
-  arb: number;
+  arb: number | null;
   total_bid?: number | null;
   total_offer?: number | null;
   bandar?: string | null;
@@ -37,17 +37,28 @@ export function buildReplayInput(
   if (
     signal.total_bid === null ||
     signal.total_bid === undefined ||
+    !Number.isFinite(signal.total_bid) ||
     signal.total_offer === null ||
     signal.total_offer === undefined ||
+    !Number.isFinite(signal.total_offer) ||
     signal.ara === null ||
     signal.ara === undefined ||
+    !Number.isFinite(signal.ara) ||
     signal.barang_bandar === null ||
-    signal.barang_bandar === undefined
+    signal.barang_bandar === undefined ||
+    !Number.isFinite(signal.barang_bandar) ||
+    signal.arb === null ||
+    signal.arb === undefined ||
+    !Number.isFinite(signal.arb) ||
+    signal.arb <= 0 ||
+    signal.bandar === null ||
+    signal.bandar === undefined ||
+    String(signal.bandar).trim() === ''
   ) {
     return null;
   }
 
-  const bandar = signal.bandar ? String(signal.bandar).trim() : null;
+  const bandar = String(signal.bandar).trim();
   const calculated = calculateTargets(
     signal.rata_rata_bandar,
     signal.barang_bandar,

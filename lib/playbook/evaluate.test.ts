@@ -91,6 +91,16 @@ test('missing tape is WAIT with G4 blocker, never skipped', () => {
   assert.equal(g4?.pass, false);
 });
 
+test('replayG4Skipped re-enables Phase 0 semantics for the walk-forward only', () => {
+  const { tape: _drop, ...noTape } = baseInput;
+  const card = evaluatePlaybook({ ...noTape, replayG4Skipped: true });
+  assert.equal(card.stance, 'ENTER'); // G0–G3 pass, G4 skipped
+  const g4 = card.gates.find((g) => g.id === 'G4');
+  assert.equal(g4?.skipped, true);
+  assert.equal(g4?.pass, true);
+  assert.equal(g4?.reason, 'phase-0');
+});
+
 test('tape.ok false is WAIT with G4 blocker', () => {
   const card = evaluatePlaybook({
     ...baseInput,

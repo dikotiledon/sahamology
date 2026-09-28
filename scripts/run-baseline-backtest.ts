@@ -17,6 +17,7 @@ import { getPriceHistory, getSignalRecords } from '../lib/db';
 import { evaluateAdiOnly, type BaselineTrade } from '../lib/playbook/baseline';
 import { defaultCostModel } from '../lib/playbook/costs';
 import { nextTradingDay, addTradingDays } from '../lib/market-calendar';
+import { ymdOf } from '../lib/date-ymd';
 
 try {
   const envContent = readFileSync(join(process.cwd(), '.env.local'), 'utf8');
@@ -48,6 +49,7 @@ async function main() {
 
   for (const signal of signals) {
     const entryDate = signal.from_date;
+    if (signal.arb === null) continue; // unscored: interim stop cannot be sized
     const from = nextTradingDay(entryDate);
     const to = addTradingDays(entryDate, horizonDays);
 
@@ -57,7 +59,7 @@ async function main() {
     if (!bars) {
       const rows = await getPriceHistory(signal.emiten, from, to);
       bars = rows.map((row) => ({
-        date: String(row.date ?? ''),
+        date: ymdOf(row.date),
         high: Number(row.high ?? row.close ?? 0),
         low: Number(row.low ?? row.close ?? 0),
         close: Number(row.close ?? 0),

@@ -20,6 +20,7 @@ import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
+import { ymdOf } from '@/lib/date-ymd';
 import type { OhlcBar } from '@/lib/tape/ohlc';
 
 export interface WatchlistAnalysisOutcome {
@@ -175,13 +176,13 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         ]);
         const historyRows = (history.data ?? []) as Array<{ bandar?: string | null; from_date?: string | null }>;
         const priorBandar = historyRows
-          .filter((row) => String(row.from_date ?? '').slice(0, 10) !== today)
+          .filter((row) => ymdOf(row.from_date) !== today)
           .map((row) => (row.bandar ? String(row.bandar).trim() : ''))
           .filter(Boolean);
         const tape = buildTapeSnapshot({
           bars: rows.map(
             (row): OhlcBar => ({
-              date: String(row.date).slice(0, 10),
+              date: ymdOf(row.date),
               open: Number(row.open ?? row.close ?? 0),
               high: Number(row.high ?? row.close ?? 0),
               low: Number(row.low ?? row.close ?? 0),

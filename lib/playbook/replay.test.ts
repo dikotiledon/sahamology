@@ -40,13 +40,14 @@ test('missing book columns yield unscored (null), not guessed', () => {
   assert.equal(input, null);
 });
 
-test('null bandar code folds to unscored for the G1 gate', () => {
+test('null bandar code folds to unscored (null), per D15 fail-closed', () => {
   const input = buildReplayInput({ ...signal, bandar: null }, []);
-  assert.ok(input !== null);
-  if (input) {
-    assert.equal(input.bandar, null);
-    assert.equal(input.brokerType, 'Mix');
-  }
+  assert.equal(input, null);
+});
+
+test('missing arb is unscored (null), never coerced to zero', () => {
+  const input = buildReplayInput({ ...signal, arb: 0 }, []);
+  assert.equal(input, null);
 });
 
 test('weekend signal date is not an IDX session', () => {

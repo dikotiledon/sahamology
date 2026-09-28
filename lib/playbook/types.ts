@@ -39,8 +39,14 @@ export interface PlaybookInput {
   tokenValid: boolean;
   costs: CostModel;
   openCard?: { stance: Stance };
-  /** Phase 1 tape view; absent = Phase 0 semantics (G4 skipped). */
+  /** Phase 1 tape view. Absent → G4 fails closed (WAIT), never skipped. */
   tape?: TapeSnapshot;
+  /**
+   * Replay-only flag: the historical Phase 0 card evaluated G0–G3 with G4
+   * skipped (Phase 0 semantics). Never set in the live path — live G4 is a
+   * hard fail-closed gate.
+   */
+  replayG4Skipped?: boolean;
 }
 
 /** Display-only tape fields surfaced on the card. */

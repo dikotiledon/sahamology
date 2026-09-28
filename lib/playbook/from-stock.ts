@@ -8,6 +8,7 @@
  */
 
 import { getBrokerInfo } from '../brokers';
+import { ymdOf } from '../date-ymd';
 import type { CalculateTargetsResult } from '../calculations';
 import type { CostModel } from './costs';
 import type { PlaybookInput, Stance } from './types';
@@ -48,7 +49,7 @@ export function buildPlaybookInputFromStock(args: BuildPlaybookInputArgs): Playb
 
   const priorBandar = priorRows
     .filter((row) => {
-      const date = row.from_date ? String(row.from_date).slice(0, 10) : '';
+      const date = row.from_date ? ymdOf(row.from_date) : '';
       return date !== asOf;
     })
     .map((row) => (row.bandar ? String(row.bandar).trim() : ''))

@@ -6,6 +6,7 @@ import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { isWeekend, isIdxHoliday, jakartaYmd, addTradingDays } from '@/lib/market-calendar';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
+import { ymdOf } from '@/lib/date-ymd';
 import type { OhlcBar } from '@/lib/tape/ohlc';
 import {
   saveStockQuery,
@@ -34,7 +35,7 @@ function buildTape(
     buildTapeSnapshot({
       bars: rows.map(
         (row): OhlcBar => ({
-          date: String(row.date).slice(0, 10),
+          date: ymdOf(row.date),
           open: Number(row.open ?? row.close ?? 0),
           high: Number(row.high ?? row.close ?? 0),
           low: Number(row.low ?? row.close ?? 0),
@@ -197,13 +198,13 @@ export async function POST(request: NextRequest) {
 
     const openCard =
       previous[0] &&
-      String((previous[0] as Record<string, unknown>).as_of).slice(0, 10) < asOf &&
+      ymdOf((previous[0] as Record<string, unknown>).as_of) < asOf &&
       (previous[0] as Record<string, unknown>).stance === 'ENTER'
         ? { stance: 'ENTER' as const }
         : undefined;
 
     const priorBandar = (history.data as Array<{ bandar?: string | null; from_date?: string | null }>)
-      .filter((row) => String(row.from_date ?? '').slice(0, 10) !== asOf)
+      .filter((row) => ymdOf(row.from_date) !== asOf)
       .map((row) => (row.bandar ? String(row.bandar).trim() : ''))
       .filter(Boolean);
 

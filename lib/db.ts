@@ -1,5 +1,6 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { hitR1, hitMax } from './hits';
+import { ymdOf } from './date-ymd';
 
 /**
  * Native PostgreSQL data access layer.
@@ -838,7 +839,7 @@ export async function getSignalRecords(): Promise<
     from_date: string;
     harga: number;
     ara: number | null;
-    arb: number;
+    arb: number | null;
     total_bid: number | null;
     total_offer: number | null;
     bandar: string | null;
@@ -859,9 +860,7 @@ export async function getSignalRecords(): Promise<
   );
   return result.rows.map((row) => {
     const r = row as Record<string, unknown>;
-    const rawDate = r.from_date instanceof Date
-      ? (r.from_date as Date).toISOString().slice(0, 10)
-      : String(r.from_date).slice(0, 10);
+    const rawDate = ymdOf(r.from_date);
     const toNum = (v: unknown): number | null => {
       if (v === null || v === undefined || v === '') return null;
       const n = Number(v);
@@ -872,7 +871,7 @@ export async function getSignalRecords(): Promise<
       from_date: rawDate,
       harga: Number(r.harga),
       ara: toNum(r.ara),
-      arb: Number(r.arb ?? 0),
+      arb: toNum(r.arb),
       total_bid: toNum(r.total_bid),
       total_offer: toNum(r.total_offer),
       bandar: r.bandar === null || r.bandar === undefined ? null : String(r.bandar).trim(),
