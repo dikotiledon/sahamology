@@ -39,6 +39,14 @@ import { trailingZScore, REGIME_WINDOW } from '../lib/macro/classifier';
 import { MACRO_CLAUSES, type MacroClause, type MacroSeries } from '../lib/macro/types';
 
 /** Forward horizons, in sessions, that the study reports against. */
+/**
+ * Fixed stamp for the example artifact. That artifact is a committed fixture,
+ * so a wall-clock timestamp would make every gate run dirty the working tree
+ * with a one-line diff carrying no information. The real artifact records when
+ * the run actually happened.
+ */
+const EXAMPLE_GENERATED_AT = '1970-01-01T00:00:00.000Z';
+
 const FORWARD_HORIZONS = [5, 10, 20] as const;
 
 const mean = (xs: number[]): number | null =>
@@ -558,7 +566,7 @@ async function main(): Promise<void> {
   const armed = result.clauses.filter((c) => c.candidate !== null);
 
   const artifact = {
-    generatedAt: new Date().toISOString(),
+    generatedAt: isExample ? EXAMPLE_GENERATED_AT : new Date().toISOString(),
     mode: isExample ? 'example' : dataPath ? 'exported' : 'live',
     sample: {
       signals: input.signals.length,
@@ -591,7 +599,7 @@ async function main(): Promise<void> {
     },
   };
 
-  const outDir = join(process.cwd(), 'artifacts');
+    const outDir = join(process.cwd(), 'artifacts');
   mkdirSync(outDir, { recursive: true });
   const path = join(outDir, isExample ? 'macro-correlation.example.json' : 'macro-correlation.json');
   writeFileSync(path, JSON.stringify(artifact, null, 2));
