@@ -18,6 +18,7 @@
     "lint": "eslint .",
     "macro:correlation": "tsx --tsconfig tsconfig.test.json scripts/run-macro-correlation.ts",
     "macro:backfill": "tsx --tsconfig tsconfig.test.json scripts/backfill-macro-history.ts",
+    "macro:backfill-probe": "tsx --tsconfig tsconfig.test.json scripts/macro-backfill-probe.ts",
     "walkforward:p4": "tsx --tsconfig tsconfig.test.json scripts/run-phase4-walkforward.ts"
   },
   "dependencies": {

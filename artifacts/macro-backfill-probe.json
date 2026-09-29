@@ -1,0 +1,472 @@
+{
+  "recordedAt": "2026-09-29T00:00:39.400Z",
+  "baseUrl": "https://exodus.stockbit.com",
+  "window": {
+    "from": "2025-06-01",
+    "to": "2026-09-29"
+  },
+  "limits": {
+    "fetchLimit": 50,
+    "maxSpanDays": 365
+  },
+  "requests": 51,
+  "ok": 51,
+  "http400": 0,
+  "otherNonOk": 0,
+  "spansWithinLimits": true,
+  "uniqueDates": {
+    "IHSG": 319,
+    "USDIDR": 486,
+    "XAU": 481,
+    "OIL": 481,
+    "BRENT": 480
+  },
+  "perSeries": [
+    {
+      "symbol": "IHSG",
+      "rows": 319,
+      "uniqueDates": 319,
+      "first": "2025-06-02",
+      "last": "2026-09-28"
+    },
+    {
+      "symbol": "USDIDR",
+      "rows": 486,
+      "uniqueDates": 486,
+      "first": "2025-06-01",
+      "last": "2026-09-29"
+    },
+    {
+      "symbol": "XAU",
+      "rows": 481,
+      "uniqueDates": 481,
+      "first": "2025-06-01",
+      "last": "2026-09-29"
+    },
+    {
+      "symbol": "OIL",
+      "rows": 481,
+      "uniqueDates": 481,
+      "first": "2025-06-01",
+      "last": "2026-09-29"
+    },
+    {
+      "symbol": "BRENT",
+      "rows": 480,
+      "uniqueDates": 480,
+      "first": "2025-06-01",
+      "last": "2026-09-29"
+    }
+  ],
+  "transcript": [
+    {
+      "symbol": "IHSG",
+      "page": 1,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "IHSG",
+      "page": 2,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "IHSG",
+      "page": 3,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "IHSG",
+      "page": 4,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "IHSG",
+      "page": 5,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "IHSG",
+      "page": 1,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "IHSG",
+      "page": 2,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 1,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 2,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 3,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 4,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 5,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 6,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 7,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 8,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 1,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 2,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "USDIDR",
+      "page": 3,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 1,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 2,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 3,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 4,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 5,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 6,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 7,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 8,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 1,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 2,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "XAU",
+      "page": 3,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 1,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 2,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 3,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 4,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 5,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 6,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 7,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 8,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 1,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 2,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "OIL",
+      "page": 3,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 1,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 2,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 3,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 4,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 5,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 6,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 7,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 8,
+      "start": "2025-09-30",
+      "end": "2026-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 1,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 2,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    },
+    {
+      "symbol": "BRENT",
+      "page": 3,
+      "start": "2025-06-01",
+      "end": "2025-09-29",
+      "limit": 50,
+      "status": 200
+    }
+  ],
+  "note": "Measurement only. No database writes. No token, header or response body is recorded."
+}
