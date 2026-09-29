@@ -34,6 +34,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.local.example
+# .env.example is the operator-facing template (documents every profile and its
+# default) and is read by the Phase 4 default-off gate. It holds no secrets, so
+# it is committed; the local .env stays ignored.
+!.env.example
 
 # vercel
 .vercel

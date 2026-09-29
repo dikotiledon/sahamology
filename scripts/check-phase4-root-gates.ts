@@ -93,13 +93,28 @@ function gate1(): void {
 /* ------------------------------------------------------------------ G4 ---- */
 
 function gate4(): void {
-  // The .env.example DEFAULT, taken from the assignment line only. A menu in
-  // a comment is documentation; an assignment is configuration.
-  const env = readFileSync(p('.env.example'), 'utf8');
-  const assignment = env.match(/^\s*PLAYBOOK_G7_PROFILE\s*=\s*(\S+)\s*$/m);
-  const declared = assignment?.[1];
-  if (declared === undefined) fail('.env.example does not assign PLAYBOOK_G7_PROFILE');
-  if (declared !== 'off') fail(`the documented default is not off: ${declared}`);
+  // The DOCUMENTED default, taken from an assignment line only. A menu in a
+  // comment is documentation; an assignment is configuration.
+  //
+  // Every tracked template is checked, not just one. This file was gitignored
+  // by a blanket `.env*` rule while a gate read it, so a fresh clone had no
+  // file to read and the gate could only have failed for the wrong reason. The
+  // .gitignore now un-ignores the example, and reading every template means a
+  // future rename cannot silently move the assertion off the tracked file.
+  const templates = ['.env.example', '.env.local.example', 'env.example'].filter((f) =>
+    existsSync(p(f)),
+  );
+  if (templates.length === 0) fail('no tracked env template documents PLAYBOOK_G7_PROFILE');
+  for (const name of templates) {
+    const assignment = readFileSync(p(name), 'utf8').match(/^\s*PLAYBOOK_G7_PROFILE\s*=\s*(\S+)\s*$/m);
+    const declared = assignment?.[1];
+    if (declared === undefined) continue; // a template need not cover every profile
+    if (declared !== 'off') fail(`the documented default in ${name} is not off: ${declared}`);
+  }
+  const documented = templates.some((name) =>
+    /^\s*PLAYBOOK_G7_PROFILE\s*=\s*off\s*$/m.test(readFileSync(p(name), 'utf8')),
+  );
+  if (!documented) fail('no env template assigns PLAYBOOK_G7_PROFILE=off');
 
   // No COMMITTED file may select the armed profile. Parsed as a real
   // assignment so the ternary chain in the route — where 'veto' is the value
@@ -224,6 +239,7 @@ function gate8(): void {
   if (!/PLAYBOOK_G7_PROFILE/.test(readFileSync(p('.env.example'), 'utf8'))) {
     fail('.env.example does not document PLAYBOOK_G7_PROFILE');
   }
+
   ok('docs-honest-ok');
 }
 
