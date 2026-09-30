@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { BackgroundJobLog } from '@/lib/types';
+import { classifyJobHealth } from '@/lib/ops/classify';
 
 interface JobLogsCardProps {
   jobName?: string;
@@ -55,12 +56,20 @@ export default function JobLogsCard({
     }
   }, [jobName, showLatestOnly, showAll, refreshInterval]);
 
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case 'completed': return 'good';
-      case 'failed': return 'error';
-      case 'running': return 'warning';
-      default: return '';
+  const getStatusClass = (log: BackgroundJobLog) => {
+    const kind = classifyJobHealth(log, Date.now());
+    switch (kind) {
+      case 'stalled':
+      case 'failed':
+        return 'error';
+      case 'running':
+      case 'degraded':
+        return 'warning';
+      case 'skipped-closed':
+      case 'idle':
+        return 'good';
+      default:
+        return '';
     }
   };
 
@@ -100,7 +109,7 @@ export default function JobLogsCard({
       <div className="job-logs-list">
         {logs.map((log) => {
           const isExpanded = expandedLogId === log.id;
-          const statusClass = getStatusClass(log.status);
+          const statusClass = getStatusClass(log);
 
           return (
             <div 

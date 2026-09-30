@@ -106,6 +106,33 @@ test('null rr stays null on the desk row for the UI em-dash contract', () => {
   assert.equal(desk.deskRows[0]?.rr, null);
 });
 
+test('holiday wall keeps previous-session rank and sets marketClosed holiday', () => {
+  const desk = assembleDesk({
+    asOf: '2026-08-14',
+    wallDate: '2026-08-17',
+    journals: [
+      record({ emiten: 'BBRI', as_of: '2026-08-14', stance: 'ENTER', rr: 3 }),
+      record({ emiten: 'BBCA', as_of: '2026-08-14', stance: 'ENTER', rr: 2 }),
+    ],
+    watchlistItems: [{ symbol: 'BBRI' }, { symbol: 'BBCA' }],
+    fallbackEmitens: '',
+  });
+  assert.equal(desk.morningCard.marketClosed?.reason, 'holiday');
+  assert.equal(desk.morningCard.marketClosed?.wallDate, '2026-08-17');
+  assert.deepEqual(
+    desk.deskRows.map((row) => row.emiten),
+    ['BBRI', 'BBCA'],
+  );
+  assert.equal(desk.date, '2026-08-14');
+  const open = assembleDesk({
+    asOf: '2026-01-05',
+    journals: [record({ emiten: 'BBCA', stance: 'ENTER' })],
+    watchlistItems: [{ symbol: 'BBCA' }],
+    fallbackEmitens: '',
+  });
+  assert.equal(open.morningCard.marketClosed, null);
+});
+
 test('visibleDeskRows hides AVOID by default and keeps TAKE_PROFIT', () => {
   const desk = assembleDesk({
     asOf: '2026-01-05',

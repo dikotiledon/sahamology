@@ -71,3 +71,78 @@ test('rate-limit exhaustion throws after max attempts', async () => {
   );
   assert.equal(calls, 5); // 1 initial + 4 retries
 });
+
+test('timeout is not retried', async () => {
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return new Promise(() => {});
+  };
+  await assert.rejects(
+    () => stockbitFetch('https://example.com/x', {}, {
+      fetch: fetchImpl,
+      timeoutMs: 20,
+      limiter: createLimiter({ ratePerSec: 1000, burst: 1000 }),
+    }),
+    (err: Error) => err.name === 'StockbitTimeoutError',
+  );
+  assert.equal(calls, 1);
+});
+
+test('pre-aborted caller signal is not mapped to StockbitTimeoutError', async () => {
+  const ac = new AbortController();
+  ac.abort();
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    return new Promise(() => {});
+  };
+  const started = Date.now();
+  await assert.rejects(
+    () => stockbitFetch('https://example.com/x', { signal: ac.signal }, {
+      fetch: fetchImpl,
+      timeoutMs: 20,
+      limiter: createLimiter({ ratePerSec: 1000, burst: 1000 }),
+    }),
+    (err: Error) => err.name !== 'StockbitTimeoutError',
+  );
+  assert.ok(Date.now() - started < 20);
+  assert.equal(calls, 0);
+});
+
+test('Retry-After 999999999 sleeps 30000', async () => {
+  const sleeps: number[] = [];
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return new Response('', { status: 429, headers: { 'Retry-After': '999999999' } });
+    }
+    return new Response('', { status: 200 });
+  };
+  const res = await stockbitFetch('https://example.com/x', {}, {
+    fetch: fetchImpl,
+    limiter: createLimiter({ ratePerSec: 1000, burst: 1000 }),
+    sleep: async (ms: number) => { sleeps.push(ms); },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(sleeps[0], 30_000);
+});
+
+test('Retry-After 86400 sleeps 30000', async () => {
+  const sleeps: number[] = [];
+  let calls = 0;
+  const fetchImpl: typeof fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return new Response('', { status: 429, headers: { 'Retry-After': '86400' } });
+    }
+    return new Response('', { status: 200 });
+  };
+  await stockbitFetch('https://example.com/x', {}, {
+    fetch: fetchImpl,
+    limiter: createLimiter({ ratePerSec: 1000, burst: 1000 }),
+    sleep: async (ms: number) => { sleeps.push(ms); },
+  });
+  assert.equal(sleeps[0], 30_000);
+});

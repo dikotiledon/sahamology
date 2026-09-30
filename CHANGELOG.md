@@ -2,6 +2,15 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.11.0 (draft) — Phase 6 Hardening
+
+Phase 6 ships process health, weekday holiday no-ops, and fail-closed Stockbit deadlines. Phase 4 remains capture-complete, not ship-complete. No gate is armed.
+
+- **Live/ready/ops health** (`GET /api/health`): Docker `HEALTHCHECK` probes `?level=live` only through `scripts/health-probe.mjs` (`r.ok`). Ready/ops still ping Postgres, Redis, workers, and stall. Public, secret-free, never HTTP 5xx.
+- **Weekday IDX holiday skip**: the daily watchlist job uses wall-clock Jakarta date, writes a job log first, and no-ops before Stockbit on weekend/holiday.
+- **Fail-closed Stockbit deadline**: hung fetches abort at `STOCKBIT_TIMEOUT_MS` (default 15000) with `StockbitTimeoutError` and zero retries. 429/5xx still back off; Retry-After is capped at 30s.
+- **Operator surfaces**: the job pill is watchlist-scoped, treats transport failure as “Status unavailable”, and the morning card banners IDX closures while still ranking the last session.
+
 ### Unreleased / v0.10.0 (draft) — Phase 5 Ranked Desk
 
 Phase 5 ships the ranked desk, the morning card, and auto-filled journal

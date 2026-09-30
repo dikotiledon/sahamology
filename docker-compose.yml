@@ -73,6 +73,13 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_STORY_TIMEOUT_MS: ${LLM_STORY_TIMEOUT_MS:-240000}
       COOKIE_SECURE: ${COOKIE_SECURE:-}
+      STOCKBIT_TIMEOUT_MS: ${STOCKBIT_TIMEOUT_MS:-15000}
+    healthcheck:
+      test: ["CMD", "node", "scripts/health-probe.mjs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     networks:
       - sahamology
 

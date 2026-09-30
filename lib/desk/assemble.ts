@@ -4,6 +4,7 @@ import type { PathExit } from '../playbook/path-outcome';
 import type { EmitensSource, SkippedWatchlistItem, WatchlistUniverseItem } from '../jobs/watchlist-universe';
 import { resolveEmitensToAnalyze } from '../jobs/watchlist-universe';
 import { ymdOf } from '../date-ymd';
+import { isIdxHoliday, isWeekend } from '../market-calendar';
 import { rankDeskRows, type DeskSortable } from './ranking';
 import { explainRow, type GateExplanation, type StoredGate } from './explain';
 import { deriveNextAction, type NextAction } from './next-action';
@@ -42,6 +43,7 @@ export interface MorningCardModel {
   skipped: SkippedWatchlistItem[];
   universeSource: EmitensSource;
   macroLabel: 'off' | 'NOT_EVALUATED' | 'NEUTRAL' | 'CAUTION' | 'absent';
+  marketClosed: { wallDate: string; reason: 'weekend' | 'holiday' } | null;
 }
 
 export interface JournalDeskRecord {
@@ -61,6 +63,7 @@ export interface JournalDeskRecord {
 
 export interface AssembleInput {
   asOf: string;
+  wallDate?: string;
   journals: JournalDeskRecord[];
   watchlistItems: readonly WatchlistUniverseItem[];
   fallbackEmitens: string | undefined | null;
@@ -157,7 +160,14 @@ function toDeskRow(journal: JournalDeskRecord): DeskRow | null {
  * Journal rows → ranked desk. Universe comes from resolveEmitensToAnalyze;
  * non-IDX names are skipped with reason and never ranked (plan D1).
  */
+function marketClosedOf(wallDate: string): MorningCardModel['marketClosed'] {
+  if (isWeekend(wallDate)) return { wallDate, reason: 'weekend' };
+  if (isIdxHoliday(wallDate)) return { wallDate, reason: 'holiday' };
+  return null;
+}
+
 export function assembleDesk(input: AssembleInput): AssembleResult {
+  const wallDate = input.wallDate ?? input.asOf;
   const resolved = resolveEmitensToAnalyze(input.watchlistItems, input.fallbackEmitens);
   const skippedCodes = new Set(
     resolved.skipped.filter((item) => item.reason === 'non-idx').map((item) => item.symbol),
@@ -190,6 +200,7 @@ export function assembleDesk(input: AssembleInput): AssembleResult {
     })),
     skipped: resolved.skipped,
     universeSource: resolved.source,
+    marketClosed: marketClosedOf(wallDate),
     macroLabel: deskRows.reduce<MorningCardModel['macroLabel']>((label, row) => {
       if (label === 'CAUTION') return label;
       const gates = asStoredGates(input.journals.find((j) => j.emiten === row.emiten)?.gates);

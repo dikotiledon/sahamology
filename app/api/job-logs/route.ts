@@ -13,10 +13,11 @@ export async function GET(request: Request) {
     // If requesting latest only for a specific job
     if (latest && jobName) {
       const latestLog = await getLatestBackgroundJobLog(jobName);
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         data: latestLog ? [latestLog] : [],
         count: latestLog ? 1 : 0,
+        checkedAt: new Date().toISOString(),
       });
     }
 
@@ -27,15 +28,16 @@ export async function GET(request: Request) {
       offset,
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       data,
       count,
+      checkedAt: new Date().toISOString(),
       pagination: {
         limit,
         offset,
         total: count,
-      }
+      },
     });
   } catch (error) {
     console.error('Error fetching job logs:', error);

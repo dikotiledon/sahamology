@@ -72,6 +72,19 @@ Perhatikan baris seperti:
 
 Jika worker tidak muncul, pastikan Redis berjalan sehat: `docker compose ps` (kolom `sahamology-redis` harus `Up (healthy)`).
 
+## 6. Phase 6 health
+
+Docker HEALTHCHECK hanya memanggil `/api/health?level=live`. Untuk kesiapan
+ops (Postgres, Redis, worker, stall):
+
+```
+curl -sS http://127.0.0.1:3000/api/health?level=live
+curl -sS http://127.0.0.1:3000/api/health?level=ops
+```
+
+Phase 6 tidak meng-arm playbook profile. Deadline Stockbit fail-closed
+(`STOCKBIT_TIMEOUT_MS`, default 15000).
+
 ---
 
 *Kembali ke [Halaman Utama Wiki](Home)*

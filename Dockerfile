@@ -87,5 +87,7 @@ USER nextjs
 
 EXPOSE 3000
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD node scripts/health-probe.mjs
+
 # Run migrations first; fail fast and stop the container if they fail.
 CMD ["sh", "-c", "node scripts/run-migrations.js && node server.js"]

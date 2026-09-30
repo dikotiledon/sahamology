@@ -15,6 +15,15 @@ export default function MorningCard({ card }: { card: MorningCardModel }) {
         <h2>Kartu Pagi · {card.date}</h2>
         <span className="desk-muted">{MACRO_LABEL[card.macroLabel]}</span>
       </header>
+      {card.marketClosed && (
+        <p className="desk-muted morning-closed-banner">
+          IDX tutup ({card.marketClosed.reason}) · menampilkan sesi{' '}
+          <span className="morning-session-date">{card.date}</span>
+        </p>
+      )}
+      {card.universeSource === 'none' && (
+        <p className="desk-muted">Watchlist kosong — tidak ada emiten IDX</p>
+      )}
       <div className="morning-counts">
         <div className="morning-count enter">
           <strong>{card.enterCount}</strong>

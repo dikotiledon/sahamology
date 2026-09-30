@@ -30,6 +30,31 @@ let watchlistQueue: Queue | undefined;
 let storyQueue: Queue | undefined;
 let priceHistoryQueue: Queue | undefined;
 let workersStarted = false;
+let schedulerOk = false;
+let startedAt: number | null = null;
+let startPromise: Promise<void> | undefined;
+
+export interface WorkerStatus {
+  workersStarted: boolean;
+  startedAt: number | null;
+  schedulerOk: boolean;
+}
+
+export function getWorkerStatus(): WorkerStatus {
+  return { workersStarted, startedAt, schedulerOk };
+}
+
+export function __resetWorkerStatusForTests(): void {
+  workersStarted = false;
+  schedulerOk = false;
+  startedAt = null;
+  startPromise = undefined;
+}
+
+export interface StartWorkersDeps {
+  Worker?: typeof Worker;
+  ensureScheduledJobs?: () => Promise<void>;
+}
 
 /** Queue used for daily/manual watchlist analysis. */
 export function getWatchlistQueue(): Queue {
@@ -109,47 +134,78 @@ export async function ensureScheduledJobs(): Promise<void> {
  * and exactly once per process. Next.js dev mode can import modules multiple
  * times, so a module-level guard protects against duplicate worker instances.
  */
-export async function startWorkers(): Promise<void> {
+export async function startWorkers(deps: StartWorkersDeps = {}): Promise<void> {
   if (workersStarted) return;
-  workersStarted = true;
+  if (startPromise) return startPromise;
+  startPromise = bootWorkers(deps);
+  try {
+    await startPromise;
+  } finally {
+    if (!workersStarted) startPromise = undefined;
+  }
+}
 
-  await ensureScheduledJobs().catch((error) => {
+async function bootWorkers(deps: StartWorkersDeps): Promise<void> {
+  const WorkerImpl = deps.Worker ?? Worker;
+  const ensure = deps.ensureScheduledJobs ?? ensureScheduledJobs;
+
+  schedulerOk = false;
+  try {
+    await ensure();
+    schedulerOk = true;
+  } catch (error) {
     console.error('[Queue] Failed to ensure scheduled jobs:', error);
-  });
+    schedulerOk = false;
+  }
 
-  const watchlistWorker = new Worker(
-    WATCHLIST_QUEUE_NAME,
-    async () => {
-      await runWatchlistAnalysis();
-    },
-    { connection: resolveRedisOptions(), concurrency: 1 }
-  );
+  const constructed: Array<{ close: () => Promise<unknown> }> = [];
+  try {
+    const watchlistWorker = new WorkerImpl(
+      WATCHLIST_QUEUE_NAME,
+      async () => {
+        const out = await runWatchlistAnalysis();
+        if (!out.success) throw new Error('watchlist-job-failed');
+      },
+      { connection: resolveRedisOptions(), concurrency: 1 }
+    );
+    constructed.push(watchlistWorker);
 
-  const storyWorker = new Worker(
-    STORY_QUEUE_NAME,
-    async (job) => {
-      await runStoryAnalysis(job.data as StoryAnalysisInput);
-    },
-    { connection: resolveRedisOptions(), concurrency: 1 }
-  );
+    const storyWorker = new WorkerImpl(
+      STORY_QUEUE_NAME,
+      async (job) => {
+        await runStoryAnalysis(job.data as StoryAnalysisInput);
+      },
+      { connection: resolveRedisOptions(), concurrency: 1 }
+    );
+    constructed.push(storyWorker);
 
-  const priceHistoryWorker = new Worker(
-    PRICE_HISTORY_QUEUE_NAME,
-    async (job) => {
-      await runPriceHistoryBackfill(job.data as PriceHistoryBackfillInput);
-    },
-    { connection: resolveRedisOptions(), concurrency: 1 }
-  );
+    const priceHistoryWorker = new WorkerImpl(
+      PRICE_HISTORY_QUEUE_NAME,
+      async (job) => {
+        await runPriceHistoryBackfill(job.data as PriceHistoryBackfillInput);
+      },
+      { connection: resolveRedisOptions(), concurrency: 1 }
+    );
+    constructed.push(priceHistoryWorker);
 
-  watchlistWorker.on('failed', (job, err) => {
-    console.error(`[Queue] Watchlist job ${job?.id} failed:`, err.message);
-  });
-  storyWorker.on('failed', (job, err) => {
-    console.error(`[Queue] Story job ${job?.id} failed:`, err.message);
-  });
-  priceHistoryWorker.on('failed', (job, err) => {
-    console.error(`[Queue] Price history backfill job ${job?.id} failed:`, err.message);
-  });
+    workersStarted = true;
+    startedAt = Date.now();
 
-  console.log('[Queue] BullMQ workers started (watchlist-analysis, story-analysis, price-history-backfill)');
+    watchlistWorker.on('failed', (job, err) => {
+      console.error(`[Queue] Watchlist job ${job?.id} failed:`, err.message);
+    });
+    storyWorker.on('failed', (job, err) => {
+      console.error(`[Queue] Story job ${job?.id} failed:`, err.message);
+    });
+    priceHistoryWorker.on('failed', (job, err) => {
+      console.error(`[Queue] Price history backfill job ${job?.id} failed:`, err.message);
+    });
+
+    console.log('[Queue] BullMQ workers started (watchlist-analysis, story-analysis, price-history-backfill)');
+  } catch (error) {
+    await Promise.allSettled(constructed.map((w) => w.close()));
+    workersStarted = false;
+    startedAt = null;
+    throw error;
+  }
 }

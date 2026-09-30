@@ -7,6 +7,25 @@ Redis 7 with BullMQ workers embedded in the Next.js server process.
 
 ---
 
+## Phase 6 hardening
+
+Phase 6 ships process health, weekday holiday no-ops, and fail-closed Stockbit
+deadlines. Phase 4 remains capture-complete, not ship-complete. No gate is
+armed. Docker `HEALTHCHECK` is live-only (`CMD node scripts/health-probe.mjs`
+→ `GET /api/health?level=live`, exit polarity `r.ok`). Compose `app.restart`
+is `unless-stopped`; a migrate failure on first boot can loop until the
+image is healthy (`State.Health`). Probe live, then ops, from inside the
+container:
+
+```
+curl -sS http://127.0.0.1:3000/api/health?level=live
+curl -sS http://127.0.0.1:3000/api/health?level=ops
+```
+
+`STOCKBIT_TIMEOUT_MS` defaults to 15000. Do not set `SAHAMOLOGY_FAULT*` in
+compose. Weekday IDX holidays skip the daily job before Stockbit and still
+show Thursday's ranked desk on the holiday morning card.
+
 ## Phase 5 ranked desk
 
 Phase 5 ships the ranked desk (`/desk`), the morning card, and auto-filled

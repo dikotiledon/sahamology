@@ -6,7 +6,7 @@ import {
   listDecisionJournalByDate,
 } from '@/lib/db';
 import { assembleDesk, type JournalDeskRecord } from '@/lib/desk/assemble';
-import { sessionDateJakarta } from '@/lib/market-calendar';
+import { jakartaYmd, sessionDateJakarta } from '@/lib/market-calendar';
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
 
     const assembled = assembleDesk({
       asOf: date,
+      wallDate: jakartaYmd(new Date()),
       journals,
       watchlistItems,
       fallbackEmitens: process.env.WATCHLIST_FALLBACK_EMITENS,

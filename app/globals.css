@@ -2461,6 +2461,14 @@ body.modal-open .app-layout {
   margin-bottom: 1.5rem;
 }
 
+.morning-closed-banner {
+  margin: 0 0 1rem;
+}
+
+.morning-session-date {
+  white-space: nowrap;
+}
+
 .morning-card-header {
   display: flex;
   justify-content: space-between;

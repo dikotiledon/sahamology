@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   // route must bypass the session gate. The route itself validates the
   // payload; CORS is handled by the route's OPTIONS/POST headers.
   '/api/update-token',
+  '/api/health',
 ];
 
 export async function proxy(request: NextRequest) {

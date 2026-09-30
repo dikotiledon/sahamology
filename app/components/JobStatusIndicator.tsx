@@ -2,45 +2,92 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { BackgroundJobLog } from '@/lib/types';
+import { classifyJobHealth, type JobHealthKind } from '@/lib/ops/classify';
 
-let inFlightFetch: Promise<any> | null = null;
+type TransportState = 'idle' | 'ok' | 'unavailable';
+
+type JobLogsPayload = {
+  success?: boolean;
+  data?: BackgroundJobLog[];
+  checkedAt?: string;
+};
+
+type FetchResult = { ok: boolean; body: JobLogsPayload };
+
+let inFlightFetch: Promise<FetchResult> | null = null;
+
+function pillCopy(kind: JobHealthKind): { statusClass: string; statusLabel: string; color: string } {
+  switch (kind) {
+    case 'stalled':
+      return { statusClass: 'error', statusLabel: 'Job Stalled', color: '#ff4d4d' };
+    case 'failed':
+      return { statusClass: 'error', statusLabel: 'Job Failed', color: '#ff4d4d' };
+    case 'degraded':
+      return { statusClass: 'warning', statusLabel: 'Job Degraded', color: 'var(--accent-orange)' };
+    case 'running':
+      return { statusClass: 'warning', statusLabel: 'Job Running', color: 'var(--accent-orange)' };
+    case 'skipped-closed':
+      return { statusClass: 'good', statusLabel: 'IDX closed', color: 'var(--accent-success)' };
+    case 'idle':
+    default:
+      return { statusClass: 'good', statusLabel: 'Jobs Idle', color: 'var(--accent-success)' };
+  }
+}
 
 export default function JobStatusIndicator() {
   const [latestLog, setLatestLog] = useState<BackgroundJobLog | null>(null);
+  const [transport, setTransport] = useState<TransportState>('idle');
+  const [checkedAtMs, setCheckedAtMs] = useState<number>(Number.NaN);
   const [showDetails, setShowDetails] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const applyResult = (result: FetchResult) => {
+    const data = result.body;
+    if (!result.ok || !data?.success) {
+      setTransport('unavailable');
+      return;
+    }
+    const parsed = Date.parse(String(data.checkedAt ?? ''));
+    if (!Number.isFinite(parsed)) {
+      setTransport('unavailable');
+      return;
+    }
+    setCheckedAtMs(parsed);
+    setTransport('ok');
+    if (Array.isArray(data.data) && data.data.length > 0) {
+      setLatestLog(data.data[0] ?? null);
+    }
+  };
+
   const fetchStatus = async () => {
     if (inFlightFetch) {
-      const data = await inFlightFetch;
-      if (data && data.success && data.data.length > 0) {
-        setLatestLog(data.data[0]);
+      try {
+        applyResult(await inFlightFetch);
+      } catch {
+        setTransport('unavailable');
       }
-      return data;
+      return;
     }
 
     inFlightFetch = (async () => {
-      try {
-        const res = await fetch('/api/job-logs?limit=1');
-        const data = await res.json();
-        if (data.success && data.data.length > 0) {
-          setLatestLog(data.data[0]);
-        }
-        return data;
-      } catch (error) {
-        console.error('Failed to fetch job status', error);
-        throw error;
-      } finally {
-        inFlightFetch = null;
-      }
+      const res = await fetch('/api/job-logs?jobName=analyze-watchlist&limit=1');
+      const body = (await res.json()) as JobLogsPayload;
+      return { ok: res.ok, body };
     })();
 
-    return inFlightFetch;
+    try {
+      applyResult(await inFlightFetch);
+    } catch (error) {
+      console.error('Failed to fetch job status', error);
+      setTransport('unavailable');
+    } finally {
+      inFlightFetch = null;
+    }
   };
 
   const handleRetry = async () => {
-    if (!latestLog || isRetrying) return;
+    if (latestLog === null || isRetrying) return;
 
     setIsRetrying(true);
     try {
@@ -49,15 +96,14 @@ export default function JobStatusIndicator() {
         return;
       }
 
-      const res = await fetch('/api/job-retry', { 
+      const res = await fetch('/api/job-retry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobName: latestLog.job_name })
+        body: JSON.stringify({ jobName: latestLog.job_name }),
       });
       const data = await res.json();
-      
+
       if (data.success) {
-        // Immediately fetch status to show "running"
         await fetchStatus();
       } else {
         alert(`Failed to retry job: ${data.error || 'Unknown error'}`);
@@ -72,7 +118,7 @@ export default function JobStatusIndicator() {
 
   useEffect(() => {
     fetchStatus();
-    const intervalId = setInterval(fetchStatus, 30000); // 30s
+    const intervalId = setInterval(fetchStatus, 30000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -86,13 +132,33 @@ export default function JobStatusIndicator() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  if (transport === 'unavailable') {
+    return (
+      <div style={{ position: 'relative' }} ref={containerRef}>
+        <div className="token-status-pill" style={{ cursor: 'default' }}>
+          <div className="token-dot" />
+          <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Status unavailable</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!latestLog) return null;
+  if (!Number.isFinite(checkedAtMs)) {
+    return (
+      <div style={{ position: 'relative' }} ref={containerRef}>
+        <div className="token-status-pill" style={{ cursor: 'default' }}>
+          <div className="token-dot" />
+          <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Status unavailable</span>
+        </div>
+      </div>
+    );
+  }
 
-  const isRunning = latestLog.status === 'running';
-  const isFailed = latestLog.status === 'failed';
-
-  const statusClass = isRunning ? 'warning' : isFailed ? 'error' : 'good';
-  const statusLabel = isRunning ? 'Job Running' : isFailed ? 'Job Failed' : 'Jobs Idle';
+  const kind = classifyJobHealth(latestLog, checkedAtMs);
+  const { statusClass, statusLabel, color } = pillCopy(kind);
+  const isRunning = kind === 'running';
+  const isFailed = kind === 'failed' || kind === 'stalled';
 
   return (
     <div style={{ position: 'relative' }} ref={containerRef}>
@@ -102,12 +168,7 @@ export default function JobStatusIndicator() {
         style={{ cursor: 'pointer' }}
       >
         <div className={`token-dot ${statusClass}`} />
-        <span style={{ 
-          color: isFailed ? '#ff4d4d' : isRunning ? 'var(--accent-orange)' : 'var(--accent-success)',
-          whiteSpace: 'nowrap'
-        }}>
-          {statusLabel}
-        </span>
+        <span style={{ color, whiteSpace: 'nowrap' }}>{statusLabel}</span>
       </div>
 
       {showDetails && (
@@ -139,7 +200,7 @@ export default function JobStatusIndicator() {
             </span>
           </div>
 
-          {latestLog.status === 'failed' && latestLog.error_message && (
+          {(kind === 'failed' || kind === 'stalled' || kind === 'degraded') && latestLog.error_message && (
             <div className="job-error-banner" style={{ marginTop: '0.75rem' }}>
               <span className="error-icon">⚠</span>
               {latestLog.error_message}
@@ -147,21 +208,23 @@ export default function JobStatusIndicator() {
           )}
 
           <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
-            <div style={{ 
-              fontSize: '0.65rem', 
-              color: 'var(--text-muted)', 
-              marginBottom: '0.5rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
+            <div
+              style={{
+                fontSize: '0.65rem',
+                color: 'var(--text-muted)',
+                marginBottom: '0.5rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
               Recent logs
             </div>
-            <div 
-              style={{ 
-                maxHeight: '150px', 
+            <div
+              style={{
+                maxHeight: '150px',
                 overflowY: 'auto',
                 fontSize: '0.65rem',
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
               }}
               className="log-entries-scroll"
             >
@@ -181,12 +244,12 @@ export default function JobStatusIndicator() {
           </div>
 
           {!isRunning && (
-            <button 
+            <button
               className="token-action-btn"
-              style={{ 
+              style={{
                 marginTop: '1rem',
                 opacity: isRetrying ? 0.7 : 1,
-                cursor: isRetrying ? 'not-allowed' : 'pointer'
+                cursor: isRetrying ? 'not-allowed' : 'pointer',
               }}
               onClick={handleRetry}
               disabled={isRetrying}

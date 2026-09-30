@@ -8,7 +8,8 @@ import {
   fetchRunningTradeChartByBrokers,
   fetchKeyStatsRaw,
 } from '@/lib/stockbit';
-import { sessionDateJakarta, addTradingDays, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
+import { addTradingDays, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
+import { resolveJobCalendar } from '@/lib/ops/calendar';
 import { calculateTargets } from '@/lib/calculations';
 import {
   saveWatchlistAnalysis,
@@ -82,12 +83,51 @@ export interface WatchlistAnalysisOutcome {
  */
 export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> {
   const startTime = Date.now();
-  let jobLogId: number | null = null;
+  let jobLogId: number | null;
 
-  const today = sessionDateJakarta(new Date());
+  const calendar = resolveJobCalendar(new Date());
+  try {
+    const jobLog = await createBackgroundJobLog('analyze-watchlist', 0);
+    jobLogId = jobLog.id;
+  } catch (logError) {
+    console.error('[Watchlist Job] Failed to create job log; aborting (no row ⇒ no run):', logError);
+    return { success: false, results: 0, errors: 1, jobLogId: null, date: calendar.kind === 'skip' ? calendar.wall : calendar.today };
+  }
+  if (jobLogId) {
+    await appendBackgroundJobLogEntry(jobLogId, {
+      level: 'info',
+      message: 'watchlist job started',
+    });
+  }
 
-  // Fetch watchlist first to know total items.
-  const watchlistResponse = await fetchWatchlist();
+  if (calendar.kind === 'skip') {
+    if (jobLogId) {
+      await updateBackgroundJobLog(jobLogId, {
+        status: 'completed',
+        success_count: 0,
+        error_count: 0,
+        metadata: { skip_reason: calendar.reason, date: calendar.wall },
+      });
+    }
+    return { success: true, results: 0, errors: 0, jobLogId, date: calendar.wall };
+  }
+
+  const today = calendar.today;
+  let watchlistResponse;
+  try {
+    watchlistResponse = await fetchWatchlist();
+  } catch (err) {
+    if (jobLogId) {
+      await updateBackgroundJobLog(jobLogId, {
+        status: 'failed',
+        success_count: 0,
+        error_count: 1,
+        error_message: err instanceof Error ? err.message : 'watchlist-fetch-failed',
+        metadata: { date: today },
+      });
+    }
+    return { success: false, results: 0, errors: 1, jobLogId, date: today };
+  }
   const watchlistItems = watchlistResponse.data?.result || [];
 
   // The Stockbit watchlist is the primary emiten source. It can hold non-IDX
@@ -109,7 +149,15 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
             .map((s) => s.symbol)
             .join(', ')}). Add IDX stocks to the Stockbit All Watchlist.`;
     console.warn(`[Watchlist Job] No IDX emitens to analyze. ${detail}`);
-    return { success: true, results: 0, errors: 0, jobLogId: null, date: today };
+    if (jobLogId) {
+      await updateBackgroundJobLog(jobLogId, {
+        status: 'completed',
+        success_count: 0,
+        error_count: 0,
+        metadata: { skip_reason: 'empty-universe', universe_count: 0, date: today },
+      });
+    }
+    return { success: true, results: 0, errors: 0, jobLogId, date: today };
   }
 
   if (emitensSource !== 'stockbit-watchlist') {
@@ -121,26 +169,15 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
     );
   }
 
-  // Create job log entry. The total is the number of IDX emitens actually
-  // analyzed, not the raw watchlist size, so an all-forex watchlist reads as
-  // zero rather than as a day of failures.
-  try {
-    const jobLog = await createBackgroundJobLog('analyze-watchlist', emitens.length);
-    jobLogId = jobLog.id;
-    console.log(`[Watchlist Job] Created job log with ID: ${jobLogId}`);
-  } catch (logError) {
-    console.error('[Watchlist Job] Failed to create job log, continuing without logging:', logError);
-  }
-
   const results: { emiten: string; status: string }[] = [];
   const errors: { emiten: string; error: string }[] = [];
 
   // A session that already produced signals must not be re-captured. The
   // upsert in saveWatchlistAnalysis keys on (from_date, emiten), so a weekend,
   // holiday, or manual re-run would silently OVERWRITE the real close-of-day
-  // signal with a stale one instead of failing loudly. `today` is already
-  // rolled back to the last closed session by sessionDateJakarta, so a
-  // non-trading-day run resolves to a date we have already recorded.
+  // signal with a stale one instead of failing loudly. Calendar skip already
+  // returned, so `today` is the wall Jakarta date of a trading session. A
+  // manual re-run of the same date still must not overwrite recorded signals.
   const toAnalyze = [...emitens];
   let skippedCaptured: number;
   try {
@@ -187,6 +224,12 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   // loop or land on its error list. It degrades to `incomplete: true`, which
   // marks each signal `macro_incomplete` for the repair pass and leaves the
   // regime NOT_EVALUATED — G7 fails open, so the trade decision is untouched.
+  if (jobLogId) {
+    await appendBackgroundJobLogEntry(jobLogId, {
+      level: 'info',
+      message: 'macro capture starting',
+    });
+  }
   const macroCapture: MacroCaptureResult = await captureMacro({
     fetchPage: buildMacroPageFetcher(),
     saveSnapshot: saveMacroSnapshot,
@@ -194,6 +237,12 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
     from: addTradingDays(today, -MACRO_BACKFILL_TRADING_DAYS),
     to: today,
   });
+  if (jobLogId) {
+    await appendBackgroundJobLogEntry(jobLogId, {
+      level: 'info',
+      message: 'macro capture done',
+    });
+  }
   if (macroCapture.incomplete) {
     const detail = Object.entries(macroCapture.perSeries)
       .filter(([, v]) => !v.ok)
