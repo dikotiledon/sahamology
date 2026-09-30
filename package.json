@@ -14,12 +14,13 @@
     "build": "next build",
     "start": "node scripts/start-standalone.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --tsconfig tsconfig.test.json --test \"lib/**/*.test.ts\"",
+    "test": "tsx --tsconfig tsconfig.test.json --test \"lib/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "lint": "eslint .",
     "macro:correlation": "tsx --tsconfig tsconfig.test.json scripts/run-macro-correlation.ts",
     "macro:backfill": "tsx --tsconfig tsconfig.test.json scripts/backfill-macro-history.ts",
     "macro:backfill-probe": "tsx --tsconfig tsconfig.test.json scripts/macro-backfill-probe.ts",
-    "walkforward:p4": "tsx --tsconfig tsconfig.test.json scripts/run-phase4-walkforward.ts"
+    "walkforward:p4": "tsx --tsconfig tsconfig.test.json scripts/run-phase4-walkforward.ts",
+    "backfill:outcomes": "tsx --tsconfig tsconfig.test.json scripts/backfill-journal-outcomes.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

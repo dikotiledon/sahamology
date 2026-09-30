@@ -7,6 +7,28 @@ Redis 7 with BullMQ workers embedded in the Next.js server process.
 
 ---
 
+## Phase 5 ranked desk
+
+Phase 5 ships the ranked desk (`/desk`), the morning card, and auto-filled
+journal outcomes. **Phase 4 remains capture-complete, not ship-complete.**
+`SHIP_GATE=VERDICT_UNREACHABLE` still stands. No playbook profile is armed.
+The desk reads stored `decision_journal` rows and never re-evaluates Adi
+target math or G0–G7. AVOID rows are hidden by default; turn on
+`Tampilkan AVOID` to show them. TAKE_PROFIT stays visible.
+
+Score ENTER outcomes after five complete forward sessions exist:
+
+```
+npm run backfill:outcomes -- --dry-run
+npm run backfill:outcomes
+```
+
+Unscored rows stay SQL NULL. Re-runs are gated on `outcome IS NULL`.
+`WATCHLIST_FALLBACK_EMITENS` still applies when the Stockbit watchlist has
+no IDX ticker (USDIDR is skipped as `non-idx`).
+
+---
+
 ## 1. Architecture
 
 ```

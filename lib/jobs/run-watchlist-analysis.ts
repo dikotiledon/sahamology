@@ -8,7 +8,7 @@ import {
   fetchRunningTradeChartByBrokers,
   fetchKeyStatsRaw,
 } from '@/lib/stockbit';
-import { sessionDateJakarta, addTradingDays } from '@/lib/market-calendar';
+import { sessionDateJakarta, addTradingDays, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
 import { calculateTargets } from '@/lib/calculations';
 import {
   saveWatchlistAnalysis,
@@ -24,9 +24,17 @@ import {
   getWatchlistAnalysisHistory,
   getPriorBandarCodes,
   saveKeystatsSnapshot,
+  getKeystatsSnapshot,
+  getMacroSnapshotWindow,
+  getTokenStatus,
+  listDecisionJournal,
 } from '@/lib/db';
 import { evaluatePlaybook } from '@/lib/playbook';
 import { buildPlaybookInputFromStock } from '@/lib/playbook/from-stock';
+import { buildJournalPayload } from '@/lib/playbook/journal-payload';
+import { classifyFundamentals } from '@/lib/fundamentals/rubric';
+import { classifyRegime, REGIME_WINDOW } from '@/lib/macro/classifier';
+import type { MacroInput, MacroSeries } from '@/lib/macro/types';
 import { defaultCostModel } from '@/lib/playbook/costs';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
 import { buildMicroSnapshot, isBandarSellerOn } from '@/lib/micro/snapshot';
@@ -134,7 +142,7 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
   // rolled back to the last closed session by sessionDateJakarta, so a
   // non-trading-day run resolves to a date we have already recorded.
   const toAnalyze = [...emitens];
-  let skippedCaptured = 0;
+  let skippedCaptured: number;
   try {
     const existing = await getWatchlistAnalysisHistory({
       fromDate: today,
@@ -153,9 +161,18 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
     }
   } catch (historyError) {
     console.error(
-      '[Watchlist Job] Failed to check for an existing session; proceeding without the guard',
+      '[Watchlist Job] Failed to check for an existing session; aborting rather than overwriting a closed session',
       historyError
     );
+    if (jobLogId) {
+      await updateBackgroundJobLog(jobLogId, {
+        status: 'failed',
+        success_count: 0,
+        error_count: 1,
+        error_message: 'capture-guard lookup failed',
+      });
+    }
+    return { success: false, results: 0, errors: 1, jobLogId, date: today };
   }
 
   // Phase 4 G7 — macro capture, ONCE for the whole session.
@@ -191,6 +208,38 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
       `[Watchlist Job] Macro capture complete: ${macroCapture.rowCount} bar(s) across ` +
         `${Object.keys(macroCapture.perSeries).length} series.`,
     );
+  }
+
+  const token = await getTokenStatus().catch(() => ({ isValid: false }));
+  const g1Profile: 'phase-1' | 'phase-2' =
+    process.env.PLAYBOOK_G1_PROFILE === 'phase-2' ? 'phase-2' : 'phase-1';
+  const g5Profile: 'off' | 'visible' | 'veto' =
+    process.env.PLAYBOOK_G5_PROFILE === 'veto'
+      ? 'veto'
+      : process.env.PLAYBOOK_G5_PROFILE === 'visible'
+        ? 'visible'
+        : 'off';
+  const g7Profile: 'off' | 'visible' | 'veto' =
+    process.env.PLAYBOOK_G7_PROFILE === 'veto'
+      ? 'veto'
+      : process.env.PLAYBOOK_G7_PROFILE === 'visible'
+        ? 'visible'
+        : 'off';
+
+  const MACRO_LIVE_LEGS: readonly MacroSeries[] = ['IHSG', 'USDIDR', 'XAU'];
+  let sessionMacro: MacroInput | undefined;
+  try {
+    const series: Array<{ symbol: MacroSeries; closes: number[] }> = [];
+    for (const symbol of MACRO_LIVE_LEGS) {
+      const bars = await getMacroSnapshotWindow(symbol, today, REGIME_WINDOW + 1);
+      if (bars.length === 0) continue;
+      series.push({ symbol, closes: bars.map((b) => b.close) });
+    }
+    if (series.length > 0) {
+      sessionMacro = classifyRegime({ series, sector: null });
+    }
+  } catch (error) {
+    console.error('[Watchlist Job] macro snapshot read failed', error);
   }
 
   for (const emiten of toAnalyze) {
@@ -382,11 +431,13 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
         console.error(`[Watchlist Job] Failed to update price for ${emiten}`, updateError);
       }
 
-      // Journal the G4-aware decision card (best-effort; never fails the symbol).
+      // Journal the G4-aware decision card. Analysis success ≠ journal success.
       try {
-        const [history, rows] = await Promise.all([
+        const [history, rows, previous, keystats] = await Promise.all([
           getWatchlistAnalysisHistory({ emiten, limit: 4, status: 'success' }),
           getPriceHistory(emiten, addTradingDays(today, -40), addTradingDays(today, -1)),
+          listDecisionJournal(emiten, 1),
+          getKeystatsSnapshot(emiten, today).catch(() => null),
         ]);
         const historyRows = (history.data ?? []) as Array<{ bandar?: string | null; from_date?: string | null }>;
         const priorBandar = historyRows
@@ -409,6 +460,13 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
           todayBandar: brokerData.bandar,
           priorBandar,
         });
+        const openCard =
+          previous[0] &&
+          ymdOf((previous[0] as Record<string, unknown>).as_of) < today &&
+          (previous[0] as Record<string, unknown>).stance === 'ENTER'
+            ? { stance: 'ENTER' as const }
+            : undefined;
+        const fundamental = classifyFundamentals(keystats);
         const card = evaluatePlaybook(
           buildPlaybookInputFromStock({
             market: {
@@ -422,33 +480,46 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
             calculated,
             priorRows: historyRows,
             asOf: today,
-            isIdxSession: true,
-            tokenValid: true,
+            isIdxSession: !isWeekend(today) && !isIdxHoliday(today),
+            tokenValid: token.isValid,
             costs: defaultCostModel(),
+            openCard,
             tape,
+            g1Profile,
+            micro,
+            g5Profile,
+            fundamental,
+            g7Profile,
+            macro: sessionMacro,
           })
         );
-        await saveDecisionJournal({
-          emiten,
-          as_of: today,
-          card,
-        });
+        const journalPayload = buildJournalPayload(emiten, today, card);
+        await saveDecisionJournal({ ...journalPayload });
+        results.push({ emiten, status: 'success' });
+        if (jobLogId) {
+          await appendBackgroundJobLogEntry(jobLogId, {
+            level: 'info',
+            message: 'Successfully analyzed',
+            emiten,
+            details: {
+              harga: marketData.harga,
+              targetRealistis: calculated.targetRealistis1,
+            },
+          });
+        }
       } catch (journalError) {
+        const journalMessage =
+          journalError instanceof Error ? journalError.message : String(journalError);
         console.error(`[Watchlist Job] Failed to journal decision card for ${emiten}`, journalError);
-      }
-
-      results.push({ emiten, status: 'success' });
-
-      if (jobLogId) {
-        await appendBackgroundJobLogEntry(jobLogId, {
-          level: 'info',
-          message: 'Successfully analyzed',
-          emiten,
-          details: {
-            harga: marketData.harga,
-            targetRealistis: calculated.targetRealistis1,
-          },
-        });
+        errors.push({ emiten, error: `journal: ${journalMessage}` });
+        if (jobLogId) {
+          await appendBackgroundJobLogEntry(jobLogId, {
+            level: 'error',
+            message: 'Failed to journal decision card',
+            emiten,
+            details: { originalError: journalMessage },
+          });
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

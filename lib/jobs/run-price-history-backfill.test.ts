@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { runPriceHistoryBackfill, type PriceHistoryBackfillDeps } from './run-price-history-backfill';
+import { resolveEmitensToAnalyze } from './watchlist-universe';
 import type { HistoricalSummaryItem } from '@/lib/stockbit';
 
 function bar(date: string, close: number): HistoricalSummaryItem {
@@ -97,4 +100,15 @@ test('failed symbol logs an error entry and marks the job failed', async () => {
   assert.equal(completions.length, 1);
   assert.equal(completions[0].patch.status, 'failed');
   assert.match(String(completions[0].patch.error_message), /1 symbol/);
+});
+
+test('default universe drops USDIDR via resolveEmitensToAnalyze', () => {
+  const src = readFileSync(join(process.cwd(), 'lib', 'jobs', 'run-price-history-backfill.ts'), 'utf8');
+  assert.match(src, /resolveEmitensToAnalyze/);
+  const resolved = resolveEmitensToAnalyze(
+    [{ symbol: 'USDIDR' }, { symbol: 'BBCA' }, { symbol: 'XAUUSD' }],
+    undefined,
+  );
+  assert.deepEqual(resolved.emitens, ['BBCA']);
+  assert.ok(resolved.skipped.some((item) => item.symbol === 'USDIDR' && item.reason === 'non-idx'));
 });

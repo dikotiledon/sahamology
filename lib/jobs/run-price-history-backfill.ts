@@ -22,6 +22,7 @@ import {
   appendBackgroundJobLogEntry,
   updateBackgroundJobLog,
 } from '@/lib/db';
+import { resolveEmitensToAnalyze, type WatchlistUniverseItem } from './watchlist-universe';
 
 export interface PriceHistoryBackfillInput {
   fromDate?: string;
@@ -58,20 +59,32 @@ export async function resolveBackfillSymbols(
     return input.symbols.map((s) => s.trim().toUpperCase()).filter(Boolean);
   }
 
+  const items: WatchlistUniverseItem[] = [];
   const cachedGroups = await getCachedWatchlistGroups();
   for (const group of cachedGroups.groups) {
     const cached = await getCachedWatchlistItems(group.watchlist_id).catch(() => null);
     if (cached && cached.items.length > 0) {
-      return cached.items
-        .map((item) => String(item.symbol).trim().toUpperCase())
-        .filter(Boolean);
+      items.push(
+        ...cached.items.map((item) => ({
+          symbol: String(item.symbol ?? ''),
+          company_code: String((item as { company_code?: string }).company_code ?? ''),
+        })),
+      );
+      break;
     }
   }
 
-  const response = await fetchWatchlist();
-  return (response.data?.result || [])
-    .map((item) => String(item.symbol || item.company_code).trim().toUpperCase())
-    .filter(Boolean);
+  if (items.length === 0) {
+    const response = await fetchWatchlist();
+    items.push(
+      ...(response.data?.result || []).map((item) => ({
+        symbol: String(item.symbol || item.company_code || ''),
+        company_code: String(item.company_code || item.symbol || ''),
+      })),
+    );
+  }
+
+  return resolveEmitensToAnalyze(items, process.env.WATCHLIST_FALLBACK_EMITENS).emitens;
 }
 
 function toPriceHistoryRows(symbol: string, bars: HistoricalSummaryItem[]): Array<Record<string, unknown>> {

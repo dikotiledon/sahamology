@@ -2,6 +2,31 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.10.0 (draft) — Phase 5 Ranked Desk
+
+Phase 5 ships the ranked desk, the morning card, and auto-filled journal
+outcomes. **Phase 4 remains capture-complete, not ship-complete:**
+`SHIP_GATE=VERDICT_UNREACHABLE` still stands, no gate is armed, and this
+release does not validate G1, G5, or G7. The desk **reads stored
+`decision_journal` rows** — it never re-evaluates Adi target math or the
+playbook. The forward test now has a writer; the first scored row arrives
+only after five complete forward sessions exist.
+
+- **Ranked desk (`/desk`, `GET /api/desk`)**: stance ladder
+  `ENTER > WAIT > TAKE_PROFIT > INVALIDATED > AVOID`, then finite R:R
+  descending, then emiten. Null R:R renders as `—`. AVOID is
+  default-hidden behind `Tampilkan AVOID`; TAKE_PROFIT stays visible.
+- **Morning card**: ENTER / WAIT / AVOID / TAKE_PROFIT counts from stored
+  cards, plus skipped non-IDX names (`USDIDR`).
+- **Explainability**: every WAIT/AVOID shows the stored gate reason, not
+  ids-only. Unexplained rows stay visible.
+- **Outcome backfill**: `npm run backfill:outcomes` scores ENTER rows with
+  a complete N=5 horizon via canonical `scorePath`. Unscored stays SQL
+  NULL. Idempotent (`outcome IS NULL`).
+- **Job repairs**: flattened `buildJournalPayload`, fail-closed capture
+  guard, playbook boundary parity with `/api/stock`, IDX-only price-history
+  universe.
+
 ### Unreleased / v0.9.0 (draft) — Phase 4 Macro Regime (G7)
 
 Phase 4 adds **G7**, a macro-regime hold. **Default-off, not validated, and

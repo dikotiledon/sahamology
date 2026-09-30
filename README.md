@@ -16,6 +16,9 @@
 
 ## Changelog
 
+### Unreleased / v0.10.0 (draft) — Phase 5 Ranked Desk
+Phase 5 ships the ranked desk, the morning card, and auto-filled journal outcomes. **Phase 4 remains capture-complete, not ship-complete** (`SHIP_GATE=VERDICT_UNREACHABLE`); no gate is armed. The desk reads stored `decision_journal` rows and does not re-evaluate target math. `npm run backfill:outcomes` writes PathExit only after five complete forward sessions exist. Open `/desk`.
+
 ### Unreleased / v0.6.0 (draft)
 - **Honest Desk Phase 0**: Decision Card G0–G3 evaluator (`ENTER`/`WAIT`/`AVOID`/`TAKE_PROFIT`) berbasis Adi Sucipto math, journal persisten (`decision_journal`), price-history backfill worker (BullMQ), dan story-analysis schema alignment (`strategi_trading`).
 - **Fix Kritis JSONB**: `saveDecisionJournal` kini men-serialize `gates` sebagai JSON valid (sebelumnya selalu `invalid input syntax for type json`).
@@ -48,6 +51,7 @@
 
 ## Fitur Utama
 
+- **Ranked Desk (Phase 5)**: Halaman `/desk` meranking kartu jurnal tersimpan (`ENTER > WAIT > TAKE_PROFIT > INVALIDATED > AVOID`, lalu R:R), menampilkan kartu pagi, dan menjelaskan setiap WAIT/AVOID dari reason gate yang tersimpan. Baris AVOID disembunyikan secara default di belakang toggle `Tampilkan AVOID`; TAKE_PROFIT tetap terlihat. **Bukan evaluasi ulang.** Phase 4 tetap capture-complete (`VERDICT_UNREACHABLE`); tidak ada profil yang di-arm. Outcome ENTER diisi oleh `npm run backfill:outcomes` hanya setelah horizon N=5 lengkap — yang belum terskor tetap NULL.
 - **Analisis Target**: Menghitung target harga "Realistis (R1)" dan "Maksimal" berdasarkan rata-rata harga pembelian broker (Avg Bandar).
 - **Decision Card (Playbook G0–G4)**: Setiap analisis memunculkan stance deterministik (`ENTER` / `WAIT` / `AVOID` / `TAKE_PROFIT`) berdasarkan gate kuantitatif: integritas data (G0), kualitas broker akumulator Smartmoney/Whale (G1), ruang menuju ARA dan kesehatan buku (G2), risk-reward bersih ≥ 1.5 setelah friksi IDX dengan invalidation ATR(14) (G3), dan **tape filter 20-EMA + 3 pola allow-list** (G4, aktif di Phase 1). TradingView tidak pernah menjadi input gate — murni tampilan.
 - **Baseline Backtest (Adi-Only)**: CLI `npm run baseline:backtest` mensimulasikan setiap sinyal harian terhadap candle 5 hari bursa berikutnya dan mempublikasikan expectancy, profit factor, win rate, serta touch R1. Setiap layer analisis baru wajib mengalahkan baseline ini out-of-sample sebelum di-merge.

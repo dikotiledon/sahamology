@@ -64,6 +64,7 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<StockAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [journalError, setJournalError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedImage, setCopiedImage] = useState(false);
   const [keyStats, setKeyStats] = useState<KeyStatsData | null>(null);
@@ -83,6 +84,7 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
     if (selectedStock) {
       setResult(null);
       setError(null);
+      setJournalError(null);
       setAgentStories([]);
       setStoryStatus('idle');
       if (pollIntervalRef.current) {
@@ -129,17 +131,29 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
 
       setResult(json.data);
 
-      // Journal the shown card (fire-and-forget; UI never blocks on this).
+      // Journal the shown card. Analysis success ≠ journal success.
       if (json.data?.playbook) {
-        void fetch('/api/decision-journal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            emiten: json.data.input.emiten,
-            asOf: json.data.input.toDate,
-            card: json.data.playbook,
-          }),
-        }).catch(() => {});
+        setJournalError(null);
+        try {
+          const journalRes = await fetch('/api/decision-journal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emiten: json.data.input.emiten,
+              asOf: json.data.input.toDate,
+              card: json.data.playbook,
+            }),
+          });
+          const journalJson = await journalRes.json().catch(() => null);
+          if (!journalRes.ok || !journalJson?.success) {
+            const message =
+              (journalJson && typeof journalJson.error === 'string' && journalJson.error) ||
+              `Gagal menyimpan jurnal (${journalRes.status})`;
+            setJournalError(message);
+          }
+        } catch (journalErr) {
+          setJournalError(journalErr instanceof Error ? journalErr.message : 'Gagal menyimpan jurnal');
+        }
       }
 
       // Fetch KeyStats after getting result
@@ -409,6 +423,16 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
         }}>
           <h3>❌ Error</h3>
           <p style={{ color: 'var(--accent-warning)' }}>{error}</p>
+        </div>
+      )}
+
+      {journalError && (
+        <div className="glass-card mt-4" style={{
+          background: 'rgba(255, 193, 7, 0.1)',
+          borderColor: '#ffc107'
+        }}>
+          <h3>Jurnal gagal</h3>
+          <p style={{ color: '#ffc107' }}>{journalError}</p>
         </div>
       )}
 

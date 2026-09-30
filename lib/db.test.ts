@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { serializeJsonColumns } from './db';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  serializeJsonColumns,
+  coerceJournalRow,
+  SQL_LIST_DECISION_JOURNAL_BY_DATE,
+  SQL_LIST_LATEST_DECISION_JOURNAL_BY_EMITEN,
+  SQL_LIST_UNSCORED_ENTER_JOURNAL,
+  SQL_UPDATE_DECISION_JOURNAL_OUTCOME,
+} from './db';
 
 // Regression test for the node-postgres jsonb serialization bug.
 //
@@ -87,4 +96,56 @@ test('serializeJsonColumns stringifies strategi_trading jsonb', () => {
     catalyst_bias: 'dukung',
     invalidating_events: ['rights issue'],
   });
+});
+
+test('desk SQL readers filter by as_of and order by emiten', () => {
+  assert.match(SQL_LIST_DECISION_JOURNAL_BY_DATE, /WHERE as_of = \$1/);
+  assert.match(SQL_LIST_DECISION_JOURNAL_BY_DATE, /ORDER BY emiten/);
+});
+
+test('latest-by-emiten reader is DISTINCT ON emiten ordered by as_of desc', () => {
+  assert.match(SQL_LIST_LATEST_DECISION_JOURNAL_BY_EMITEN, /DISTINCT ON \(emiten\)/);
+  assert.match(SQL_LIST_LATEST_DECISION_JOURNAL_BY_EMITEN, /ORDER BY emiten, as_of DESC/);
+});
+
+test('unscored ENTER query is stance ENTER and outcome IS NULL', () => {
+  assert.match(SQL_LIST_UNSCORED_ENTER_JOURNAL, /stance = 'ENTER'/);
+  assert.match(SQL_LIST_UNSCORED_ENTER_JOURNAL, /outcome IS NULL/);
+});
+
+test('outcome updater is gated on outcome IS NULL and returns the row', () => {
+  assert.match(SQL_UPDATE_DECISION_JOURNAL_OUTCOME, /WHERE id = \$3 AND outcome IS NULL/);
+  assert.match(SQL_UPDATE_DECISION_JOURNAL_OUTCOME, /RETURNING \*/);
+});
+
+test('outcome updater executes the exported SQL const, not a second copy', () => {
+  const src = readFileSync(join(process.cwd(), 'lib', 'db.ts'), 'utf8');
+  const start = src.indexOf('export async function updateDecisionJournalOutcome');
+  const end = src.indexOf('export async function saveWatchlistAnalysis');
+  assert.ok(start >= 0 && end > start);
+  const body = src.slice(start, end);
+  assert.match(body, /query\(\s*SQL_UPDATE_DECISION_JOURNAL_OUTCOME/);
+  assert.doesNotMatch(body, /UPDATE decision_journal/);
+});
+
+test('coerceJournalRow turns pg NUMERIC strings into finite numbers', () => {
+  const row = coerceJournalRow({
+    emiten: 'bbca',
+    as_of: '2026-01-05',
+    entry: '1000',
+    r1: '1050',
+    max: '1100',
+    invalidation: '950',
+    rr: '1.80',
+    r_multiple: '0.8500',
+    outcome: null,
+    failed_gates: ['G2'],
+  });
+  assert.equal(row.emiten, 'BBCA');
+  assert.equal(row.entry, 1000);
+  assert.equal(row.invalidation, 950);
+  assert.equal(row.rr, 1.8);
+  assert.equal(row.r_multiple, 0.85);
+  assert.equal(row.outcome, null);
+  assert.deepEqual(row.failed_gates, ['G2']);
 });

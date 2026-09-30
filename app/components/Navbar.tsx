@@ -82,6 +82,20 @@ const Navbar = () => {
             >
               Summary
             </Link>
+            <Link
+              href="/desk"
+              style={{
+                textDecoration: 'none',
+                color: pathname === '/desk' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontWeight: pathname === '/desk' ? 600 : 400,
+                fontSize: '0.9rem',
+                borderBottom: pathname === '/desk' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                paddingBottom: '2px',
+                transition: 'all 0.2s'
+              }}
+            >
+              Ranked Desk
+            </Link>
             <a 
               href="https://github.com/dikotiledon/sahamology" 
               target="_blank" 
@@ -177,6 +191,20 @@ const Navbar = () => {
               }}
             >
               Summary
+            </Link>
+            <Link
+              href="/desk"
+              onClick={() => setIsMenuOpen(false)}
+              style={{
+                textDecoration: 'none',
+                color: pathname === '/desk' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontWeight: pathname === '/desk' ? 600 : 400,
+                fontSize: '1rem',
+                padding: '0.5rem 0',
+                transition: 'all 0.2s'
+              }}
+            >
+              Ranked Desk
             </Link>
             <a 
               href="https://github.com/dikotiledon/sahamology" 

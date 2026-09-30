@@ -1,0 +1,113 @@
+{
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "mode": "example",
+  "note": "Pinned Phase 5 desk fixture for root G1. Not live-volatile counts. Ranking keys are stance then rr. Outcomes are PathExit via canonical scorePath. Unscored is JSON/SQL null, never 0 and never the token unscored. USDIDR is non-IDX and cannot rank as holdable.",
+  "ranking": {
+    "keys": ["stance", "rr"],
+    "stanceTier": {
+      "ENTER": 0,
+      "WAIT": 1,
+      "TAKE_PROFIT": 2,
+      "INVALIDATED": 3,
+      "AVOID": 4
+    },
+    "tieBreak": ["emiten", "asOf"],
+    "persistenceInComparator": false
+  },
+  "journal": {
+    "columns": [
+      "emiten",
+      "as_of",
+      "stance",
+      "gates",
+      "entry",
+      "r1",
+      "max",
+      "invalidation",
+      "rr",
+      "thesis",
+      "failed_gates",
+      "outcome",
+      "r_multiple"
+    ],
+    "forbiddenColumns": ["card"],
+    "outcomeType": "PathExit",
+    "unscored": null
+  },
+  "scorer": {
+    "module": "lib/playbook/path-outcome.ts",
+    "function": "scorePath",
+    "horizonSessions": 5,
+    "forwardWindow": "date > as_of"
+  },
+  "skipped": [
+    {
+      "symbol": "USDIDR",
+      "reason": "non-idx",
+      "vendorType": "FX"
+    }
+  ],
+  "rows": [
+    {
+      "emiten": "BBCA",
+      "asOf": "2026-01-05",
+      "stance": "ENTER",
+      "rr": 2.4,
+      "outcome": null,
+      "rMultiple": null,
+      "failedGates": []
+    },
+    {
+      "emiten": "BBRI",
+      "asOf": "2026-01-05",
+      "stance": "ENTER",
+      "rr": 1.8,
+      "outcome": "r1",
+      "rMultiple": 0.85,
+      "failedGates": []
+    },
+    {
+      "emiten": "TLKM",
+      "asOf": "2026-01-05",
+      "stance": "WAIT",
+      "rr": 1.2,
+      "outcome": null,
+      "rMultiple": null,
+      "failedGates": ["G4"],
+      "explanations": [
+        {
+          "gateId": "G4",
+          "reason": "Tren di bawah EMA-20"
+        }
+      ]
+    },
+    {
+      "emiten": "ASII",
+      "asOf": "2026-01-05",
+      "stance": "TAKE_PROFIT",
+      "rr": null,
+      "outcome": null,
+      "rMultiple": null,
+      "failedGates": []
+    },
+    {
+      "emiten": "FXXX",
+      "asOf": "2026-01-05",
+      "stance": "INVALIDATED",
+      "rr": null,
+      "outcome": null,
+      "rMultiple": null,
+      "failedGates": ["G0"],
+      "fixtureOnly": true
+    },
+    {
+      "emiten": "GGRM",
+      "asOf": "2026-01-05",
+      "stance": "AVOID",
+      "rr": null,
+      "outcome": null,
+      "rMultiple": null,
+      "failedGates": ["G0"]
+    }
+  ]
+}

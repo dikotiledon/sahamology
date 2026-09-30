@@ -163,8 +163,19 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
       <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', opacity: 0.9 }}>{card.thesis}</p>
 
       {card.failedGates.length > 0 && (
-        <div style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', opacity: 0.75 }}>
-          Gate gagal: {card.failedGates.join(', ')}
+        <div style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+          <strong>Gate tertahan:</strong>
+          <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem' }}>
+            {card.failedGates.map((id) => {
+              const gate = card.gates.find((g) => g.id === id);
+              const reason = gate && gate.reason ? gate.reason : 'Setup tidak memenuhi kriteria';
+              return (
+                <li key={id}>
+                  <span style={{ fontWeight: 600 }}>{id}:</span> {reason}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
@@ -178,7 +189,7 @@ export default function DecisionCard({ card, emiten, priorBandar }: DecisionCard
         <dt style={{ opacity: 0.7 }}>Invalidasi</dt>
         <dd style={{ margin: 0, fontWeight: 600 }}>{fmt(card.invalidation)}</dd>
         <dt style={{ opacity: 0.7 }}>Net R:R</dt>
-        <dd style={{ margin: 0, fontWeight: 600 }}>{card.rr === null ? '—' : card.rr.toFixed(2)}</dd>
+        <dd style={{ margin: 0, fontWeight: 600 }}>{card.rr === null || !Number.isFinite(card.rr) ? '—' : card.rr.toFixed(2)}</dd>
       </dl>
 
       {priorBandar && priorBandar.length > 0 && (

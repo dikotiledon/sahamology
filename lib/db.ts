@@ -1,6 +1,8 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { hitR1, hitMax } from './hits';
 import { ymdOf } from './date-ymd';
+import { toFiniteNumber } from './desk/numbers';
+import type { PathExit } from './playbook/path-outcome';
 import type { BrokerFlowRow } from './micro/types';
 import { rowsToKeystatsSeries } from './fundamentals/snapshot-rows';
 import type { ReplayKeystatsSeries } from './playbook/replay';
@@ -164,11 +166,77 @@ export async function listDecisionJournal(emiten: string, limit = 5) {
        LIMIT $2`,
       [emiten.toUpperCase(), limit]
     );
-    return result.rows;
+    return result.rows.map(coerceJournalRow);
   } catch (error) {
     console.error('Error listing decision journal:', error);
     throw error;
   }
+}
+
+export const SQL_LIST_DECISION_JOURNAL_BY_DATE = `SELECT * FROM decision_journal
+       WHERE as_of = $1
+       ORDER BY emiten`;
+
+export const SQL_LIST_LATEST_DECISION_JOURNAL_BY_EMITEN = `SELECT DISTINCT ON (emiten) *
+       FROM decision_journal
+       ORDER BY emiten, as_of DESC`;
+
+export const SQL_LIST_UNSCORED_ENTER_JOURNAL = `SELECT * FROM decision_journal
+       WHERE stance = 'ENTER' AND outcome IS NULL
+       ORDER BY as_of ASC, emiten ASC
+       LIMIT $1`;
+
+export const SQL_UPDATE_DECISION_JOURNAL_OUTCOME = `UPDATE decision_journal
+       SET outcome = $1, r_multiple = $2
+       WHERE id = $3 AND outcome IS NULL
+       RETURNING *`;
+
+/** Coerce pg DATE / NUMERIC at the journal readers. Never a pool-wide parser. */
+export function coerceJournalRow(row: QueryResultRowLike | Record<string, unknown>): Record<string, unknown> {
+  const r = row as Record<string, unknown>;
+  return {
+    ...r,
+    emiten: String(r.emiten ?? '').toUpperCase(),
+    as_of: ymdOf(r.as_of),
+    entry: toFiniteNumber(r.entry),
+    r1: toFiniteNumber(r.r1),
+    max: toFiniteNumber(r.max),
+    invalidation: toFiniteNumber(r.invalidation),
+    rr: toFiniteNumber(r.rr),
+    r_multiple: toFiniteNumber(r.r_multiple),
+    outcome: r.outcome == null || r.outcome === '' ? null : String(r.outcome),
+  };
+}
+
+/** Daily desk reader: every journal row for one as_of. */
+export async function listDecisionJournalByDate(asOf: string) {
+  const result = await query(SQL_LIST_DECISION_JOURNAL_BY_DATE, [asOf]);
+  return result.rows.map(coerceJournalRow);
+}
+
+/** Latest journal row per emiten. */
+export async function listLatestDecisionJournalByEmiten() {
+  const result = await query(SQL_LIST_LATEST_DECISION_JOURNAL_BY_EMITEN);
+  return result.rows.map(coerceJournalRow);
+}
+
+/** ENTER rows that have never been scored. */
+export async function listUnscoredEnterJournal(limit = 500) {
+  const result = await query(SQL_LIST_UNSCORED_ENTER_JOURNAL, [limit]);
+  return result.rows.map(coerceJournalRow);
+}
+
+/** Idempotent PathExit writer. Does not upsert stance/entry. */
+export async function updateDecisionJournalOutcome(
+  id: number,
+  outcome: PathExit,
+  rMultiple: number,
+) {
+  const result = await query(
+    SQL_UPDATE_DECISION_JOURNAL_OUTCOME,
+    [outcome, rMultiple, id],
+  );
+  return result.rows.map(coerceJournalRow);
 }
 
 /** Save watchlist analysis — same table/conflict contract as saveStockQuery. */
