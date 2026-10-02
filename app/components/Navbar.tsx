@@ -96,6 +96,20 @@ const Navbar = () => {
             >
               Ranked Desk
             </Link>
+            <Link
+              href="/radar"
+              style={{
+                textDecoration: 'none',
+                color: pathname === '/radar' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontWeight: pathname === '/radar' ? 600 : 400,
+                fontSize: '0.9rem',
+                borderBottom: pathname === '/radar' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                paddingBottom: '2px',
+                transition: 'all 0.2s'
+              }}
+            >
+              Insider Radar
+            </Link>
             <a 
               href="https://github.com/dikotiledon/sahamology" 
               target="_blank" 
@@ -205,6 +219,20 @@ const Navbar = () => {
               }}
             >
               Ranked Desk
+            </Link>
+            <Link
+              href="/radar"
+              onClick={() => setIsMenuOpen(false)}
+              style={{
+                textDecoration: 'none',
+                color: pathname === '/radar' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontWeight: pathname === '/radar' ? 600 : 400,
+                fontSize: '1rem',
+                padding: '0.5rem 0',
+                transition: 'all 0.2s'
+              }}
+            >
+              Insider Radar
             </Link>
             <a 
               href="https://github.com/dikotiledon/sahamology" 

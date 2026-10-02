@@ -20,7 +20,9 @@
     "macro:backfill": "tsx --tsconfig tsconfig.test.json scripts/backfill-macro-history.ts",
     "macro:backfill-probe": "tsx --tsconfig tsconfig.test.json scripts/macro-backfill-probe.ts",
     "walkforward:p4": "tsx --tsconfig tsconfig.test.json scripts/run-phase4-walkforward.ts",
-    "backfill:outcomes": "tsx --tsconfig tsconfig.test.json scripts/backfill-journal-outcomes.ts"
+    "walkforward:radar": "tsx --tsconfig tsconfig.test.json scripts/run-radar-walkforward.ts",
+    "backfill:outcomes": "tsx --tsconfig tsconfig.test.json scripts/backfill-journal-outcomes.ts",
+    "backfill:flow": "tsx scripts/backfill-universe-flow.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

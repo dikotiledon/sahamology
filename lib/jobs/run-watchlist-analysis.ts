@@ -40,7 +40,8 @@ import { defaultCostModel } from '@/lib/playbook/costs';
 import { buildTapeSnapshot } from '@/lib/tape/snapshot';
 import { buildMicroSnapshot, isBandarSellerOn } from '@/lib/micro/snapshot';
 import { FLOW_WINDOW } from '@/lib/micro/flow';
-import { captureBandFlow } from './micro-capture';
+import { captureBandFlow, captureUniverseBrokerFlow } from './micro-capture';
+import { pickTopBrokerCodes } from '@/lib/broker-flow-transform';
 import { captureFundamentals } from './fundamentals-capture';
 import { captureMacro, type MacroCaptureResult } from './macro-capture';
 import { saveMacroSnapshot } from '../macro/store';
@@ -399,6 +400,37 @@ export async function runWatchlistAnalysis(): Promise<WatchlistAnalysisOutcome> 
           consistencyPct: flow.row.consistencyPct,
           brokerSeenInDetector: flow.brokerSeenInDetector,
         }).catch((e) => console.error(`[Watchlist Job] flow row save failed for ${emiten}`, e));
+      }
+
+      // Phase 7 Multi-Broker Insider Radar Flow Capture:
+      // Persist flow for top detector brokers into broker_flow_daily so that
+      // multi-session concentration, persistence, and segmentation are historical.
+      const topDetectorCodes = pickTopBrokerCodes(marketDetectorData, 10)
+        .filter((c) => c && c.toUpperCase() !== brokerData.bandar?.trim().toUpperCase());
+
+      if (topDetectorCodes.length > 0) {
+        captureUniverseBrokerFlow({
+          emiten,
+          brokerCodes: topDetectorCodes,
+          from: addTradingDays(today, -FLOW_WINDOW),
+          to: today,
+          fetchFlow: fetchRunningTradeChartByBrokers,
+        })
+          .then(async (universeFlow) => {
+            for (const [code, row] of universeFlow.rows.entries()) {
+              await saveBrokerFlowDaily({
+                emiten,
+                date: today,
+                brokerCode: code,
+                netValue: row.netValue,
+                buyDays: row.buyDays,
+                activeDays: row.activeDays,
+                consistencyPct: row.consistencyPct,
+                brokerSeenInDetector: true,
+              }).catch(() => {});
+            }
+          })
+          .catch((e) => console.error(`[Watchlist Job] universe flow capture failed for ${emiten}`, e));
       }
 
       // Phase 3 fundamentals capture (D11 / D12).

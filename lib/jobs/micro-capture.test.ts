@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { parseFlowActivity, captureBandFlow, toFlowRow } from './micro-capture';
+import { parseFlowActivity, captureBandFlow, captureUniverseBrokerFlow, toFlowRow } from './micro-capture';
 import { buildUpsertPreview } from './micro-capture';
 
 /**
@@ -164,5 +164,66 @@ describe('D19 — /api/stock flow capture is gated on isToday', () => {
     assert.match(route, /isToday/, 'the route must compute isToday');
     // The guard must appear on the flow-capture path, not just the tape path.
     assert.match(route, /captureBandFlow|flowWindow|micro/i, 'route must reference the micro/flow capture');
+  });
+});
+
+describe('captureUniverseBrokerFlow (Phase 7 Multi-Broker Insider Radar Flow)', () => {
+  const multiResp = {
+    data: [
+      { broker_code: 'AK', net_value: '5000', buy_days: '5', active_days: '5', consistency_pct: '100' },
+      { broker_code: 'BK', net_value: '3000', buy_days: '4', active_days: '5', consistency_pct: '80' },
+      { broker_code: 'YP', net_value: '-4000', buy_days: '1', active_days: '5', consistency_pct: '20' },
+    ],
+  };
+
+  it('fetches and maps flow rows for all requested broker codes', async () => {
+    let requestedCodes: string[] = [];
+    const res = await captureUniverseBrokerFlow({
+      emiten: 'BBCA',
+      brokerCodes: ['AK', 'BK', 'YP'],
+      from: '2026-09-01',
+      to: '2026-10-02',
+      fetchFlow: async (_emiten, codes) => {
+        requestedCodes = codes;
+        return multiResp;
+      },
+    });
+
+    assert.deepEqual(requestedCodes, ['AK', 'BK', 'YP']);
+    assert.equal(res.rows.size, 3);
+    assert.equal(res.rows.get('AK')?.netValue, 5000);
+    assert.equal(res.rows.get('BK')?.netValue, 3000);
+    assert.equal(res.rows.get('YP')?.netValue, -4000);
+  });
+
+  it('degrades gracefully to empty map on error without rethrowing', async () => {
+    const res = await captureUniverseBrokerFlow({
+      emiten: 'BBCA',
+      brokerCodes: ['AK', 'BK'],
+      from: '2026-09-01',
+      to: '2026-10-02',
+      fetchFlow: async () => {
+        throw new Error('429 Too Many Requests');
+      },
+    });
+
+    assert.equal(res.rows.size, 0);
+  });
+
+  it('returns empty map immediately without calling fetch when codes is empty', async () => {
+    let called = false;
+    const res = await captureUniverseBrokerFlow({
+      emiten: 'BBCA',
+      brokerCodes: [],
+      from: '2026-09-01',
+      to: '2026-10-02',
+      fetchFlow: async () => {
+        called = true;
+        return multiResp;
+      },
+    });
+
+    assert.equal(called, false);
+    assert.equal(res.rows.size, 0);
   });
 });

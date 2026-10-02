@@ -362,6 +362,28 @@ export async function getFlowWindow(
   return rows.reverse(); // oldest first
 }
 
+/**
+ * Phase 7: Fetch all historical broker flow rows for an emiten up to asOf.
+ * Used by the Brosum Insider Radar for multi-window (10d, 20d, 60d) persistence.
+ */
+export async function getUniverseBrokerFlowHistory(
+  emiten: string,
+  asOf: string
+): Promise<Array<{ date: string; brokerCode: string; netValue: number }>> {
+  const result = await query(
+    `SELECT date, broker_code, net_value
+     FROM broker_flow_daily
+     WHERE emiten = $1 AND date <= $2
+     ORDER BY date ASC`,
+    [emiten.toUpperCase(), asOf]
+  );
+  return result.rows.map((r: Record<string, unknown>) => ({
+    date: String(r.date).slice(0, 10),
+    brokerCode: String(r.broker_code ?? ''),
+    netValue: Number(r.net_value) || 0,
+  }));
+}
+
 /** NUMERIC columns arrive from `pg` as strings; a non-finite value becomes null. */
 function numOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null;
