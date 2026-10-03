@@ -22,6 +22,9 @@ export interface BattlePlanItem {
   adjusted_v15m_shares?: number;
   wyckoff_phase?: string | null;
   wyckoff_readiness?: number | null;
+  poc_price?: number | null;
+  vah_price?: number | null;
+  val_price?: number | null;
 }
 
 export interface MacroOverlayState {
@@ -148,6 +151,11 @@ export function BattlePlanCard({ date }: { date: string }) {
                         phase={p.wyckoff_phase as WyckoffPhase}
                         confidenceScore={p.wyckoff_readiness ?? undefined}
                       />
+                    )}
+                    {p.poc_price && (
+                      <span className="vp-badge vp-badge--poc" title="Volume Profile Point of Control">
+                        POC: Rp {Number(p.poc_price).toLocaleString('id-ID')}
+                      </span>
                     )}
                   </div>
                   <span className="battle-plan-stance">{p.stance}</span>

@@ -4,6 +4,7 @@ import {
   getLatestMacroPressure,
   getLatestBiRateDecision,
   getLatestWyckoffAssessment,
+  getLatestVolumeProfileSnapshot,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
 import {
@@ -74,6 +75,20 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if Wyckoff table/row is unavailable
         }
 
+        let pocPrice: number | null = null;
+        let vahPrice: number | null = null;
+        let valPrice: number | null = null;
+        try {
+          const vpRow = await getLatestVolumeProfileSnapshot(String(item.emiten));
+          if (vpRow) {
+            pocPrice = vpRow.poc_price != null ? Number(vpRow.poc_price) : null;
+            vahPrice = vpRow.vah_price != null ? Number(vpRow.vah_price) : null;
+            valPrice = vpRow.val_price != null ? Number(vpRow.val_price) : null;
+          }
+        } catch {
+          // Graceful fallback if volume profile table/row is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -81,6 +96,9 @@ export async function GET(request: NextRequest) {
           adjusted_v15m_shares: adjusted.adjustedV15mShares,
           wyckoff_phase: wyckoffPhase,
           wyckoff_readiness: wyckoffReadiness,
+          poc_price: pocPrice,
+          vah_price: vahPrice,
+          val_price: valPrice,
         };
       })
     );

@@ -5,6 +5,8 @@ import type { RadarAssessment, RadarVerdict, SectorFlowSummary } from '@/lib/rad
 import { sessionDateJakarta } from '@/lib/market-calendar';
 import { WyckoffSchematicCard } from '@/app/components/WyckoffSchematicCard';
 import type { WyckoffAssessment } from '@/lib/wyckoff/types';
+import { VolumeProfileCard } from '@/app/components/VolumeProfileCard';
+import type { VolumeProfileResult, VolumeProfileConfluence } from '@/lib/volume-profile';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -44,6 +46,9 @@ export default function RadarPage() {
   const [selectedEmiten, setSelectedEmiten] = useState<RadarAssessment | null>(null);
   const [wyckoffAssessment, setWyckoffAssessment] = useState<WyckoffAssessment | null>(null);
   const [wyckoffLoading, setWyckoffLoading] = useState(false);
+  const [volumeProfile, setVolumeProfile] = useState<VolumeProfileResult | null>(null);
+  const [volumeProfileConfluence, setVolumeProfileConfluence] = useState<VolumeProfileConfluence | undefined>(undefined);
+  const [volumeProfileLoading, setVolumeProfileLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -107,14 +112,19 @@ export default function RadarPage() {
     return () => window.removeEventListener('watchlist-updated', handleWatchlistUpdated);
   }, [date, loadRadar, loadWatchlist]);
 
-  // Fetch Wyckoff structural assessment when an emiten is inspected
+  // Fetch Wyckoff structural assessment & Volume Profile when an emiten is inspected
   useEffect(() => {
     if (!selectedEmiten) {
       setWyckoffAssessment(null);
+      setVolumeProfile(null);
+      setVolumeProfileConfluence(undefined);
       return;
     }
     let active = true;
     setWyckoffLoading(true);
+    setVolumeProfileLoading(true);
+
+    // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
       .then((res) => res.json())
       .then((json) => {
@@ -128,6 +138,25 @@ export default function RadarPage() {
       .finally(() => {
         if (active) setWyckoffLoading(false);
       });
+
+    // 2. Fetch Volume Profile
+    fetch(`/api/radar/volume-profile?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}&lookback=20`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setVolumeProfile(json.data);
+          if (json.confluence) {
+            setVolumeProfileConfluence(json.confluence);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load Volume Profile:', err);
+      })
+      .finally(() => {
+        if (active) setVolumeProfileLoading(false);
+      });
+
     return () => {
       active = false;
     };
@@ -842,6 +871,16 @@ export default function RadarPage() {
             )}
             {!wyckoffLoading && wyckoffAssessment && (
               <WyckoffSchematicCard assessment={wyckoffAssessment} />
+            )}
+
+            {/* Volume Profile & Liquidity Distribution Section */}
+            {volumeProfileLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Volume Profile &amp; Likuiditas Konsensus...
+              </div>
+            )}
+            {!volumeProfileLoading && volumeProfile && (
+              <VolumeProfileCard profile={volumeProfile} confluence={volumeProfileConfluence} />
             )}
           </div>
         </div>
