@@ -11,6 +11,7 @@ import {
   getLatestAnchoredVwap,
   getLatestSmartMoney,
   getLatestMtf,
+  getLatestOrb,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -224,6 +225,22 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if MTF table is unavailable
         }
 
+        let ib15High: number | null = null;
+        let ib15Low: number | null = null;
+        let ib15Range: number | null = null;
+        let orbRegime: string | null = null;
+        try {
+          const orbRow = await getLatestOrb(emitenUpper);
+          if (orbRow) {
+            ib15High = orbRow.ib15_high != null ? Number(orbRow.ib15_high) : null;
+            ib15Low = orbRow.ib15_low != null ? Number(orbRow.ib15_low) : null;
+            ib15Range = orbRow.ib15_range != null ? Number(orbRow.ib15_range) : null;
+            orbRegime = (orbRow.confluence_regime as string) || null;
+          }
+        } catch {
+          // Graceful fallback if ORB table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -249,6 +266,10 @@ export async function GET(request: NextRequest) {
           mtf_regime: mtfRegime,
           mtf_stage: mtfStage,
           mtf_sizing_multiplier: mtfSizingMultiplier,
+          ib15_high: ib15High,
+          ib15_low: ib15Low,
+          ib15_range: ib15Range,
+          orb_regime: orbRegime,
         };
       })
     );

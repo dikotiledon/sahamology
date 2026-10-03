@@ -2,6 +2,28 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.23.0 (draft) — Phase 19: Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine
+
+Phase 19 introduces the **Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine**, formalizing 15-minute Initial Balance ($IB_{15}$: 09:00–09:15 WIB), 60-minute Initial Balance ($IB_{60}$: 09:00–10:00 WIB), Steidlmayer Auction Market Profile day type classifications (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`, `NEUTRAL_ROTATIONAL_DAY`), range extension targets ($R_1, R_2, S_1, S_2$), and direct synergy with the $V_{15m}$ pre-market battle plan volume rules for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/039_opening_range_breakout_daily.sql`)**:
+  - `opening_range_breakout_daily`: Time-series table tracking `emiten`, `trade_date`, `ib15_high`, `ib15_low`, `ib15_range`, `ib15_midpoint`, `ib60_high`, `ib60_low`, `ib60_range`, `ib60_midpoint`, `extension_r1`, `extension_r2`, `extension_s1`, `extension_s2`, `day_type`, `confluence_regime`, `conviction_score`, `v15m_volume`, and `advisory`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_orb_date_regime`.
+- **Opening Range Breakout & Initial Balance Engine (`lib/orb/`)**:
+  - `types.ts`: Defines `OrbAssessment`, `InitialBalanceLevels`, `DayType`, `OrbRegime`, and `IntradayBar`.
+  - `ib-calculator.ts`: Computes 15-minute Initial Balance ($IB_{15}$) and 60-minute Initial Balance ($IB_{60}$) ranges, midpoints, and institutional extension targets ($R_1 = +0.50 \times IB$, $R_2 = +1.00 \times IB$, $S_1 = -0.50 \times IB$, $S_2 = -1.00 \times IB$).
+  - `day-classifier.ts`: Classifies session behavior using the Steidlmayer Auction Market Profile framework (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`, `NEUTRAL_ROTATIONAL_DAY`).
+  - `confluence.ts`: Evaluates price interaction against Initial Balance bounds into 6 tactical regimes (`ORB_BULLISH_EXPANSION`, `ORB_PULLBACK_RETEST`, `INSIDE_IB_COILING`, `ORB_FALSE_BREAKOUT_TRAP`, `ORB_BEARISH_BREAKDOWN`, `NEUTRAL_IB`) with conviction score (0–100).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveOrbSnapshot`, `getLatestOrb`, `getLatestOrbUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/orb`: Exposes single emiten ORB assessment with price bar calculation fallback and universe-wide candidate screening.
+  - `OpeningRangeCard.tsx`: Interactive component displaying Initial Balance levels ($IB_{15}, IB_{60}$), range extension targets ($R_1, R_2, S_1, S_2$), market day profile, $V_{15m}$ volume, and architectural notices.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `⚡ IB15: Rp X - Y` badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:orb` (`scripts/run-orb-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.22.0 (draft) — Phase 18: Multi-Timeframe Alignment & Institutional Trend Matrix
 
 Phase 18 introduces the **Multi-Timeframe Alignment & Institutional Trend Matrix Engine (Triple Screen & Weinstein Stages for IDX)**, formalizing synthetic calendar-week bar aggregation, higher-timeframe secular trend classification (Stan Weinstein Stages 1–4, $\text{EMA}_{10\text{w}}$, $\text{EMA}_{30\text{w}}$, 30w slope), intermediate daily wave alignment ($\text{EMA}_{20}$, $\text{SMA}_{50}$, $\text{SMA}_{200}$), alignment matrix regime synthesis, and tactical position sizing multipliers ($0.00\times$ to $1.00\times$) for the Indonesia Stock Exchange.

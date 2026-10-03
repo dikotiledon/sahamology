@@ -2940,4 +2940,116 @@ export async function getLatestMtfUniverse(
   return result.rows as Array<Record<string, unknown>>;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 19: Opening Range Breakout (ORB) & Intraday Initial Balance (IB)
+// ---------------------------------------------------------------------------
+
+export async function saveOrbSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  ib15_high: number;
+  ib15_low: number;
+  ib15_range: number;
+  ib15_midpoint: number;
+  ib60_high?: number | null;
+  ib60_low?: number | null;
+  ib60_range?: number | null;
+  ib60_midpoint?: number | null;
+  extension_r1?: number | null;
+  extension_r2?: number | null;
+  extension_s1?: number | null;
+  extension_s2?: number | null;
+  day_type: string;
+  confluence_regime: string;
+  conviction_score?: number;
+  v15m_volume?: number | null;
+  advisory?: string | null;
+}): Promise<void> {
+  const symbol = row.emiten.toUpperCase();
+  await query(
+    `INSERT INTO opening_range_breakout_daily (
+      emiten, trade_date, ib15_high, ib15_low, ib15_range, ib15_midpoint,
+      ib60_high, ib60_low, ib60_range, ib60_midpoint,
+      extension_r1, extension_r2, extension_s1, extension_s2,
+      day_type, confluence_regime, conviction_score, v15m_volume, advisory
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      ib15_high = EXCLUDED.ib15_high,
+      ib15_low = EXCLUDED.ib15_low,
+      ib15_range = EXCLUDED.ib15_range,
+      ib15_midpoint = EXCLUDED.ib15_midpoint,
+      ib60_high = EXCLUDED.ib60_high,
+      ib60_low = EXCLUDED.ib60_low,
+      ib60_range = EXCLUDED.ib60_range,
+      ib60_midpoint = EXCLUDED.ib60_midpoint,
+      extension_r1 = EXCLUDED.extension_r1,
+      extension_r2 = EXCLUDED.extension_r2,
+      extension_s1 = EXCLUDED.extension_s1,
+      extension_s2 = EXCLUDED.extension_s2,
+      day_type = EXCLUDED.day_type,
+      confluence_regime = EXCLUDED.confluence_regime,
+      conviction_score = EXCLUDED.conviction_score,
+      v15m_volume = EXCLUDED.v15m_volume,
+      advisory = EXCLUDED.advisory,
+      created_at = NOW()`,
+    [
+      symbol,
+      row.trade_date,
+      row.ib15_high,
+      row.ib15_low,
+      row.ib15_range,
+      row.ib15_midpoint,
+      row.ib60_high ?? null,
+      row.ib60_low ?? null,
+      row.ib60_range ?? null,
+      row.ib60_midpoint ?? null,
+      row.extension_r1 ?? null,
+      row.extension_r2 ?? null,
+      row.extension_s1 ?? null,
+      row.extension_s2 ?? null,
+      row.day_type,
+      row.confluence_regime,
+      row.conviction_score ?? 50,
+      row.v15m_volume ?? null,
+      row.advisory ?? null,
+    ]
+  );
+}
+
+export async function getLatestOrb(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM opening_range_breakout_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM opening_range_breakout_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestOrbUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM opening_range_breakout_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM opening_range_breakout_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+
 

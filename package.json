@@ -33,7 +33,8 @@
     "walkforward:breadth": "tsx --tsconfig tsconfig.test.json scripts/run-market-breadth-walkforward.ts",
     "walkforward:avwap": "tsx --tsconfig tsconfig.test.json scripts/run-avwap-walkforward.ts",
     "walkforward:smc": "tsx --tsconfig tsconfig.test.json scripts/run-smc-walkforward.ts",
-    "walkforward:mtf": "tsx --tsconfig tsconfig.test.json scripts/run-mtf-walkforward.ts"
+    "walkforward:mtf": "tsx --tsconfig tsconfig.test.json scripts/run-mtf-walkforward.ts",
+    "walkforward:orb": "tsx --tsconfig tsconfig.test.json scripts/run-orb-walkforward.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

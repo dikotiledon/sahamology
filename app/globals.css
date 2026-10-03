@@ -5801,4 +5801,324 @@ body.modal-open .app-layout {
   line-height: 1.4;
 }
 
+/* ==========================================================================
+   Phase 19: Opening Range Breakout (ORB) & Intraday Initial Balance (IB)
+   ========================================================================== */
+
+.orb-card {
+  background: var(--bg-tertiary, #121824);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.orb-card--loading {
+  min-height: 140px;
+  justify-content: center;
+  align-items: center;
+}
+
+.orb-loading-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.orb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #232d42);
+  padding-bottom: 0.85rem;
+}
+
+.orb-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.orb-icon {
+  font-size: 1.15rem;
+}
+
+.orb-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+
+.orb-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0.25rem 0 0 0;
+}
+
+.orb-score-badge {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--text-primary, #f1f5f9);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.orb-score-badge strong {
+  color: var(--accent-light, #818cf8);
+  font-size: 0.95rem;
+}
+
+.orb-regime-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+}
+
+.orb-regime--expansion {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.orb-regime--retest {
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #38bdf8;
+}
+
+.orb-regime--coiling {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.orb-regime--trap {
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: #fb923c;
+}
+
+.orb-regime--breakdown {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.orb-regime--neutral {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+}
+
+.orb-advisory {
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.orb-advisory.orb-regime--expansion {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #a7f3d0;
+}
+
+.orb-advisory.orb-regime--retest {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #bae6fd;
+}
+
+.orb-advisory.orb-regime--coiling {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fde68a;
+}
+
+.orb-advisory.orb-regime--trap {
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: #fed7aa;
+}
+
+.orb-advisory.orb-regime--breakdown {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
+.orb-advisory.orb-regime--neutral {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.orb-advisory-text {
+  font-weight: 500;
+}
+
+.orb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 1024px) {
+  .orb-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .orb-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.orb-box {
+  background: var(--bg-secondary, #0d121c);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.orb-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.orb-box-name {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.orb-tag-opening {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
+.orb-tag-bullish {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.orb-tag-bearish {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.orb-box-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.orb-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.orb-metric-label {
+  color: var(--text-muted, #94a3b8);
+}
+
+.orb-metric-value {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary, #f1f5f9);
+}
+
+.orb-box-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted, #64748b);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.orb-day-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.badge-trend-day {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.badge-normal-variation {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+}
+
+.badge-trap-day {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+.badge-neutral-day {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.orb-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border-color, #232d42);
+  padding-top: 0.75rem;
+}
+
+.orb-notice-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.orb-notice-text {
+  font-size: 0.6875rem;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+
 

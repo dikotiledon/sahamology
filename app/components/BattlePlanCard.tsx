@@ -40,6 +40,10 @@ export interface BattlePlanItem {
   mtf_regime?: string | null;
   mtf_stage?: string | null;
   mtf_sizing_multiplier?: number | null;
+  ib15_high?: number | null;
+  ib15_low?: number | null;
+  ib15_range?: number | null;
+  orb_regime?: string | null;
 }
 
 export interface MacroOverlayState {
@@ -344,6 +348,41 @@ export function BattlePlanCard({ date }: { date: string }) {
                         title={`Multi-Timeframe Alignment: ${p.mtf_regime.replace(/_/g, ' ')}${p.mtf_sizing_multiplier != null ? ` | Sizing: ${p.mtf_sizing_multiplier.toFixed(2)}x` : ''}${p.mtf_stage ? ` | Weekly: ${p.mtf_stage.replace(/_/g, ' ')}` : ''}`}
                       >
                         🌊 MTF: {p.mtf_regime.replace(/_/g, ' ')}{p.mtf_sizing_multiplier != null ? ` (${p.mtf_sizing_multiplier.toFixed(2)}x)` : ''}
+                      </span>
+                    )}
+                    {p.ib15_high && p.ib15_low && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background:
+                            p.orb_regime === 'ORB_BULLISH_EXPANSION' || p.orb_regime === 'ORB_PULLBACK_RETEST'
+                              ? 'rgba(16, 185, 129, 0.12)'
+                              : p.orb_regime === 'ORB_FALSE_BREAKOUT_TRAP' || p.orb_regime === 'ORB_BEARISH_BREAKDOWN'
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : 'rgba(245, 158, 11, 0.12)',
+                          color:
+                            p.orb_regime === 'ORB_BULLISH_EXPANSION' || p.orb_regime === 'ORB_PULLBACK_RETEST'
+                              ? '#34d399'
+                              : p.orb_regime === 'ORB_FALSE_BREAKOUT_TRAP' || p.orb_regime === 'ORB_BEARISH_BREAKDOWN'
+                              ? '#f87171'
+                              : '#fbbf24',
+                          border:
+                            p.orb_regime === 'ORB_BULLISH_EXPANSION' || p.orb_regime === 'ORB_PULLBACK_RETEST'
+                              ? '1px solid rgba(16, 185, 129, 0.3)'
+                              : p.orb_regime === 'ORB_FALSE_BREAKOUT_TRAP' || p.orb_regime === 'ORB_BEARISH_BREAKDOWN'
+                              ? '1px solid rgba(239, 68, 68, 0.3)'
+                              : '1px solid rgba(245, 158, 11, 0.3)',
+                        }}
+                        title={`Initial Balance (IB15): Rp ${Math.round(p.ib15_low).toLocaleString('id-ID')} - Rp ${Math.round(p.ib15_high).toLocaleString('id-ID')}${p.orb_regime ? ` | Status: ${p.orb_regime.replace(/_/g, ' ')}` : ''}`}
+                      >
+                        ⚡ IB15: Rp {Math.round(p.ib15_low).toLocaleString('id-ID')} - {Math.round(p.ib15_high).toLocaleString('id-ID')}
                       </span>
                     )}
                   </div>

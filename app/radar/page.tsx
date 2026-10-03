@@ -18,6 +18,8 @@ import { SmartMoneyCard } from '@/app/components/SmartMoneyCard';
 import type { SmartMoneyAssessment } from '@/lib/smc/types';
 import { MultiTimeframeCard } from '@/app/components/MultiTimeframeCard';
 import type { MtfAssessment } from '@/lib/mtf/types';
+import { OpeningRangeCard } from '@/app/components/OpeningRangeCard';
+import type { OrbAssessment } from '@/lib/orb/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -69,6 +71,8 @@ export default function RadarPage() {
   const [smcLoading, setSmcLoading] = useState(false);
   const [mtfAssessment, setMtfAssessment] = useState<MtfAssessment | null>(null);
   const [mtfLoading, setMtfLoading] = useState(false);
+  const [orbAssessment, setOrbAssessment] = useState<OrbAssessment | null>(null);
+  const [orbLoading, setOrbLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -153,6 +157,7 @@ export default function RadarPage() {
       setAvwapAssessment(null);
       setSmcAssessment(null);
       setMtfAssessment(null);
+      setOrbAssessment(null);
       return;
     }
     let active = true;
@@ -162,6 +167,7 @@ export default function RadarPage() {
     setAvwapLoading(true);
     setSmcLoading(true);
     setMtfLoading(true);
+    setOrbLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -254,6 +260,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setMtfLoading(false);
+      });
+
+    // 7. Fetch Opening Range Breakout (ORB) & Initial Balance
+    fetch(`/api/radar/orb?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setOrbAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load ORB assessment:', err);
+      })
+      .finally(() => {
+        if (active) setOrbLoading(false);
       });
 
     return () => {
@@ -1035,6 +1056,16 @@ export default function RadarPage() {
             )}
             {!mtfLoading && mtfAssessment && (
               <MultiTimeframeCard emiten={selectedEmiten.emiten} initialData={mtfAssessment} />
+            )}
+
+            {/* Opening Range Breakout (ORB) & Initial Balance Section */}
+            {orbLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Opening Range Breakout &amp; Initial Balance...
+              </div>
+            )}
+            {!orbLoading && orbAssessment && (
+              <OpeningRangeCard emiten={selectedEmiten.emiten} initialData={orbAssessment} />
             )}
           </div>
         </div>
