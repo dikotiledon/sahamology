@@ -432,7 +432,8 @@ export default function RadarPage() {
             }}
           >
             {sectorFlow.map((s) => {
-              const isPositive = s.totalNetInstitutionalValue >= 0;
+              const netVal = s.totalNetInstitutionalValue ?? (s as any).netValue ?? 0;
+              const isPositive = netVal >= 0;
               return (
                 <div
                   key={s.sector}
@@ -460,7 +461,7 @@ export default function RadarPage() {
                         color: isPositive ? '#38ef7d' : '#f5576c',
                       }}
                     >
-                      {isPositive ? '+' : ''}{formatIDR(s.totalNetInstitutionalValue)}
+                      {isPositive ? '+' : ''}{formatIDR(netVal)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
