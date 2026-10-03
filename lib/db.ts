@@ -2419,3 +2419,70 @@ export async function saveTraderPsychologicalCapital(row: {
     [row.capital_score, row.consecutive_violations, row.tilt_state]
   );
 }
+
+export async function saveSectorRotationSnapshot(row: {
+  sector: string;
+  trade_date: string;
+  rs_ratio: number;
+  rs_momentum: number;
+  net_flow_5d: number;
+  net_flow_20d: number;
+  flow_intensity_pct: number;
+  quadrant: string;
+  constituent_count?: number;
+  top_emiten?: string | null;
+}): Promise<void> {
+  await query(
+    `INSERT INTO sector_rotation_daily (
+       sector, trade_date, rs_ratio, rs_momentum, net_flow_5d, net_flow_20d,
+       flow_intensity_pct, quadrant, constituent_count, top_emiten, created_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+     ON CONFLICT (sector, trade_date) DO UPDATE SET
+       rs_ratio = EXCLUDED.rs_ratio,
+       rs_momentum = EXCLUDED.rs_momentum,
+       net_flow_5d = EXCLUDED.net_flow_5d,
+       net_flow_20d = EXCLUDED.net_flow_20d,
+       flow_intensity_pct = EXCLUDED.flow_intensity_pct,
+       quadrant = EXCLUDED.quadrant,
+       constituent_count = EXCLUDED.constituent_count,
+       top_emiten = EXCLUDED.top_emiten`,
+    [
+      row.sector,
+      row.trade_date,
+      row.rs_ratio,
+      row.rs_momentum,
+      row.net_flow_5d,
+      row.net_flow_20d,
+      row.flow_intensity_pct,
+      row.quadrant,
+      row.constituent_count ?? 0,
+      row.top_emiten ?? null,
+    ]
+  );
+}
+
+export async function getLatestSectorRotationSnapshots(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM sector_rotation_daily WHERE trade_date = $1 ORDER BY rs_ratio DESC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (sector) * FROM sector_rotation_daily ORDER BY sector, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+export async function getSectorRotationForSector(
+  sector: string
+): Promise<Record<string, unknown> | null> {
+  const result = await query(
+    `SELECT * FROM sector_rotation_daily WHERE sector = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [sector]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
