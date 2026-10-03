@@ -3051,5 +3051,123 @@ export async function getLatestOrbUniverse(
   return result.rows as Array<Record<string, unknown>>;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 20: Corporate Actions, Ex-Date Dividend Arbitrage & Rights Dilution
+// ---------------------------------------------------------------------------
+
+export async function saveCorpActionSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  action_type: string;
+  cum_date?: string | null;
+  ex_date?: string | null;
+  recording_date?: string | null;
+  payment_date?: string | null;
+  dividend_amount?: number | null;
+  dividend_yield_pct?: number | null;
+  ex_date_drop_ratio?: number | null;
+  dividend_trap_score?: number | null;
+  days_to_cum?: number | null;
+  rights_ratio?: string | null;
+  rights_exercise_price?: number | null;
+  theoretical_price?: number | null;
+  dilution_pct?: number | null;
+  standby_buyer?: string | null;
+  has_standby_buyer?: boolean;
+  confluence_regime: string;
+  conviction_score?: number;
+  advisory?: string | null;
+}): Promise<void> {
+  const symbol = row.emiten.toUpperCase();
+  await query(
+    `INSERT INTO corporate_actions_daily (
+      emiten, trade_date, action_type, cum_date, ex_date, recording_date, payment_date,
+      dividend_amount, dividend_yield_pct, ex_date_drop_ratio, dividend_trap_score, days_to_cum,
+      rights_ratio, rights_exercise_price, theoretical_price, dilution_pct,
+      standby_buyer, has_standby_buyer, confluence_regime, conviction_score, advisory
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      action_type = EXCLUDED.action_type,
+      cum_date = EXCLUDED.cum_date,
+      ex_date = EXCLUDED.ex_date,
+      recording_date = EXCLUDED.recording_date,
+      payment_date = EXCLUDED.payment_date,
+      dividend_amount = EXCLUDED.dividend_amount,
+      dividend_yield_pct = EXCLUDED.dividend_yield_pct,
+      ex_date_drop_ratio = EXCLUDED.ex_date_drop_ratio,
+      dividend_trap_score = EXCLUDED.dividend_trap_score,
+      days_to_cum = EXCLUDED.days_to_cum,
+      rights_ratio = EXCLUDED.rights_ratio,
+      rights_exercise_price = EXCLUDED.rights_exercise_price,
+      theoretical_price = EXCLUDED.theoretical_price,
+      dilution_pct = EXCLUDED.dilution_pct,
+      standby_buyer = EXCLUDED.standby_buyer,
+      has_standby_buyer = EXCLUDED.has_standby_buyer,
+      confluence_regime = EXCLUDED.confluence_regime,
+      conviction_score = EXCLUDED.conviction_score,
+      advisory = EXCLUDED.advisory,
+      created_at = NOW()`,
+    [
+      symbol,
+      row.trade_date,
+      row.action_type,
+      row.cum_date ?? null,
+      row.ex_date ?? null,
+      row.recording_date ?? null,
+      row.payment_date ?? null,
+      row.dividend_amount ?? null,
+      row.dividend_yield_pct ?? null,
+      row.ex_date_drop_ratio ?? null,
+      row.dividend_trap_score ?? 0,
+      row.days_to_cum ?? null,
+      row.rights_ratio ?? null,
+      row.rights_exercise_price ?? null,
+      row.theoretical_price ?? null,
+      row.dilution_pct ?? null,
+      row.standby_buyer ?? null,
+      row.has_standby_buyer ?? false,
+      row.confluence_regime,
+      row.conviction_score ?? 50,
+      row.advisory ?? null,
+    ]
+  );
+}
+
+export async function getLatestCorpAction(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM corporate_actions_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM corporate_actions_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestCorpActionUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM corporate_actions_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM corporate_actions_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+
 
 

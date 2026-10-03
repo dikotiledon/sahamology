@@ -12,6 +12,7 @@ import {
   getLatestSmartMoney,
   getLatestMtf,
   getLatestOrb,
+  getLatestCorpAction,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -241,6 +242,22 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if ORB table is unavailable
         }
 
+        let dividendYieldPct: number | null = null;
+        let dividendTrapScore: number | null = null;
+        let daysToCum: number | null = null;
+        let corpActionRegime: string | null = null;
+        try {
+          const corpRow = await getLatestCorpAction(emitenUpper);
+          if (corpRow) {
+            dividendYieldPct = corpRow.dividend_yield_pct != null ? Number(corpRow.dividend_yield_pct) : null;
+            dividendTrapScore = corpRow.dividend_trap_score != null ? Number(corpRow.dividend_trap_score) : null;
+            daysToCum = corpRow.days_to_cum != null ? Number(corpRow.days_to_cum) : null;
+            corpActionRegime = (corpRow.confluence_regime as string) || null;
+          }
+        } catch {
+          // Graceful fallback if Corporate Action table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -270,6 +287,10 @@ export async function GET(request: NextRequest) {
           ib15_low: ib15Low,
           ib15_range: ib15Range,
           orb_regime: orbRegime,
+          dividend_yield_pct: dividendYieldPct,
+          dividend_trap_score: dividendTrapScore,
+          days_to_cum: daysToCum,
+          corp_action_regime: corpActionRegime,
         };
       })
     );

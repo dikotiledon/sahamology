@@ -6120,5 +6120,365 @@ body.modal-open .app-layout {
   line-height: 1.4;
 }
 
+/* ==========================================================================
+   Phase 20: Corporate Actions, Ex-Date Dividend Arbitrage & Rights Dilution
+   ========================================================================== */
+
+.corp-card {
+  background: var(--bg-tertiary, #121824);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.corp-card--loading {
+  min-height: 140px;
+  justify-content: center;
+  align-items: center;
+}
+
+.corp-loading-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.corp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #232d42);
+  padding-bottom: 0.85rem;
+}
+
+.corp-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.corp-icon {
+  font-size: 1.15rem;
+}
+
+.corp-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+
+.corp-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0.25rem 0 0 0;
+}
+
+.corp-score-badge {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--text-primary, #f1f5f9);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.corp-score-badge strong {
+  color: var(--accent-light, #818cf8);
+  font-size: 0.95rem;
+}
+
+.corp-regime-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+}
+
+.corp-regime--runup {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.corp-regime--bounce {
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #38bdf8;
+}
+
+.corp-regime--standby {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.corp-regime--trap {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.corp-regime--dilution {
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: #fb923c;
+}
+
+.corp-regime--neutral {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+}
+
+.corp-advisory {
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.corp-advisory.corp-regime--runup {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #a7f3d0;
+}
+
+.corp-advisory.corp-regime--bounce {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #bae6fd;
+}
+
+.corp-advisory.corp-regime--standby {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #e9d5ff;
+}
+
+.corp-advisory.corp-regime--trap {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
+.corp-advisory.corp-regime--dilution {
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: #fed7aa;
+}
+
+.corp-advisory.corp-regime--neutral {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.corp-advisory-text {
+  font-weight: 500;
+}
+
+.corp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 1024px) {
+  .corp-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .corp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.corp-box {
+  background: var(--bg-secondary, #0d121c);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.corp-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.corp-box-name {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.corp-yield-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.corp-tag-neutral {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+}
+
+.corp-tag-strategy {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.corp-box-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.corp-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.corp-metric-label {
+  color: var(--text-muted, #94a3b8);
+}
+
+.corp-metric-value {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary, #f1f5f9);
+}
+
+.corp-trap-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.trap-danger {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.trap-warning {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+.trap-safe {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.corp-trap-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin: 0.2rem 0;
+}
+
+.corp-trap-score-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary, #f1f5f9);
+}
+
+.corp-trap-score-total {
+  font-size: 0.8rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.corp-rights-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.rights-secured {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+.rights-unsecured {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.corp-strategy-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #cbd5e1);
+  line-height: 1.4;
+}
+
+.corp-box-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.corp-box-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted, #64748b);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.corp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border-color, #232d42);
+  padding-top: 0.75rem;
+}
+
+.corp-notice-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.corp-notice-text {
+  font-size: 0.6875rem;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+
 
 

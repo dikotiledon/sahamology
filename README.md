@@ -16,14 +16,14 @@
 
 ## Changelog
 
+### Unreleased / v0.24.0 (draft) — Phase 20: Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine
+Phase 20 introduces the **Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine**, formalizing cash dividend yield quantification, historical Ex-Date drop ratios, Dividend Trap Risk Scoring (0–100), Pre-Cum Run-Up momentum window detection ($5 \le T_{\text{cum}} \le 20$), and Rights Issue (HMETD) dilution percentage, exercise price discount, and Standby Buyer (Pembeli Siaga) commitments for the Indonesia Stock Exchange.
+
 ### Unreleased / v0.23.0 (draft) — Phase 19: Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine
 Phase 19 introduces the **Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine**, formalizing 15-minute Initial Balance ($IB_{15}$: 09:00–09:15 WIB), 60-minute Initial Balance ($IB_{60}$: 09:00–10:00 WIB), Steidlmayer Auction Market Profile day type classifications (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`, `NEUTRAL_ROTATIONAL_DAY`), range extension targets ($R_1, R_2, S_1, S_2$), and direct synergy with the $V_{15m}$ pre-market battle plan volume rules for the Indonesia Stock Exchange.
 
 ### Unreleased / v0.22.0 (draft) — Phase 18: Multi-Timeframe Alignment & Institutional Trend Matrix
 Phase 18 introduces the **Multi-Timeframe Alignment & Institutional Trend Matrix Engine (Triple Screen & Weinstein Stages for IDX)**, formalizing synthetic calendar-week bar aggregation, higher-timeframe secular trend classification (Stan Weinstein Stages 1–4, $\text{EMA}_{10\text{w}}$, $\text{EMA}_{30\text{w}}$, 30w slope), intermediate daily wave alignment ($\text{EMA}_{20}$, $\text{SMA}_{50}$, $\text{SMA}_{200}$), alignment matrix regime synthesis, and tactical position sizing multipliers ($0.00\times$ to $1.00\times$) for the Indonesia Stock Exchange.
-
-### Unreleased / v0.21.0 (draft) — Phase 17: Institutional Order Blocks, Fair Value Gaps (FVG) & Liquidity Sweep Engine
-Phase 17 introduces the **Institutional Order Blocks, Fair Value Gaps (FVG) & Liquidity Sweep Engine (Smart Money Concepts / SMC for IDX)**, formalizing structural swing pivot detection ($k=2$), Break of Structure (BOS), Change of Character (CHoCH), pre-impulse base Order Blocks with mitigation tracking, 3-bar Fair Value Gaps with 50% Consequent Encroachment (CE) magnetic targets, and Turtle Soup liquidity sweeps for the Indonesia Stock Exchange.
 
 📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -31,6 +31,7 @@ Phase 17 introduces the **Institutional Order Blocks, Fair Value Gaps (FVG) & Li
 
 ## Fitur Utama
 
+- **Corporate Actions, Dividend Trap & Rights Dilution (Phase 20)**: Penilai risiko Dividend Trap (0–100) dan kalkulasi rasio penurunan harga historis Ex-Date vs DPS memproteksi modal dari jebakan dividen nominal tinggi. Mengidentifikasi jendela peluang *Pre-Cum Dividend Run-Up* ($5 \le T_{\text{cum}} \le 20$), menghitung Harga Teoritis Rights Issue ($P_{\text{teoritis}}$), rasio dilusi, diskon harga tebus, dan komitmen Pembeli Siaga (Standby Buyer) di laci inspeksi `/radar` serta kartu battle plan `/desk`.
 - **Opening Range Breakout (ORB) & Initial Balance (Phase 19)**: Identifikasi rentang pembukaan Initial Balance 15 menit ($IB_{15}$: 09:00–09:15 WIB) dan 60 menit ($IB_{60}$: 09:00–10:00 WIB), target ekstensi likuiditas ($R_1, R_2, S_1, S_2$), profil tipe hari bursa Steidlmayer (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`), dan konfirmasi volume $V_{15m}$ di laci inspeksi `/radar` serta kartu battle plan `/desk`.
 - **Multi-Timeframe Alignment & Institutional Trend Matrix (Phase 18)**: Integrasi Triple Screen Alexander Elder dan Analisis Tahapan Stan Weinstein mengagregasikan candle mingguan sintetis untuk menilai Arus Utama Mingguan (Tahap 1–4, $\text{EMA}_{10\text{w}}$, $\text{EMA}_{30\text{w}}$, slope 30w) terhadap Gelombang Harian ($\text{EMA}_{20}$, $\text{SMA}_{50}$, $\text{SMA}_{200}$). Menghitung matriks keselarasan (`PERFECT_TIDE_ALIGNMENT`, `HIGH_PROBABILITY_PULLBACK`, `RANGE_BOUND_COMPRESSION`, `COUNTER_TREND_TRAP_HAZARD`, `SECULAR_LIQUIDATION`) dan penskalaan risiko ukuran lot ($0.00\times$ hingga $1.00\times$) di laci inspeksi `/radar` dan kartu battle plan `/desk`.
 - **Smart Money Concepts (SMC: Order Blocks & FVG) (Phase 17)**: Deteksi jejak algoritma institusi melalui Break of Structure (BOS), Change of Character (CHoCH), Order Block (OB) origin dengan pelacakan mitigasi, Fair Value Gap (FVG) dengan Consequent Encroachment (CE 50%), serta Turtle Soup liquidity sweeps. Ditampilkan di laci inspeksi `/radar` dan kartu battle plan `/desk`.

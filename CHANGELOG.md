@@ -2,6 +2,28 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.24.0 (draft) — Phase 20: Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine
+
+Phase 20 introduces the **Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine**, formalizing cash dividend yield quantification, historical Ex-Date drop ratios, Dividend Trap Risk Scoring (0–100), Pre-Cum Run-Up momentum window detection ($5 \le T_{\text{cum}} \le 20$), and Rights Issue (HMETD) dilution percentage, exercise price discount, and Standby Buyer (Pembeli Siaga) commitments for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/040_corporate_actions_daily.sql`)**:
+  - `corporate_actions_daily`: Time-series table tracking `emiten`, `trade_date`, `action_type`, `cum_date`, `ex_date`, `recording_date`, `payment_date`, `dividend_amount`, `dividend_yield_pct`, `ex_date_drop_ratio`, `dividend_trap_score`, `days_to_cum`, `rights_ratio`, `rights_exercise_price`, `theoretical_price`, `dilution_pct`, `standby_buyer`, `has_standby_buyer`, `confluence_regime`, `conviction_score`, and `advisory`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_corp_actions_date_regime`.
+- **Corporate Actions & Dividend Trap Core Engine (`lib/corporate-action/`)**:
+  - `types.ts`: Defines `CorporateActionAssessment`, `DividendMetrics`, `RightsIssueMetrics`, `ActionType`, and `CorpActionRegime`.
+  - `dividend-scorer.ts`: Computes dividend yield %, historical ex-date drop ratio, days to Cum Date ($T_{\text{cum}}$), Dividend Trap Risk Score, and Pre-Cum Run-Up eligibility.
+  - `rights-analyzer.ts`: Computes Theoretical Ex-Rights Price ($P_{\text{theoretical}}$), dilution percentage, exercise price discount %, and standby buyer presence.
+  - `confluence.ts`: Evaluates corporate action interactions into 6 regimes (`PRE_CUM_RUNUP_EXPANSION`, `POST_EX_ABSORPTION_BOUNCE`, `RIGHTS_ISSUE_STANDBY_SECURED`, `DIVIDEND_TRAP_HAZARD`, `UNSECURED_RIGHTS_DILUTION_RISK`, `NEUTRAL_CORPORATE_ACTION`) with conviction score (0–100).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveCorpActionSnapshot`, `getLatestCorpAction`, `getLatestCorpActionUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/corporate-actions`: Exposes single emiten corporate action assessment with price history fallback and universe-wide candidate screening.
+  - `CorporateActionsCard.tsx`: Interactive component displaying dividend yield, Dividend Trap Risk Score gauge, Cum/Ex/Payment dates timeline, Rights Issue dilution metrics, and tactical advisories.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `📅 Action: {regime}` badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:corp` (`scripts/run-corporate-actions-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.23.0 (draft) — Phase 19: Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine
 
 Phase 19 introduces the **Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine**, formalizing 15-minute Initial Balance ($IB_{15}$: 09:00–09:15 WIB), 60-minute Initial Balance ($IB_{60}$: 09:00–10:00 WIB), Steidlmayer Auction Market Profile day type classifications (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`, `NEUTRAL_ROTATIONAL_DAY`), range extension targets ($R_1, R_2, S_1, S_2$), and direct synergy with the $V_{15m}$ pre-market battle plan volume rules for the Indonesia Stock Exchange.

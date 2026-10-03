@@ -44,6 +44,10 @@ export interface BattlePlanItem {
   ib15_low?: number | null;
   ib15_range?: number | null;
   orb_regime?: string | null;
+  dividend_yield_pct?: number | null;
+  dividend_trap_score?: number | null;
+  days_to_cum?: number | null;
+  corp_action_regime?: string | null;
 }
 
 export interface MacroOverlayState {
@@ -383,6 +387,41 @@ export function BattlePlanCard({ date }: { date: string }) {
                         title={`Initial Balance (IB15): Rp ${Math.round(p.ib15_low).toLocaleString('id-ID')} - Rp ${Math.round(p.ib15_high).toLocaleString('id-ID')}${p.orb_regime ? ` | Status: ${p.orb_regime.replace(/_/g, ' ')}` : ''}`}
                       >
                         ⚡ IB15: Rp {Math.round(p.ib15_low).toLocaleString('id-ID')} - {Math.round(p.ib15_high).toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.corp_action_regime && p.corp_action_regime !== 'NEUTRAL_CORPORATE_ACTION' && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background:
+                            p.corp_action_regime === 'PRE_CUM_RUNUP_EXPANSION' || p.corp_action_regime === 'POST_EX_ABSORPTION_BOUNCE'
+                              ? 'rgba(16, 185, 129, 0.12)'
+                              : p.corp_action_regime === 'DIVIDEND_TRAP_HAZARD' || p.corp_action_regime === 'UNSECURED_RIGHTS_DILUTION_RISK'
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : 'rgba(168, 85, 247, 0.12)',
+                          color:
+                            p.corp_action_regime === 'PRE_CUM_RUNUP_EXPANSION' || p.corp_action_regime === 'POST_EX_ABSORPTION_BOUNCE'
+                              ? '#34d399'
+                              : p.corp_action_regime === 'DIVIDEND_TRAP_HAZARD' || p.corp_action_regime === 'UNSECURED_RIGHTS_DILUTION_RISK'
+                              ? '#f87171'
+                              : '#c084fc',
+                          border:
+                            p.corp_action_regime === 'PRE_CUM_RUNUP_EXPANSION' || p.corp_action_regime === 'POST_EX_ABSORPTION_BOUNCE'
+                              ? '1px solid rgba(16, 185, 129, 0.3)'
+                              : p.corp_action_regime === 'DIVIDEND_TRAP_HAZARD' || p.corp_action_regime === 'UNSECURED_RIGHTS_DILUTION_RISK'
+                              ? '1px solid rgba(239, 68, 68, 0.3)'
+                              : '1px solid rgba(168, 85, 247, 0.3)',
+                        }}
+                        title={`Aksi Korporasi: ${p.corp_action_regime.replace(/_/g, ' ')}${p.dividend_yield_pct ? ` | Yield: ${p.dividend_yield_pct}%` : ''}${p.days_to_cum != null ? ` | Sisa: ${p.days_to_cum} hari` : ''}${p.dividend_trap_score ? ` | Skor Trap: ${p.dividend_trap_score}/100` : ''}`}
+                      >
+                        📅 Action: {p.corp_action_regime.replace(/_/g, ' ')}{p.dividend_yield_pct ? ` (${p.dividend_yield_pct}%)` : ''}
                       </span>
                     )}
                   </div>

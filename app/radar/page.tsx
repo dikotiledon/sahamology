@@ -20,6 +20,8 @@ import { MultiTimeframeCard } from '@/app/components/MultiTimeframeCard';
 import type { MtfAssessment } from '@/lib/mtf/types';
 import { OpeningRangeCard } from '@/app/components/OpeningRangeCard';
 import type { OrbAssessment } from '@/lib/orb/types';
+import { CorporateActionsCard } from '@/app/components/CorporateActionsCard';
+import type { CorporateActionAssessment } from '@/lib/corporate-action/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -73,6 +75,8 @@ export default function RadarPage() {
   const [mtfLoading, setMtfLoading] = useState(false);
   const [orbAssessment, setOrbAssessment] = useState<OrbAssessment | null>(null);
   const [orbLoading, setOrbLoading] = useState(false);
+  const [corpAssessment, setCorpAssessment] = useState<CorporateActionAssessment | null>(null);
+  const [corpLoading, setCorpLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -158,6 +162,7 @@ export default function RadarPage() {
       setSmcAssessment(null);
       setMtfAssessment(null);
       setOrbAssessment(null);
+      setCorpAssessment(null);
       return;
     }
     let active = true;
@@ -168,6 +173,7 @@ export default function RadarPage() {
     setSmcLoading(true);
     setMtfLoading(true);
     setOrbLoading(true);
+    setCorpLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -275,6 +281,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setOrbLoading(false);
+      });
+
+    // 8. Fetch Corporate Actions, Dividend Trap & Rights Dilution
+    fetch(`/api/radar/corporate-actions?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setCorpAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load Corporate Action assessment:', err);
+      })
+      .finally(() => {
+        if (active) setCorpLoading(false);
       });
 
     return () => {
@@ -1066,6 +1087,16 @@ export default function RadarPage() {
             )}
             {!orbLoading && orbAssessment && (
               <OpeningRangeCard emiten={selectedEmiten.emiten} initialData={orbAssessment} />
+            )}
+
+            {/* Corporate Actions, Dividend Trap & Rights Dilution Section */}
+            {corpLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Aksi Korporasi &amp; Risiko Dividen...
+              </div>
+            )}
+            {!corpLoading && corpAssessment && (
+              <CorporateActionsCard emiten={selectedEmiten.emiten} initialData={corpAssessment} />
             )}
           </div>
         </div>
