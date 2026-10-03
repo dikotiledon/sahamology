@@ -154,7 +154,7 @@ Realized execution and slippage tracking:
 ```sql
 CREATE TABLE IF NOT EXISTS execution_audits (
     id BIGSERIAL PRIMARY KEY,
-    journal_id BIGINT REFERENCES decision_journal(id) ON DELETE CASCADE,
+    journal_id BIGINT NULL REFERENCES decision_journal(id) ON DELETE SET NULL,
     emiten VARCHAR(10) NOT NULL,
     trade_date DATE NOT NULL,
     planned_entry NUMERIC NOT NULL,
@@ -203,11 +203,14 @@ CREATE INDEX IF NOT EXISTS idx_execution_audits_journal ON execution_audits (jou
   - $\text{AQS} < 40 \implies \text{DISTRIBUTION}$
 
 #### Divergence Classifier in `lib/flow/divergence.ts`
-- Compares Foreign Institutional Net Value ($FFNV_5$) against Retail Net Value ($RNV_5$):
-  - `WHALE_ABSORPTION`: $FFNV_5 > \text{Rp } 2\text{B}$ AND $RNV_5 < -\text{Rp } 1.5\text{B}$.
-  - `RETAIL_TRAP`: $RNV_5 > \text{Rp } 2\text{B}$ AND $FFNV_5 < -\text{Rp } 1.5\text{B}$.
-  - `SYNCHRONIZED_ACCUMULATION`: $FFNV_5 > 0$ AND $DomesticInst_5 > 0$ AND $RNV_5 \le 0$.
-  - `DOMESTIC_DRIVEN`: Foreign volume $< 5\%$ of total turnover.
+- **Dynamic Liquidity Scaling**: Avoids fixed nominal currency distortion across differing market cap tiers by scaling thresholds to 20-day Average Daily Traded Value (ADTV):
+  $$\text{Effective Whale Threshold} = \max(\text{IDR } 500,000,000,\; 0.10 \times \text{ADTV}_{20d})$$
+- Compares Foreign Institutional Net Value ($FFNV_5$) against Retail Net Value ($RNV_5$) and Domestic Institutional Flow:
+  - `WHALE_ABSORPTION`: $FFNV_5 \ge \text{Whale Threshold}$ AND $RNV_5 \le 0$.
+  - `RETAIL_TRAP`: $RNV_5 \ge \text{Whale Threshold}$ AND $FFNV_5 < 0$.
+  - `SYNCHRONIZED_ACCUMULATION`: $FFNV_5 \ge \text{Whale Threshold}$ AND $\text{DomesticInst}_5 > 0$ AND $RNV_5 \le 0$.
+  - `DOMESTIC_DRIVEN`: Foreign turnover $< 5\%$ of total turnover.
+  - `NEUTRAL_FLOW`: Divergence fails to breach the effective whale threshold.
 
 ---
 
@@ -227,11 +230,27 @@ CREATE INDEX IF NOT EXISTS idx_execution_audits_journal ON execution_audits (jou
 
 ### 4.3 Intraday Alert & Anomaly Engine (`lib/tape/alert-engine.ts`)
 
-- **Trigger Conditions**:
-  1. *Velocity Surge*: $d(\text{BrokerNetVal})/dt$ in first 30 mins $> 3\times$ historical 5-day average with Top 3 concentration $> 60\%$.
-  2. *Pasar Nego Crossing*: Volume ratio $V_{NG}/V_{REG} > 0.20$ or Crossing Value $> \text{Rp } 5\text{B}$. Logs premium/discount vs. regular market price.
-  3. *Pre-Closing Auction Anomaly*: Price shift $> \pm 3\%$ between 15:50 and 16:00 WIB or $> 10\%$ daily volume transacted in pre-close.
-  4. *IDX UMA Risk Radar*: Proximity score $> 85\%$ based on 3-day and 5-day cumulative percentage return acceleration.
+#### Regulatory Compliance (IDX Broker Code Masking)
+Under IDX rules implemented on December 6, 2021 (Pasar Reguler continuous trading 09:00–15:45 WIB), individual broker codes (`Kode Broker`) and investor types are masked. Therefore:
+- **Regular Board**: Intraday velocity monitors operate strictly on **Aggregate Foreign vs. Domestic Flow Velocity** ($d(\text{AggregateForeignNetVal})/dt$) without requiring unmasked regular broker identities.
+- **Pasar Nego (Negotiated Board)**: Full broker identities are disclosed in crossing reports and ingested directly.
+- **End-of-Day (EOD)**: Full broker summary matrices are released post-market (after 16:00 WIB) and processed for daily absorption scores.
+
+#### Anomaly Trigger Conditions:
+1. *Aggregate Foreign Velocity Surge* (`FLOW_VELOCITY_SPIKE`):
+   - Measures aggregate foreign net flow acceleration ($> 3.0\times$ baseline run rate).
+   - Severity: $> 5.0\times \implies \text{CRITICAL}$, else $\text{WARNING}$.
+2. *Pasar Nego Crossing* (`CROSSING_DETECTED`):
+   - Triggered when negotiated board transaction value $\ge \text{IDR } 5,000,000,000$ OR negotiated volume $\ge 20\%$ of regular volume.
+   - Calculates premium/discount percentage:
+     $$\text{PremiumPct} = \frac{P_{\text{nego}} - P_{\text{regular}}}{P_{\text{regular}}} \times 100$$
+   - Flagged with `ANOMALOUS_DISPERSION` if $|\text{PremiumPct}| > 20\%$.
+   - Severity: $\ge \text{IDR } 25\text{B} \implies \text{CRITICAL}$, else $\text{WARNING}$.
+3. *Pre-Closing Auction Anomaly* (`PRECLOSING_ANOMALY`):
+   - Price shift $> \pm 3\%$ between 15:50 and 16:00 WIB or $> 10\%$ daily volume transacted in pre-close.
+4. *IDX UMA Risk Radar* (`UMA_APPROACH`):
+   - Proximity score $> 85\%$ based on 3-day and 5-day cumulative percentage return acceleration.
+
 - **Persistence**: Real-time write to `intraday_tape_alerts`.
 
 ---
@@ -239,7 +258,7 @@ CREATE INDEX IF NOT EXISTS idx_execution_audits_journal ON execution_audits (jou
 ### 4.4 Risk Sizer & Slippage Audit Engine (`lib/risk/sizer.ts`)
 
 #### IDX Tick Engine
-Official IDX tick table logic:
+Official IDX tick table logic conforming to standard 5-tier Fraksi Harga brackets:
 ```ts
 export function getIdxTickSize(price: number): number {
   if (price < 200) return 1;
@@ -249,19 +268,31 @@ export function getIdxTickSize(price: number): number {
   return 25;
 }
 ```
+*Note: Equities under Papan Pemantauan Khusus / Full Call Auction (FCA) are guarded fail-closed, alerting that periodic call auction pricing applies.*
 
 #### Dynamic Sizing Formulation
-- Inputs: `accountEquity`, `riskPercentage` (default 1.0%), `plannedEntry`, `invalidationStop`, `buyFeePct` (0.15%), `sellFeePct` (0.25%).
+- Inputs: `accountEquity`, `riskPercentage` (default 1.0%), `plannedEntry`, `invalidationStop`, `buyFeePct` (0.15%), `sellFeePct` (0.25%), `avgDailyVolume20d`.
 - Total Risk per Share:
   $$\text{Risk}_{\text{share}} = (P_{\text{entry}} - P_{\text{stop}}) + (P_{\text{entry}} \times 0.0015) + (P_{\text{stop}} \times 0.0025)$$
-- Lot Sizing:
-  $$\text{Lots} = \left\lfloor \frac{\text{accountEquity} \times (\text{riskPercentage} / 100)}{\text{Risk}_{\text{share}} \times 100} \right\rfloor$$
-- Max Position Constraint: Lots capped such that $\text{Lots} \times 100 \times P_{\text{entry}} \le 0.20 \times \text{accountEquity}$.
+- Lot Sizing (1 lot = 100 shares):
+  $$\text{MaxLots}_{\text{risk}} = \left\lfloor \frac{\text{accountEquity} \times (\text{riskPercentage} / 100)}{\text{Risk}_{\text{share}} \times 100} \right\rfloor$$
+- Portfolio Equity Cap (20%):
+  $$\text{MaxLots}_{\text{capital}} = \left\lfloor \frac{\text{accountEquity} \times 0.20}{P_{\text{entry}} \times 100} \right\rfloor$$
+- Liquidity Ceiling (2.5% ADTV):
+  $$\text{MaxLots}_{\text{liquidity}} = \left\lfloor \frac{0.025 \times \text{AvgDailyVolume}_{20d}}{100} \right\rfloor$$
+- Final Position:
+  $$\text{FinalLots} = \min(\text{MaxLots}_{\text{risk}},\; \text{MaxLots}_{\text{capital}},\; \text{MaxLots}_{\text{liquidity}})$$
 
-#### Realized Execution & Slippage
-- Calculates tick distance: $\text{tick\_distance}(P_{\text{planned}}, P_{\text{executed}})$.
+#### Realized Execution & Slippage Audit (`lib/risk/audit.ts`)
+- Multi-tier fill support: Accepts either a single fill price or a batch of execution fills, computing Volume-Weighted Average Price (VWAP):
+  $$P_{\text{executed}} = \frac{\sum (P_i \times Q_i)}{\sum Q_i}$$
+- Calculates tick distance: $\text{tick\_distance}(P_{\\text{planned}}, P_{\\text{executed}})$.
 - Computes slippage drag percentage and evaluates execution efficiency:
   $$\text{Efficiency} = \frac{\text{Realized PnL}}{\text{Theoretical PnL}}$$
+- Execution Quality Tags:
+  - $\text{Slippage Ticks} \le 0 \implies \text{EXCELLENT\_FILL}$
+  - $\text{Realized } R:R \ge 1.5 \implies \text{ACCEPTABLE\_FILL}$
+  - $\text{Realized } R:R < 1.5 \implies \text{SUBOPTIMAL\_FILL}$ (flags trade where execution drag destroyed the statistical edge).
 
 ---
 
@@ -299,3 +330,46 @@ export function getIdxTickSize(price: number): number {
 - `lib/risk/sizer.test.ts`: Verify IDX tick sizes, friction accounting, lot rounding, and 20% capital cap enforcement.
 - Integration tests: Verify `/api/radar` and `/api/desk` endpoints return valid contracts.
 - Regression standard: All existing 770+ test suites must pass with zero regressions.
+
+---
+
+## 8. Adversarial Consensus Review & Hardened Distillation
+
+Following the completion of the technical design, the specification was submitted to an independent, multi-perspective review via the `omh-adversarial-consensus` workflow. Four independent perspectives scrutinized the proposal:
+1. **Seat A (IDX Microstructure & Regulatory Specialist)**: Continuous auction rules, broker code masking compliance, board segmentation.
+2. **Seat B (Quantitative Risk & Statistical Skeptic)**: Edges, arbitrary nominal thresholds, rolling window multicollinearity, sample validity.
+3. **Seat C (Systems Architecture & Reliability Engineer)**: Ingestion contention, Stockbit 4 req/s token bucket, relational schema integrity.
+4. **Seat D (Institutional Execution & Desk Trader)**: Orderbook depth reality, multi-tier execution fills, transaction friction, and slippage.
+
+### 8.1 Hard Constraints
+1. **IDX Continuous Broker Code Masking Compliance**: Regular board intraday tape monitoring cannot query or display individual broker codes or Top-3 concentration during 09:00–15:45 WIB. Intraday velocity alerts must operate strictly on **Aggregate Foreign Flow** and **Pasar Nego Crossing reports**. Individual broker summary analytics remain strictly an End-of-Day (EOD) or Pre-Market ($T-1$) metric.
+2. **Zero Upstream API Contention at 08:30 WIB**: Pre-market battle plans and multi-window absorption scores must be calculated exclusively from local PostgreSQL tables (`flow_absorption_daily`, `broker_flow_daily`, `price_history`). No synchronous upstream Stockbit HTTP loops are permitted during pre-market job runs.
+3. **Database Schema Nullability**: `execution_audits.journal_id` must be nullable with `ON DELETE SET NULL` to prevent insert failures on manual or unlinked audits, while evaluation scripts strictly filter `WHERE journal_id IS NOT NULL`.
+4. **Papan Pemantauan Khusus (FCA) Guard**: The dynamic position sizer must detect FCA/Special Monitoring Board tags and refuse calculation with a descriptive fail-closed message.
+
+### 8.2 Decisions
+1. **ADTV-Scaled Whale Divergence**: Nominal currency thresholds are replaced by relative liquidity fractions:
+   $$\text{Whale Threshold} = \max(\text{Rp } 500,000,000,\; 0.10 \times \text{ADTV}_{20d})$$
+2. **Volume-Weighted Multi-Tier Fill Calculation**: Sizer and audit models accept both single execution price and multi-tier lot fill arrays, computing Volume-Weighted Average Price (VWAP) for realized execution.
+3. **Liquidity Sizing Guard**: Max allowable lots are bounded by the minimum of:
+   - Equity Risk Sizing: $\lfloor (\text{Equity} \times \text{RiskPct}) / (\text{Risk}_{\text{share}} \times 100) \rfloor$
+   - 20% Account Equity Cap: $\lfloor (\text{Equity} \times 0.20) / (P_{\text{entry}} \times 100) \rfloor$
+   - 2.5% ADTV Liquidity Ceiling: $\lfloor (0.025 \times \text{AvgDailyVolume}_{20d}) / 100 \rfloor$
+4. **Pasar Nego Premium/Discount Classification**: Crossing blocks evaluate price dispersion against regular market close:
+   $$\Delta_{\text{price}} = \left| \frac{P_{\text{nego}} - P_{\text{reg}}}{P_{\text{reg}}} \right| \times 100$$
+   Crossings with $\Delta_{\text{price}} > 20\%$ are flagged with `ANOMALOUS_DISPERSION`.
+
+### 8.3 Risks
+1. **Multi-Window Absorption Double-Counting**: A single-day high-volume wash sale will artificially inflate $T-1, T-3, T-5$ rolling net values. *Mitigation*: Require price-range consolidation checks and verify that day-to-day transaction counts support sustained accumulation.
+2. **Opening Volume Latency on Upstream Feed**: Delayed tape dissemination at 09:00 WIB may artificially delay $V_{15m}$ volume threshold confirmation. *Mitigation*: Expose volume confirmation as an advisory state (`PENDING_VOLUME`) rather than a hard cancellation of the battle plan.
+3. **Post-Market Broker Summary Batch Delays**: Stockbit EOD broker summary data is occasionally delayed until 16:30–17:00 WIB. *Mitigation*: Daily BullMQ capture job must implement exponential backoff retry between 16:15 and 18:00 WIB.
+
+### 8.4 Open Questions
+1. **Long-Term Macro Regime Interaction**: Should a future Phase 9 integrate Bank Indonesia rate announcements (BI-Rate) and Rupiah spot pressure directly into the pre-market battle plan macro tag?
+2. **Multi-Account Split Execution**: Will high-net-worth execution require lot splitting across multiple sub-broker accounts to prevent exceeding exchange order size caps (50,000 lots per order)?
+
+---
+
+## 9. Planner Handoff
+- **Status**: Distilled consensus bundle accepted and incorporated into the technical design specification.
+- **Implementation Mapping**: All architectural corrections have been implemented and verified in the codebase across Tasks 1–11 of the Institutional Trading Lifecycle (`supabase/028_institutional_lifecycle.sql`, `lib/flow/`, `lib/tactical/`, `lib/tape/`, `lib/risk/`, `app/api/`, `app/components/`, `scripts/run-lifecycle-walkforward.ts`).
