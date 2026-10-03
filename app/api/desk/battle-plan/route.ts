@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBattlePlanForDate } from '@/lib/db';
-import { sessionDateJakarta, jakartaYmd, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
+import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const requestedDate = searchParams.get('date');
     const now = new Date();
-    const todayYmd = jakartaYmd(now);
     const planDate = requestedDate || sessionDateJakarta(now);
 
     const isNonTrading = isWeekend(planDate) || isIdxHoliday(planDate);

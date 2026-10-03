@@ -121,7 +121,7 @@ export function PositionSizerModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 rounded-lg bg-gray-800/60 p-3 text-xs">
+          <div className="grid grid-cols-4 gap-2 rounded-lg bg-gray-800/60 p-3 text-xs">
             <div>
               <span className="text-gray-400">Planned Entry:</span>
               <div className="font-semibold text-white">Rp {plannedEntry.toLocaleString()}</div>
@@ -134,6 +134,12 @@ export function PositionSizerModal({
               <span className="text-gray-400">Target R1:</span>
               <div className="font-semibold text-emerald-400">
                 {targetR1 ? `Rp ${targetR1.toLocaleString()}` : '-'}
+              </div>
+            </div>
+            <div>
+              <span className="text-gray-400">Target Max:</span>
+              <div className="font-semibold text-emerald-300">
+                {targetMax ? `Rp ${targetMax.toLocaleString()}` : '-'}
               </div>
             </div>
           </div>
