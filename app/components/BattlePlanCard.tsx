@@ -27,6 +27,11 @@ export interface MacroOverlayState {
   summary: string;
 }
 
+const regimeBadgeClass: Record<string, string> = {
+  MACRO_HEADWIND: 'battle-plan-badge--headwind',
+  MACRO_TAILWIND: 'battle-plan-badge--tailwind',
+};
+
 export function BattlePlanCard({ date }: { date: string }) {
   const [plans, setPlans] = useState<BattlePlanItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,16 +67,19 @@ export function BattlePlanCard({ date }: { date: string }) {
 
   if (!isTradingDay) {
     return (
-      <div className="mb-6 rounded-xl border border-gray-800 bg-gray-900/60 p-4 text-xs text-gray-400">
-        <span className="font-semibold text-amber-400">📅 Libur Bursa / Akhir Pekan:</span> Battle Plan 08:30 WIB dinonaktifkan (Fail-Closed No-Op).
+      <div className="battle-plan">
+        <span className="battle-plan-title">Libur Bursa / Akhir Pekan:</span>{' '}
+        <span className="battle-plan-subtitle">
+          Battle Plan 08:30 WIB dinonaktifkan (Fail-Closed No-Op).
+        </span>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="mb-6 rounded-xl border border-gray-800 bg-gray-900/40 p-4 text-xs text-gray-400">
-        Memuat 08:30 WIB Tactical Battle Plan...
+      <div className="battle-plan">
+        <p className="battle-plan-subtitle">Memuat 08:30 WIB Tactical Battle Plan…</p>
       </div>
     );
   }
@@ -80,115 +88,107 @@ export function BattlePlanCard({ date }: { date: string }) {
     return null;
   }
 
+  const regime = macroOverlay?.regime;
+  const alertClass =
+    regime === 'MACRO_HEADWIND' ? 'battle-plan-alert--headwind' : 'battle-plan-alert--tailwind';
+
   return (
-    <div className="mb-6 rounded-xl border border-emerald-900/50 bg-gradient-to-r from-gray-900 via-gray-900 to-emerald-950/30 p-5 shadow-lg">
-      <div className="flex flex-col gap-2 border-b border-gray-800/80 pb-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="battle-plan">
+      <div className="battle-plan-header">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <h2 className="text-sm font-bold tracking-wide text-white uppercase">
-              08:30 WIB Tactical Battle Plan
-            </h2>
-            <span className="rounded bg-emerald-950 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-800">
+          <div className="battle-plan-title-row">
+            <span className="battle-plan-pulse" aria-hidden="true" />
+            <h2 className="battle-plan-title">08:30 WIB Tactical Battle Plan</h2>
+            <span className="battle-plan-badge battle-plan-badge--volume">
               V15m Volume Confirmation Active
             </span>
-            {macroOverlay?.regime === 'MACRO_HEADWIND' && (
-              <span className="rounded bg-amber-950 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-800">
-                ⚠️ Macro Headwind
-              </span>
-            )}
-            {macroOverlay?.regime === 'MACRO_TAILWIND' && (
-              <span className="rounded bg-teal-950 px-2 py-0.5 text-[10px] font-bold text-teal-300 border border-teal-800">
-                🌊 Macro Tailwind
+            {regime && regime !== 'MACRO_NEUTRAL' && (
+              <span className={`battle-plan-badge ${regimeBadgeClass[regime]}`}>
+                {regime === 'MACRO_HEADWIND' ? '⚠️ Macro Headwind' : '🌊 Macro Tailwind'}
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-gray-400">
-            Setup terkurasi sebelum bel pembukaan bursa. Konfirmasi partisipasi volume 15 menit pertama (09:00–09:15 WIB).
+          <p className="battle-plan-subtitle">
+            Setup terkurasi sebelum bel pembukaan bursa. Konfirmasi partisipasi volume 15 menit
+            pertama (09:00–09:15 WIB).
           </p>
         </div>
       </div>
 
-      {/* Macro Overlay Advisory Banner */}
-      {macroOverlay && macroOverlay.regime !== 'MACRO_NEUTRAL' && (
-        <div className={`mt-3 rounded-lg border p-3 text-xs ${
-          macroOverlay.regime === 'MACRO_HEADWIND'
-            ? 'border-amber-800/60 bg-amber-950/20 text-amber-300'
-            : 'border-teal-800/60 bg-teal-950/20 text-teal-300'
-        }`}>
-          <div className="font-semibold">
-            {macroOverlay.regime === 'MACRO_HEADWIND' ? '⚠️ Peringatan Tekanan Makro (USD/IDR & Suku Bunga):' : '🌊 Sentimen Makro Positif:'}
-          </div>
-          <div className="mt-0.5 text-[11px] text-gray-300">
-            {macroOverlay.summary}
-          </div>
+      {macroOverlay && regime && regime !== 'MACRO_NEUTRAL' && (
+        <div className={`battle-plan-alert ${alertClass}`}>
+          <strong>
+            {regime === 'MACRO_HEADWIND'
+              ? '⚠️ Peringatan Tekanan Makro (USD/IDR & Suku Bunga):'
+              : '🌊 Sentimen Makro Positif:'}
+          </strong>
+          <span>{macroOverlay.summary}</span>
         </div>
       )}
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="battle-plan-grid">
         {plans.map((p) => {
           const effectiveInvalidation = p.adjusted_invalidation_price || p.invalidation_price;
           const effectiveV15m = p.adjusted_v15m_shares || p.open_15m_vol_threshold;
+          const buffered =
+            !!p.adjusted_v15m_shares && p.adjusted_v15m_shares > p.open_15m_vol_threshold;
 
           return (
-            <div
-              key={p.emiten}
-              className="flex flex-col justify-between rounded-lg border border-gray-800 bg-gray-800/40 p-3.5 transition hover:border-emerald-600/50"
-            >
+            <article key={p.emiten} className="battle-plan-card">
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-base font-extrabold text-white">{p.emiten}</span>
-                  <span className="rounded bg-emerald-900/40 px-2 py-0.5 text-xs font-bold text-emerald-400">
-                    {p.stance}
-                  </span>
+                <div className="battle-plan-card-head">
+                  <span className="battle-plan-emiten">{p.emiten}</span>
+                  <span className="battle-plan-stance">{p.stance}</span>
                 </div>
 
-                <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-gray-400">Trigger:</span>{' '}
-                    <span className="font-semibold text-white">Rp {Number(p.trigger_price).toLocaleString()}</span>
+                <div className="battle-plan-levels">
+                  <div className="battle-plan-level">
+                    <span>Trigger</span>
+                    <strong>Rp {Number(p.trigger_price).toLocaleString('id-ID')}</strong>
                   </div>
-                  <div>
-                    <span className="text-gray-400">Stop:</span>{' '}
-                    <span className="font-semibold text-rose-400">Rp {Number(effectiveInvalidation).toLocaleString()}</span>
+                  <div className="battle-plan-level battle-plan-level--stop">
+                    <span>Stop</span>
+                    <strong>Rp {Number(effectiveInvalidation).toLocaleString('id-ID')}</strong>
                   </div>
-                  <div>
-                    <span className="text-gray-400">Target R1:</span>{' '}
-                    <span className="font-semibold text-emerald-400">Rp {Number(p.target_r1).toLocaleString()}</span>
+                  <div className="battle-plan-level battle-plan-level--target">
+                    <span>Target R1</span>
+                    <strong>Rp {Number(p.target_r1).toLocaleString('id-ID')}</strong>
                   </div>
-                  <div>
-                    <span className="text-gray-400">Target Max:</span>{' '}
-                    <span className="font-semibold text-emerald-300">Rp {Number(p.target_max).toLocaleString()}</span>
+                  <div className="battle-plan-level battle-plan-level--target-max">
+                    <span>Target Max</span>
+                    <strong>Rp {Number(p.target_max).toLocaleString('id-ID')}</strong>
                   </div>
                 </div>
 
-                <div className="mt-2.5 rounded bg-gray-900/80 p-2 text-[11px] text-gray-300">
-                  <span className="text-amber-400 font-medium">V15m Threshold:</span>{' '}
-                  {Number(effectiveV15m).toLocaleString()} shares ({Math.round(Number(effectiveV15m) / 100).toLocaleString()} lot)
-                  {p.adjusted_v15m_shares && p.adjusted_v15m_shares > p.open_15m_vol_threshold && (
-                    <span className="ml-1 text-[10px] text-amber-400 font-semibold">(+Macro Buffer)</span>
-                  )}
-                </div>
+                <p className="battle-plan-volume">
+                  <strong>V15m Threshold:</strong>{' '}
+                  {Number(effectiveV15m).toLocaleString('id-ID')} shares (
+                  {Math.round(Number(effectiveV15m) / 100).toLocaleString('id-ID')} lot)
+                  {buffered && <span className="battle-plan-buffer"> (+Macro Buffer)</span>}
+                </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setSelectedPlan(p)}
-                className="mt-3 w-full rounded bg-emerald-600/80 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-500"
+                className="battle-plan-action"
               >
-                Hitung Lot & Tranche
+                Hitung Lot &amp; Tranche
               </button>
-            </div>
+            </article>
           );
         })}
       </div>
 
       {selectedPlan && (
         <PositionSizerModal
-          isOpen={true}
+          isOpen
           onClose={() => setSelectedPlan(null)}
           emiten={selectedPlan.emiten}
           plannedEntry={Number(selectedPlan.trigger_price)}
-          invalidationStop={Number(selectedPlan.adjusted_invalidation_price || selectedPlan.invalidation_price)}
+          invalidationStop={Number(
+            selectedPlan.adjusted_invalidation_price || selectedPlan.invalidation_price
+          )}
           targetR1={Number(selectedPlan.target_r1)}
           targetMax={Number(selectedPlan.target_max)}
         />
