@@ -7,6 +7,36 @@ Redis 7 with BullMQ workers embedded in the Next.js server process.
 
 ---
 
+## Phase 8 Institutional Trading Lifecycle
+
+Phase 8 formalizes the end-to-end **Institutional Trading Lifecycle**, providing multi-window broker absorption scanning (AQS: 0–100), foreign vs. domestic whale divergence tracking, automated 08:30 WIB pre-market battle planning ($V_{15m}$ volume rule), intraday tape crossing alerts, dynamic IDX tick friction sizing, and post-trade slippage audits.
+
+- **Schema Migration**: `028_institutional_lifecycle.sql` adds `broker_archetypes`, `flow_absorption_daily`, `premarket_battle_plans`, `intraday_tape_alerts`, and `execution_audits`.
+- **Pre-Market Battle Plan**: Access `/desk` at 08:30 WIB to inspect calculated trigger prices, target steps, and early liquidity confirmation ($V_{15m} = 0.15 \times \text{AvgDailyVolume}_{20d}$).
+- **Dynamic Position Sizer**: Use the "Hitung Lot" modal on `/desk` to calculate precise IDX lot allocations conforming to 5-tier Fraksi Harga brackets, net fee friction ($0.15\%$ buy, $0.25\%$ sell), 20% equity risk caps, and 2.5% ADTV liquidity ceilings.
+- **Execution Audits**: Record executed fills (`POST /api/desk/execution-audit`) to calculate tick slippage, fee friction drag, and realized R:R efficiency.
+- **Flow Backfill CLI**:
+  ```bash
+  npm run backfill:flow -- --symbols BBCA,BBRI,TLKM --days 15
+  ```
+- **Lifecycle Walk-Forward Evaluation**:
+  ```bash
+  npm run walkforward:lifecycle
+  ```
+  Enforces fail-closed evaluation (`SHIP_GATE=VERDICT_UNREACHABLE`) with a 30-trade minimum sample size floor.
+
+## Phase 7 Brosum Insider Radar
+
+Phase 7 introduces the **Brosum Insider Trade Radar** (`/radar`), identifying multi-period supply accumulation, silent volume anomalies, extreme buyer concentration, and Pasar Nego crossing blocks.
+
+- **Radar Discovery Grid**: Visualizes real-time accumulation scores (0–100), sectoral capital distributions, and diagnostic cards.
+- **Zero-Stance Boundary**: Radar discovery tags never directly mutate Playbook stances (`ENTER`/`WAIT`/`AVOID`); trade execution requires passing standard Adi Sucipto gates (G0–G4).
+- **Custom Watchlist CRUD**: Emitens can be dynamically added or removed via `/radar` quick-toggle controls or `/api/watchlist`.
+- **Radar Walk-Forward Gate**:
+  ```bash
+  npm run walkforward:radar
+  ```
+
 ## Phase 6 hardening
 
 Phase 6 ships process health, weekday holiday no-ops, and fail-closed Stockbit
