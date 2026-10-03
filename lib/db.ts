@@ -2297,3 +2297,52 @@ export async function getWyckoffEventsForEmiten(
   );
   return result.rows as Array<Record<string, unknown>>;
 }
+
+export async function saveVolumeProfileSnapshot(row: {
+  emiten: string;
+  as_of_date: string;
+  lookback_days: number;
+  poc_price: number;
+  vah_price: number;
+  val_price: number;
+  total_volume: number;
+  hvn_shelves?: number[];
+  lvn_voids?: number[];
+}): Promise<void> {
+  await query(
+    `INSERT INTO volume_profile_snapshots (
+       emiten, as_of_date, lookback_days, poc_price, vah_price, val_price, total_volume, hvn_shelves, lvn_voids
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (emiten, as_of_date, lookback_days) DO UPDATE SET
+       poc_price = EXCLUDED.poc_price,
+       vah_price = EXCLUDED.vah_price,
+       val_price = EXCLUDED.val_price,
+       total_volume = EXCLUDED.total_volume,
+       hvn_shelves = EXCLUDED.hvn_shelves,
+       lvn_voids = EXCLUDED.lvn_voids`,
+    [
+      row.emiten,
+      row.as_of_date,
+      row.lookback_days,
+      row.poc_price,
+      row.vah_price,
+      row.val_price,
+      row.total_volume,
+      JSON.stringify(row.hvn_shelves || []),
+      JSON.stringify(row.lvn_voids || []),
+    ]
+  );
+}
+
+export async function getLatestVolumeProfileSnapshot(
+  emiten: string,
+  lookbackDays = 20
+): Promise<Record<string, unknown> | null> {
+  const result = await query(
+    `SELECT * FROM volume_profile_snapshots 
+     WHERE emiten = $1 AND lookback_days = $2 
+     ORDER BY as_of_date DESC LIMIT 1`,
+    [emiten, lookbackDays]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
