@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import MorningCard from '../components/MorningCard';
 import RankedDeskTable from '../components/RankedDeskTable';
+import { BattlePlanCard } from '../components/BattlePlanCard';
 import type { DeskApiPayload } from '@/lib/desk/assemble';
 import { sessionDateJakarta } from '@/lib/market-calendar';
 
@@ -75,6 +76,7 @@ export default function DeskPage() {
       )}
       {payload && (
         <>
+          <BattlePlanCard date={date} />
           <MorningCard card={payload.morningCard} />
           {payload.morningCard.avoidCount > 0 && (
             <label className="desk-avoid-toggle">
