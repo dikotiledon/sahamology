@@ -1646,7 +1646,7 @@ export async function saveCachedWatchlistItems(
       emitenValues
     );
 
-    // 2. Replace the group's item associations.
+    // 2. Replace the group's item associations (preserving manually added custom items).
     const watchlistRows = items.map((item) => ({
       watchlist_group_id: group.id,
       stockbit_item_id: String(item.id || ''),
@@ -1654,7 +1654,12 @@ export async function saveCachedWatchlistItems(
       symbol: String(item.symbol || item.company_code || '').toUpperCase(),
     }));
 
-    await query(`DELETE FROM watchlist_items WHERE watchlist_group_id = $1`, [group.id]);
+    await query(
+      `DELETE FROM watchlist_items 
+       WHERE watchlist_group_id = $1 
+         AND (stockbit_item_id NOT LIKE 'custom_%' OR stockbit_item_id IS NULL)`,
+      [group.id]
+    );
 
     const wlColumns = ['watchlist_group_id', 'stockbit_item_id', 'company_id', 'symbol'];
     const wlValues: unknown[] = [];
@@ -1669,7 +1674,10 @@ export async function saveCachedWatchlistItems(
 
     await query(
       `INSERT INTO watchlist_items (${wlColumns.join(', ')})
-       VALUES ${wlTuples.join(', ')}`,
+       VALUES ${wlTuples.join(', ')}
+       ON CONFLICT (watchlist_group_id, symbol) DO UPDATE SET
+         stockbit_item_id = EXCLUDED.stockbit_item_id,
+         company_id = EXCLUDED.company_id`,
       wlValues
     );
   }
@@ -1677,7 +1685,88 @@ export async function saveCachedWatchlistItems(
   await query(`UPDATE watchlist_groups SET synced_at = $1 WHERE id = $2`, [now, group.id]);
 }
 
-export async function deleteCachedWatchlistItem(watchlistId: number, symbol: string): Promise<void> {
+export async function addCachedWatchlistItem(
+  watchlistId: number,
+  item: {
+    symbol: string;
+    company_name?: string | null;
+    sector?: string | null;
+    last_price?: number | null;
+    percent?: string | null;
+    company_id?: number | null;
+    stockbit_item_id?: string | null;
+  }
+): Promise<{ success: boolean; item?: any; error?: string }> {
+  try {
+    const groupResult = await query(
+      `SELECT id FROM watchlist_groups WHERE watchlist_id = $1 LIMIT 1`,
+      [watchlistId]
+    );
+    const group = first(groupResult) as Record<string, unknown> | null;
+    if (!group) {
+      return { success: false, error: `Watchlist group ${watchlistId} not found` };
+    }
+
+    const symbol = item.symbol.trim().toUpperCase();
+    const now = new Date().toISOString();
+
+    // 1. Upsert into emiten_cache
+    await query(
+      `INSERT INTO emiten_cache (symbol, name, sector, last_price, percent, synced_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (symbol) DO UPDATE SET
+         name = CASE WHEN EXCLUDED.name IS NOT NULL AND EXCLUDED.name != '' THEN EXCLUDED.name ELSE emiten_cache.name END,
+         sector = COALESCE(EXCLUDED.sector, emiten_cache.sector),
+         last_price = COALESCE(EXCLUDED.last_price, emiten_cache.last_price),
+         percent = COALESCE(EXCLUDED.percent, emiten_cache.percent),
+         synced_at = EXCLUDED.synced_at`,
+      [
+        symbol,
+        item.company_name ?? '',
+        item.sector ?? null,
+        item.last_price ?? null,
+        item.percent ?? '0',
+        now,
+      ]
+    );
+
+    // 2. Insert into watchlist_items (ON CONFLICT DO UPDATE)
+    const stockbitItemId = item.stockbit_item_id || `custom_${symbol}`;
+    await query(
+      `INSERT INTO watchlist_items (watchlist_group_id, stockbit_item_id, company_id, symbol)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (watchlist_group_id, symbol) DO UPDATE SET
+         stockbit_item_id = COALESCE(EXCLUDED.stockbit_item_id, watchlist_items.stockbit_item_id),
+         company_id = COALESCE(EXCLUDED.company_id, watchlist_items.company_id)`,
+      [group.id, stockbitItemId, item.company_id ?? null, symbol]
+    );
+
+    return {
+      success: true,
+      item: {
+        id: stockbitItemId,
+        company_id: item.company_id ?? null,
+        symbol,
+        company_code: symbol,
+        company_name: item.company_name ?? '',
+        sector: item.sector ?? undefined,
+        last_price: item.last_price ?? 0,
+        percent: item.percent ?? '0',
+      },
+    };
+  } catch (error) {
+    console.error('Error adding cached watchlist item:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown database error',
+    };
+  }
+}
+
+export async function deleteCachedWatchlistItem(
+  watchlistId: number,
+  symbolOrIdentifier: string | { symbol?: string; companyId?: number }
+): Promise<void> {
   try {
     const groupResult = await query(
       `SELECT id FROM watchlist_groups WHERE watchlist_id = $1 LIMIT 1`,
@@ -1686,10 +1775,30 @@ export async function deleteCachedWatchlistItem(watchlistId: number, symbol: str
     const group = first(groupResult) as Record<string, unknown> | null;
     if (!group) return;
 
-    await query(
-      `DELETE FROM watchlist_items WHERE watchlist_group_id = $1 AND symbol = $2`,
-      [group.id, symbol.toUpperCase()]
-    );
+    if (typeof symbolOrIdentifier === 'string') {
+      await query(
+        `DELETE FROM watchlist_items WHERE watchlist_group_id = $1 AND symbol = $2`,
+        [group.id, symbolOrIdentifier.toUpperCase()]
+      );
+    } else {
+      const { symbol, companyId } = symbolOrIdentifier;
+      if (symbol && companyId) {
+        await query(
+          `DELETE FROM watchlist_items WHERE watchlist_group_id = $1 AND (symbol = $2 OR company_id = $3)`,
+          [group.id, symbol.toUpperCase(), companyId]
+        );
+      } else if (symbol) {
+        await query(
+          `DELETE FROM watchlist_items WHERE watchlist_group_id = $1 AND symbol = $2`,
+          [group.id, symbol.toUpperCase()]
+        );
+      } else if (companyId) {
+        await query(
+          `DELETE FROM watchlist_items WHERE watchlist_group_id = $1 AND company_id = $2`,
+          [group.id, companyId]
+        );
+      }
+    }
   } catch (error) {
     console.error('Error deleting cached watchlist item:', error);
   }
@@ -1736,4 +1845,196 @@ export async function getEmitenFlagsForSymbols(
     const r = row as Record<string, unknown>;
     return { emiten: String(r.emiten), flag: String(r.flag) };
   });
+}
+
+// =====================================================================
+// Institutional Trading Lifecycle (Phase 8 / Migration 028)
+// =====================================================================
+
+export interface FlowAbsorptionDbRow {
+  emiten: string;
+  trade_date: string;
+  window_1d_net_val: number;
+  window_3d_net_val: number;
+  window_5d_net_val: number;
+  window_20d_net_val: number;
+  top3_concentration_1d: number;
+  top3_concentration_5d: number;
+  foreign_net_val_5d: number;
+  domestic_whale_net_val_5d: number;
+  retail_net_val_5d: number;
+  price_change_5d_pct: number;
+  absorption_quality_score: number;
+  absorption_tag: string;
+}
+
+export async function getLatestFlowAbsorption(emiten: string): Promise<FlowAbsorptionDbRow | null> {
+  try {
+    const result = await query(
+      `SELECT * FROM flow_absorption_daily
+       WHERE emiten = $1
+       ORDER BY trade_date DESC
+       LIMIT 1`,
+      [emiten.toUpperCase()]
+    );
+    const row = first(result);
+    return row ? (row as unknown as FlowAbsorptionDbRow) : null;
+  } catch (error) {
+    console.error('Error fetching flow absorption:', error);
+    return null;
+  }
+}
+
+export async function saveFlowAbsorption(row: FlowAbsorptionDbRow): Promise<void> {
+  await query(
+    `INSERT INTO flow_absorption_daily (
+      emiten, trade_date, window_1d_net_val, window_3d_net_val, window_5d_net_val, window_20d_net_val,
+      top3_concentration_1d, top3_concentration_5d, foreign_net_val_5d, domestic_whale_net_val_5d,
+      retail_net_val_5d, price_change_5d_pct, absorption_quality_score, absorption_tag
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      window_1d_net_val = EXCLUDED.window_1d_net_val,
+      window_3d_net_val = EXCLUDED.window_3d_net_val,
+      window_5d_net_val = EXCLUDED.window_5d_net_val,
+      window_20d_net_val = EXCLUDED.window_20d_net_val,
+      top3_concentration_1d = EXCLUDED.top3_concentration_1d,
+      top3_concentration_5d = EXCLUDED.top3_concentration_5d,
+      foreign_net_val_5d = EXCLUDED.foreign_net_val_5d,
+      domestic_whale_net_val_5d = EXCLUDED.domestic_whale_net_val_5d,
+      retail_net_val_5d = EXCLUDED.retail_net_val_5d,
+      price_change_5d_pct = EXCLUDED.price_change_5d_pct,
+      absorption_quality_score = EXCLUDED.absorption_quality_score,
+      absorption_tag = EXCLUDED.absorption_tag`,
+    [
+      row.emiten.toUpperCase(),
+      row.trade_date,
+      row.window_1d_net_val,
+      row.window_3d_net_val,
+      row.window_5d_net_val,
+      row.window_20d_net_val,
+      row.top3_concentration_1d,
+      row.top3_concentration_5d,
+      row.foreign_net_val_5d,
+      row.domestic_whale_net_val_5d,
+      row.retail_net_val_5d,
+      row.price_change_5d_pct,
+      row.absorption_quality_score,
+      row.absorption_tag,
+    ]
+  );
+}
+
+export async function getBattlePlanForDate(planDate: string) {
+  try {
+    const result = await query(
+      `SELECT * FROM premarket_battle_plans
+       WHERE plan_date = $1
+       ORDER BY emiten ASC`,
+      [planDate]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching battle plan:', error);
+    return [];
+  }
+}
+
+export async function saveBattlePlan(row: {
+  plan_date: string;
+  emiten: string;
+  stance: string;
+  trigger_price: number;
+  target_r1: number;
+  target_max: number;
+  invalidation_price: number;
+  open_15m_vol_threshold: number;
+  macro_bias?: string;
+  catalyst_summary?: string;
+}): Promise<void> {
+  await query(
+    `INSERT INTO premarket_battle_plans (
+      plan_date, emiten, stance, trigger_price, target_r1, target_max,
+      invalidation_price, open_15m_vol_threshold, macro_bias, catalyst_summary
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (plan_date, emiten) DO UPDATE SET
+      stance = EXCLUDED.stance,
+      trigger_price = EXCLUDED.trigger_price,
+      target_r1 = EXCLUDED.target_r1,
+      target_max = EXCLUDED.target_max,
+      invalidation_price = EXCLUDED.invalidation_price,
+      open_15m_vol_threshold = EXCLUDED.open_15m_vol_threshold,
+      macro_bias = EXCLUDED.macro_bias,
+      catalyst_summary = EXCLUDED.catalyst_summary`,
+    [
+      row.plan_date,
+      row.emiten.toUpperCase(),
+      row.stance,
+      row.trigger_price,
+      row.target_r1,
+      row.target_max,
+      row.invalidation_price,
+      row.open_15m_vol_threshold,
+      row.macro_bias || 'NEUTRAL',
+      row.catalyst_summary || null,
+    ]
+  );
+}
+
+export async function saveTapeAlert(row: {
+  emiten: string;
+  alert_type: string;
+  severity: string;
+  trigger_price?: number;
+  evidence: Record<string, unknown>;
+}): Promise<void> {
+  await query(
+    `INSERT INTO intraday_tape_alerts (emiten, alert_type, severity, trigger_price, evidence)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [
+      row.emiten.toUpperCase(),
+      row.alert_type,
+      row.severity,
+      row.trigger_price || null,
+      JSON.stringify(row.evidence),
+    ]
+  );
+}
+
+export async function saveExecutionAudit(row: {
+  journal_id?: number | null;
+  emiten: string;
+  trade_date: string;
+  planned_entry: number;
+  executed_entry: number;
+  slippage_ticks: number;
+  slippage_pct: number;
+  position_size_lots: number;
+  allocated_capital: number;
+  actual_exit_price?: number | null;
+  realized_pnl?: number | null;
+  exit_reason?: string | null;
+}) {
+  const result = await query(
+    `INSERT INTO execution_audits (
+      journal_id, emiten, trade_date, planned_entry, executed_entry,
+      slippage_ticks, slippage_pct, position_size_lots, allocated_capital,
+      actual_exit_price, realized_pnl, exit_reason
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    RETURNING *`,
+    [
+      row.journal_id || null,
+      row.emiten.toUpperCase(),
+      row.trade_date,
+      row.planned_entry,
+      row.executed_entry,
+      row.slippage_ticks,
+      row.slippage_pct,
+      row.position_size_lots,
+      row.allocated_capital,
+      row.actual_exit_price || null,
+      row.realized_pnl || null,
+      row.exit_reason || null,
+    ]
+  );
+  return first(result);
 }
