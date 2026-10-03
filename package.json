@@ -25,7 +25,8 @@
     "backfill:flow": "tsx scripts/backfill-universe-flow.ts",
     "seed:bi-rates": "tsx scripts/seed-bi-rates.ts",
     "walkforward:lifecycle": "tsx --tsconfig tsconfig.test.json scripts/run-lifecycle-walkforward.ts",
-    "walkforward:wyckoff": "tsx --tsconfig tsconfig.test.json scripts/run-wyckoff-walkforward.ts"
+    "walkforward:wyckoff": "tsx --tsconfig tsconfig.test.json scripts/run-wyckoff-walkforward.ts",
+    "walkforward:vp": "tsx --tsconfig tsconfig.test.json scripts/run-volume-profile-walkforward.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

@@ -26,11 +26,11 @@
 - Modify: `lib/db.ts`
 - Create: `lib/volume-profile-db.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Write migration SQL and DB persistence helpers**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Write migration SQL and DB persistence helpers**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -41,11 +41,11 @@
 - Create: `lib/volume-profile/calculator.ts`
 - Create: `lib/volume-profile/calculator.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement discrete volume-by-price accumulation algorithm**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement discrete volume-by-price accumulation algorithm**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -55,11 +55,11 @@
 - Modify: `lib/volume-profile/calculator.ts`
 - Modify: `lib/volume-profile/calculator.test.ts`
 
-- [ ] **Step 1: Write the failing test for POC and 70% Value Area enclosure**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement Auction Market Theory iterative Value Area expansion**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test for POC and 70% Value Area enclosure**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement Auction Market Theory iterative Value Area expansion**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -70,11 +70,11 @@
 - Create: `lib/volume-profile/index.ts`
 - Create: `lib/volume-profile/confluence.test.ts`
 
-- [ ] **Step 1: Write the failing test for HVN/LVN clustering and trade confluence**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement local moving average peak/valley detector and status mapper**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test for HVN/LVN clustering and trade confluence**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement local moving average peak/valley detector and status mapper**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -84,11 +84,11 @@
 - Create: `app/api/radar/volume-profile/route.ts`
 - Create: `app/api/radar/volume-profile/route.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement route handler with emiten, lookback window, and DB fallback**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement route handler with emiten, lookback window, and DB fallback**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -98,10 +98,10 @@
 - Create: `app/components/VolumeProfileCard.tsx`
 - Modify: `app/globals.css`
 
-- [ ] **Step 1: Author horizontal volume histogram component with POC, VAH, and VAL callouts**
-- [ ] **Step 2: Add semantic CSS design tokens in `app/globals.css` with dark/light theme support**
-- [ ] **Step 3: Verify component renders cleanly without undefined class tokens**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Author horizontal volume histogram component with POC, VAH, and VAL callouts**
+- [x] **Step 2: Add semantic CSS design tokens in `app/globals.css` with dark/light theme support**
+- [x] **Step 3: Verify component renders cleanly without undefined class tokens**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -111,10 +111,10 @@
 - Modify: `app/radar/page.tsx`
 - Modify: `app/components/BattlePlanCard.tsx`
 
-- [ ] **Step 1: Integrate VolumeProfileCard into Radar emiten inspection drawer**
-- [ ] **Step 2: Embed Volume Profile shelf badge and POC distance into 08:30 WIB Battle Plan**
-- [ ] **Step 3: Verify with typecheck, lint, and build**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Integrate VolumeProfileCard into Radar emiten inspection drawer**
+- [x] **Step 2: Embed Volume Profile shelf badge and POC distance into 08:30 WIB Battle Plan**
+- [x] **Step 3: Verify with typecheck, lint, and build**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -125,7 +125,7 @@
 - Create: `scripts/run-volume-profile-walkforward.test.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
-- [ ] **Step 2: Add `npm run walkforward:vp` script to `package.json`**
-- [ ] **Step 3: Run full verification suite (`typecheck`, `lint`, `test`, `build`)**
-- [ ] **Step 4: Commit and push**
+- [x] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
+- [x] **Step 2: Add `npm run walkforward:vp` script to `package.json`**
+- [x] **Step 3: Run full verification suite (`typecheck`, `lint`, `test`, `build`)**
+- [x] **Step 4: Commit and push**
