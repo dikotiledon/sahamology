@@ -52,6 +52,9 @@ export interface BattlePlanItem {
   cvd_delta_ratio?: number | null;
   cvd_divergence?: string | null;
   cvd_regime?: string | null;
+  rhi_score?: number | null;
+  syndicate_asymmetry_ratio?: number | null;
+  rhi_regime?: string | null;
 }
 
 export interface MacroOverlayState {
@@ -461,6 +464,41 @@ export function BattlePlanCard({ date }: { date: string }) {
                         title={`Cumulative Volume Delta: ${p.cvd_regime.replace(/_/g, ' ')}${p.cvd_delta_ratio != null ? ` | Delta: ${p.cvd_delta_ratio > 0 ? '+' : ''}${p.cvd_delta_ratio}%` : ''}${p.cvd_divergence ? ` | Divergensi: ${p.cvd_divergence.replace(/_/g, ' ')}` : ''}`}
                       >
                         📊 CVD: {p.cvd_regime.replace(/_/g, ' ')}{p.cvd_delta_ratio != null ? ` (${p.cvd_delta_ratio > 0 ? '+' : ''}${p.cvd_delta_ratio}%)` : ''}
+                      </span>
+                    )}
+                    {p.rhi_regime && p.rhi_regime !== 'BALANCED_HERD_FLOW' && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background:
+                            p.rhi_regime === 'INSTITUTIONAL_STEALTH_ACCUMULATION' || p.rhi_regime === 'SYNDICATE_DOMINANT_FLOW'
+                              ? 'rgba(16, 185, 129, 0.12)'
+                              : p.rhi_regime === 'RETAIL_HERD_FOMO_TRAP'
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : 'rgba(168, 85, 247, 0.12)',
+                          color:
+                            p.rhi_regime === 'INSTITUTIONAL_STEALTH_ACCUMULATION' || p.rhi_regime === 'SYNDICATE_DOMINANT_FLOW'
+                              ? '#34d399'
+                              : p.rhi_regime === 'RETAIL_HERD_FOMO_TRAP'
+                              ? '#f87171'
+                              : '#c084fc',
+                          border:
+                            p.rhi_regime === 'INSTITUTIONAL_STEALTH_ACCUMULATION' || p.rhi_regime === 'SYNDICATE_DOMINANT_FLOW'
+                              ? '1px solid rgba(16, 185, 129, 0.3)'
+                              : p.rhi_regime === 'RETAIL_HERD_FOMO_TRAP'
+                              ? '1px solid rgba(239, 68, 68, 0.3)'
+                              : '1px solid rgba(168, 85, 247, 0.3)',
+                        }}
+                        title={`Retail Herd Index: ${p.rhi_regime.replace(/_/g, ' ')}${p.rhi_score != null ? ` | Skor: ${p.rhi_score}/100` : ''}${p.syndicate_asymmetry_ratio != null ? ` | SAR: ${p.syndicate_asymmetry_ratio}x` : ''}`}
+                      >
+                        👥 RHI: {p.rhi_regime.replace(/_/g, ' ')}{p.rhi_score != null ? ` (${p.rhi_score})` : ''}
                       </span>
                     )}
                   </div>

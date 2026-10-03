@@ -3260,6 +3260,101 @@ export async function getLatestCvdUniverse(
   return result.rows as Array<Record<string, unknown>>;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 22: Retail Herd Index & Syndicate Asymmetry
+// ---------------------------------------------------------------------------
+
+export async function saveRhiSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  rhi_score: number;
+  syndicate_asymmetry_ratio: number;
+  retail_net_buy_value: number;
+  retail_participation_ratio: number;
+  top3_net_buy_value: number;
+  top3_concentration_ratio: number;
+  top_retail_buyer?: string | null;
+  top_syndicate_buyer?: string | null;
+  confluence_regime: string;
+  conviction_score?: number;
+  advisory?: string | null;
+}): Promise<void> {
+  const symbol = row.emiten.toUpperCase();
+  await query(
+    `INSERT INTO retail_herd_index_daily (
+      emiten, trade_date, rhi_score, syndicate_asymmetry_ratio,
+      retail_net_buy_value, retail_participation_ratio,
+      top3_net_buy_value, top3_concentration_ratio,
+      top_retail_buyer, top_syndicate_buyer,
+      confluence_regime, conviction_score, advisory
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      rhi_score = EXCLUDED.rhi_score,
+      syndicate_asymmetry_ratio = EXCLUDED.syndicate_asymmetry_ratio,
+      retail_net_buy_value = EXCLUDED.retail_net_buy_value,
+      retail_participation_ratio = EXCLUDED.retail_participation_ratio,
+      top3_net_buy_value = EXCLUDED.top3_net_buy_value,
+      top3_concentration_ratio = EXCLUDED.top3_concentration_ratio,
+      top_retail_buyer = EXCLUDED.top_retail_buyer,
+      top_syndicate_buyer = EXCLUDED.top_syndicate_buyer,
+      confluence_regime = EXCLUDED.confluence_regime,
+      conviction_score = EXCLUDED.conviction_score,
+      advisory = EXCLUDED.advisory,
+      created_at = NOW()`,
+    [
+      symbol,
+      row.trade_date,
+      row.rhi_score,
+      row.syndicate_asymmetry_ratio,
+      row.retail_net_buy_value,
+      row.retail_participation_ratio,
+      row.top3_net_buy_value,
+      row.top3_concentration_ratio,
+      row.top_retail_buyer ?? null,
+      row.top_syndicate_buyer ?? null,
+      row.confluence_regime,
+      row.conviction_score ?? 50,
+      row.advisory ?? null,
+    ]
+  );
+}
+
+export async function getLatestRhi(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM retail_herd_index_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM retail_herd_index_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestRhiUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM retail_herd_index_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM retail_herd_index_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+
 
 
 

@@ -16,14 +16,14 @@
 
 ## Changelog
 
+### Unreleased / v0.26.0 (draft) — Phase 22: Retail Herd Dispersion, Broker Concentration & Syndicate Asymmetry Engine
+Phase 22 introduces the **Retail Herd Dispersion, Broker Concentration & Syndicate Asymmetry Engine (Retail Herd Index / RHI)**, formalizing retail broker code classification (`YP`, `PD`, `XC`, `NI`, `CC`, `GR`, `XL`), Top-3 institutional syndicate net buy concentration, the Syndicate Asymmetry Ratio ($SAR$), and the Retail Herd Index (RHI: 0–100) to separate **Institutional Stealth Accumulation** from **Retail Herd FOMO Traps** for the Indonesia Stock Exchange.
+
 ### Unreleased / v0.25.0 (draft) — Phase 21: Cumulative Volume Delta (CVD) Proxy, Foreign Tape Aggression & Passive Absorption Divergence Engine
 Phase 21 introduces the **Cumulative Volume Delta (CVD) Proxy, Foreign Tape Aggression & Passive Absorption Divergence Engine**, formalizing single-bar volume delta proxies (Close Location Value + Open-to-Close displacement weighting), multi-session rolling Cumulative Volume Delta (CVD 20d & 50d), Foreign Tape Aggression Ratio (HAKA vs HAKI participation), and order flow divergence detection (Bullish Absorption vs Bearish Exhaustion) for the Indonesia Stock Exchange.
 
 ### Unreleased / v0.24.0 (draft) — Phase 20: Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine
 Phase 20 introduces the **Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine**, formalizing cash dividend yield quantification, historical Ex-Date drop ratios, Dividend Trap Risk Scoring (0–100), Pre-Cum Run-Up momentum window detection ($5 \le T_{\text{cum}} \le 20$), and Rights Issue (HMETD) dilution percentage, exercise price discount, and Standby Buyer (Pembeli Siaga) commitments for the Indonesia Stock Exchange.
-
-### Unreleased / v0.23.0 (draft) — Phase 19: Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine
-Phase 19 introduces the **Opening Range Breakout (ORB) & Intraday Initial Balance (IB) Engine**, formalizing 15-minute Initial Balance ($IB_{15}$: 09:00–09:15 WIB), 60-minute Initial Balance ($IB_{60}$: 09:00–10:00 WIB), Steidlmayer Auction Market Profile day type classifications (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`, `NEUTRAL_ROTATIONAL_DAY`), range extension targets ($R_1, R_2, S_1, S_2$), and direct synergy with the $V_{15m}$ pre-market battle plan volume rules for the Indonesia Stock Exchange.
 
 📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -31,6 +31,7 @@ Phase 19 introduces the **Opening Range Breakout (ORB) & Intraday Initial Balanc
 
 ## Fitur Utama
 
+- **Retail Herd Index & Syndicate Asymmetry (Phase 22)**: Pengukuran kepadatan order ritel (RHI 0–100) dan Rasio Asimetri Sindikat ($SAR$) memisahkan akumulasi senyap institusi (*Stealth Accumulation*) dari jebakan antrean ritel (*Retail Herd FOMO Trap*). Melacak net flow broker diskon ritel (YP, PD, XC) vs konsentrasi net buy Top-3 institusi di laci inspeksi `/radar` dan kartu battle plan `/desk`.
 - **Cumulative Volume Delta (CVD) & Tape Aggression (Phase 21)**: Kalkulasi delta volume single-bar (bobot Close Location Value + Open-to-Close), akumulasi rolling CVD multi-sesi (20d & 50d), Rasio Agresi Tape Asing (HAKA vs HAKI), serta deteksi divergensi order flow (*Bullish Absorption* saat pembeli pasif institusi menyerap tekanan jual & *Bearish Exhaustion*) di laci inspeksi `/radar` dan kartu battle plan `/desk`.
 - **Corporate Actions, Dividend Trap & Rights Dilution (Phase 20)**: Penilai risiko Dividend Trap (0–100) dan kalkulasi rasio penurunan harga historis Ex-Date vs DPS memproteksi modal dari jebakan dividen nominal tinggi. Mengidentifikasi jendela peluang *Pre-Cum Dividend Run-Up* ($5 \le T_{\text{cum}} \le 20$), menghitung Harga Teoritis Rights Issue ($P_{\text{teoritis}}$), rasio dilusi, diskon harga tebus, dan komitmen Pembeli Siaga (Standby Buyer) di laci inspeksi `/radar` serta kartu battle plan `/desk`.
 - **Opening Range Breakout (ORB) & Initial Balance (Phase 19)**: Identifikasi rentang pembukaan Initial Balance 15 menit ($IB_{15}$: 09:00–09:15 WIB) dan 60 menit ($IB_{60}$: 09:00–10:00 WIB), target ekstensi likuiditas ($R_1, R_2, S_1, S_2$), profil tipe hari bursa Steidlmayer (`TREND_DAY_EXPANSION`, `NORMAL_VARIATION_DAY`, `FAILED_BREAKOUT_TRAP`), dan konfirmasi volume $V_{15m}$ di laci inspeksi `/radar` serta kartu battle plan `/desk`.

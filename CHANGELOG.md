@@ -2,6 +2,28 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.26.0 (draft) — Phase 22: Retail Herd Dispersion, Broker Concentration & Syndicate Asymmetry Engine
+
+Phase 22 introduces the **Retail Herd Dispersion, Broker Concentration & Syndicate Asymmetry Engine (Retail Herd Index / RHI)**, formalizing retail broker code classification (`YP`, `PD`, `XC`, `NI`, `CC`, `GR`, `XL`), Top-3 institutional syndicate net buy concentration, the Syndicate Asymmetry Ratio ($SAR$), and the Retail Herd Index (RHI: 0–100) to separate **Institutional Stealth Accumulation** from **Retail Herd FOMO Traps** for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/042_retail_herd_index_daily.sql`)**:
+  - `retail_herd_index_daily`: Time-series table tracking `emiten`, `trade_date`, `rhi_score`, `syndicate_asymmetry_ratio`, `retail_net_buy_value`, `retail_participation_ratio`, `top3_net_buy_value`, `top3_concentration_ratio`, `top_retail_buyer`, `top_syndicate_buyer`, `confluence_regime`, `conviction_score`, and `advisory`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_rhi_date_regime`.
+- **Retail Herd Index & Syndicate Asymmetry Core Engine (`lib/rhi/`)**:
+  - `types.ts`: Defines `RhiAssessment`, `BrokerSummaryRecord`, `RetailParticipantMetrics`, `SyndicateConcentrationMetrics`, and `RhiRegime`.
+  - `broker-classifier.ts`: Classifies broker codes into retail discount brokers vs whale institutional brokers, extracting aggregate retail gross and net turnover.
+  - `rhi-calculator.ts`: Computes the Syndicate Asymmetry Ratio ($SAR = \text{Top3NetBuy} / \max(10\text{M}, |\text{RetailNetBuy}|)$) and normalizes the Retail Herd Index ($\text{RHI} = \text{clamp}(50 + 2.5 \times \text{RetailRatio} - 1.2 \times \text{Top3Ratio}, 0, 100)$).
+  - `confluence.ts`: Evaluates order flow participant interactions into 5 regimes (`INSTITUTIONAL_STEALTH_ACCUMULATION`, `SYNDICATE_DOMINANT_FLOW`, `BALANCED_HERD_FLOW`, `RETAIL_HERD_FOMO_TRAP`, `RETAIL_PANIC_CAPITULATION`) with conviction score (0–100).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveRhiSnapshot`, `getLatestRhi`, `getLatestRhiUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/rhi`: Exposes single emiten RHI assessment with broker summary fallback and universe-wide candidate screening.
+  - `RetailHerdCard.tsx`: Interactive component displaying RHI score gauge, Syndicate Asymmetry Ratio ($SAR$), retail vs syndicate net flow bars, and tactical Bandarmology advisories.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `👥 RHI: {regime}` badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:rhi` (`scripts/run-rhi-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.25.0 (draft) — Phase 21: Cumulative Volume Delta (CVD) Proxy, Foreign Tape Aggression & Passive Absorption Divergence Engine
 
 Phase 21 introduces the **Cumulative Volume Delta (CVD) Proxy, Foreign Tape Aggression & Passive Absorption Divergence Engine**, formalizing single-bar volume delta proxies (Close Location Value + Open-to-Close displacement weighting), multi-session rolling Cumulative Volume Delta (CVD 20d & 50d), Foreign Tape Aggression Ratio (HAKA vs HAKI participation), and order flow divergence detection (Bullish Absorption vs Bearish Exhaustion) for the Indonesia Stock Exchange.

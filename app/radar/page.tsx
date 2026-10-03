@@ -24,6 +24,8 @@ import { CorporateActionsCard } from '@/app/components/CorporateActionsCard';
 import type { CorporateActionAssessment } from '@/lib/corporate-action/types';
 import { CumulativeDeltaCard } from '@/app/components/CumulativeDeltaCard';
 import type { CvdAssessment } from '@/lib/cvd/types';
+import { RetailHerdCard } from '@/app/components/RetailHerdCard';
+import type { RhiAssessment } from '@/lib/rhi/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -81,6 +83,8 @@ export default function RadarPage() {
   const [corpLoading, setCorpLoading] = useState(false);
   const [cvdAssessment, setCvdAssessment] = useState<CvdAssessment | null>(null);
   const [cvdLoading, setCvdLoading] = useState(false);
+  const [rhiAssessment, setRhiAssessment] = useState<RhiAssessment | null>(null);
+  const [rhiLoading, setRhiLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -168,6 +172,7 @@ export default function RadarPage() {
       setOrbAssessment(null);
       setCorpAssessment(null);
       setCvdAssessment(null);
+      setRhiAssessment(null);
       return;
     }
     let active = true;
@@ -180,6 +185,7 @@ export default function RadarPage() {
     setOrbLoading(true);
     setCorpLoading(true);
     setCvdLoading(true);
+    setRhiLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -317,6 +323,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setCvdLoading(false);
+      });
+
+    // 10. Fetch Retail Herd Index & Syndicate Asymmetry
+    fetch(`/api/radar/rhi?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setRhiAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load RHI assessment:', err);
+      })
+      .finally(() => {
+        if (active) setRhiLoading(false);
       });
 
     return () => {
@@ -1128,6 +1149,16 @@ export default function RadarPage() {
             )}
             {!cvdLoading && cvdAssessment && (
               <CumulativeDeltaCard emiten={selectedEmiten.emiten} initialData={cvdAssessment} />
+            )}
+
+            {/* Retail Herd Index & Syndicate Asymmetry Section */}
+            {rhiLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Retail Herd Index &amp; Sindikat Asimetris...
+              </div>
+            )}
+            {!rhiLoading && rhiAssessment && (
+              <RetailHerdCard emiten={selectedEmiten.emiten} initialData={rhiAssessment} />
             )}
           </div>
         </div>

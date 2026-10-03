@@ -14,6 +14,7 @@ import {
   getLatestOrb,
   getLatestCorpAction,
   getLatestCvd,
+  getLatestRhi,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -275,6 +276,20 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if CVD table is unavailable
         }
 
+        let rhiScore: number | null = null;
+        let syndicateAsymmetryRatio: number | null = null;
+        let rhiRegime: string | null = null;
+        try {
+          const rhiRow = await getLatestRhi(emitenUpper);
+          if (rhiRow) {
+            rhiScore = rhiRow.rhi_score != null ? Number(rhiRow.rhi_score) : null;
+            syndicateAsymmetryRatio = rhiRow.syndicate_asymmetry_ratio != null ? Number(rhiRow.syndicate_asymmetry_ratio) : null;
+            rhiRegime = (rhiRow.confluence_regime as string) || null;
+          }
+        } catch {
+          // Graceful fallback if RHI table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -312,6 +327,9 @@ export async function GET(request: NextRequest) {
           cvd_delta_ratio: cvdDeltaRatio,
           cvd_divergence: cvdDivergence,
           cvd_regime: cvdRegime,
+          rhi_score: rhiScore,
+          syndicate_asymmetry_ratio: syndicateAsymmetryRatio,
+          rhi_regime: rhiRegime,
         };
       })
     );
