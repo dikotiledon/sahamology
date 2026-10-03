@@ -163,3 +163,22 @@ test('visibleDeskRows hides AVOID by default and keeps TAKE_PROFIT', () => {
   assert.equal(desk.morningCard.avoidCount, 1);
   assert.equal(desk.deskRows.find((row) => row.emiten === 'TAKE')?.unexplained, false);
 });
+
+test('assembleDesk filters deskRows to only emitens present in the resolved watchlist universe', () => {
+  const desk = assembleDesk({
+    asOf: '2026-01-05',
+    journals: [
+      record({ emiten: 'BBCA', stance: 'ENTER', rr: 2 }),
+      record({ emiten: 'BBRI', stance: 'ENTER', rr: 3 }),
+      record({ emiten: 'GOTO', stance: 'WAIT', rr: 1.2 }),
+    ],
+    // Only BBCA is in the configured watchlist; BBRI and GOTO were removed
+    watchlistItems: [{ symbol: 'BBCA' }],
+    fallbackEmitens: '',
+  });
+
+  assert.deepEqual(desk.deskRows.map((r) => r.emiten), ['BBCA']);
+  assert.equal(desk.deskRows.some((r) => r.emiten === 'BBRI'), false);
+  assert.equal(desk.deskRows.some((r) => r.emiten === 'GOTO'), false);
+  assert.equal(desk.morningCard.enterCount, 1);
+});

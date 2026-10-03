@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import InputForm from './InputForm';
 import CompactResultCard from './CompactResultCard';
 import BrokerSummaryCard from './BrokerSummaryCard';
@@ -10,9 +10,11 @@ import PriceGraph from './PriceGraph';
 import BrokerFlowCard from './BrokerFlowCard';
 import EmitenHistoryCard from './EmitenHistoryCard';
 import DecisionCard from './DecisionCard';
+import InsiderRadarCard from './InsiderRadarCard';
 
 import * as htmlToImage from 'html-to-image';
 import type { StockInput, StockAnalysisResult, KeyStatsData, AgentStoryResult } from '@/lib/types';
+import type { RadarAssessment } from '@/lib/radar/types';
 import { getDefaultDate } from '@/lib/utils';
 
 interface CalculatorProps {
@@ -69,6 +71,80 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
   const [copiedImage, setCopiedImage] = useState(false);
   const [keyStats, setKeyStats] = useState<KeyStatsData | null>(null);
 
+  // Insider Radar State (Phase 7 Integration)
+  const [radarData, setRadarData] = useState<RadarAssessment | null>(null);
+  const [radarLoading, setRadarLoading] = useState(false);
+  const [radarError, setRadarError] = useState<string | null>(null);
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [activeWatchlistId, setActiveWatchlistId] = useState<number | null>(null);
+
+  const checkWatchlistStatus = useCallback(async (emitenToCheck: string) => {
+    try {
+      const res = await fetch('/api/watchlist');
+      const json = await res.json();
+      if (json.success) {
+        const rawItems = json.data?.data?.result || json.data?.result || json.data || [];
+        const match = rawItems.some(
+          (item: any) => (item.symbol || item.company_code || '').toUpperCase() === emitenToCheck.toUpperCase()
+        );
+        setIsInWatchlist(match);
+        const wId = json.data?.data?.watchlist_id || json.data?.watchlist_id;
+        if (wId) setActiveWatchlistId(Number(wId));
+      }
+    } catch (err) {
+      console.warn('[Calculator] Failed to check watchlist status:', err);
+    }
+  }, []);
+
+  const handleToggleWatchlist = async () => {
+    const currentEmiten = result?.input?.emiten;
+    if (!currentEmiten) return;
+    const clean = currentEmiten.toUpperCase();
+
+    if (isInWatchlist) {
+      if (!confirm(`Hapus ${clean} dari watchlist?`)) return;
+      try {
+        const params = new URLSearchParams({ symbol: clean });
+        if (activeWatchlistId) params.set('watchlistId', String(activeWatchlistId));
+        const res = await fetch(`/api/watchlist?${params.toString()}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to delete');
+        setIsInWatchlist(false);
+        window.dispatchEvent(new CustomEvent('watchlist-updated', { detail: { action: 'delete', symbol: clean } }));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Gagal menghapus dari watchlist');
+      }
+    } else {
+      try {
+        const res = await fetch('/api/watchlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbol: clean, watchlistId: activeWatchlistId || undefined }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to add');
+        setIsInWatchlist(true);
+        window.dispatchEvent(
+          new CustomEvent('watchlist-updated', { detail: { action: 'add', symbol: clean, item: json.data } })
+        );
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Gagal menambahkan ke watchlist');
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleWatchlistUpdated = (e: any) => {
+      const sym = e.detail?.symbol;
+      if (result?.input?.emiten && sym && sym.toUpperCase() === result.input.emiten.toUpperCase()) {
+        if (e.detail?.action === 'add') setIsInWatchlist(true);
+        if (e.detail?.action === 'delete') setIsInWatchlist(false);
+      }
+    };
+    window.addEventListener('watchlist-updated', handleWatchlistUpdated);
+    return () => window.removeEventListener('watchlist-updated', handleWatchlistUpdated);
+  }, [result]);
+
   // Agent Story state
   const [agentStories, setAgentStories] = useState<AgentStoryResult[]>([]);
   const [storyStatus, setStoryStatus] = useState<'idle' | 'pending' | 'processing' | 'completed' | 'error'>('idle');
@@ -109,10 +185,15 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
     setAgentStories([]);
     setStoryStatus('idle');
     setKeyStats(null);
+    setRadarData(null);
+    setRadarLoading(true);
+    setRadarError(null);
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
+
+    void checkWatchlistStatus(data.emiten);
 
     try {
       const response = await fetch('/api/stock', {
@@ -183,6 +264,24 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
         }
       } catch (storyErr) {
         console.error('Failed to fetch existing agent story:', storyErr);
+      }
+
+      // Fetch Brosum Insider Trade Radar in parallel
+      try {
+        const radarRes = await fetch(
+          `/api/radar?emiten=${encodeURIComponent(data.emiten)}&date=${encodeURIComponent(data.toDate)}`
+        );
+        const radarJson = await radarRes.json();
+        if (radarJson.success && radarJson.data) {
+          setRadarData(radarJson.data);
+        } else {
+          setRadarError(radarJson.error || 'Data radar tidak tersedia untuk tanggal ini');
+        }
+      } catch (radarErr) {
+        console.warn('Failed to fetch radar for emiten:', radarErr);
+        setRadarError(radarErr instanceof Error ? radarErr.message : 'Gagal memuat radar');
+      } finally {
+        setRadarLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -500,6 +599,22 @@ export default function Calculator({ selectedStock }: CalculatorProps) {
                 keyStats={keyStats}
               />
             )}
+
+            {/* Insider Radar Card (Phase 7 Integration) */}
+            <div style={{
+              gridColumn: '1 / -1',
+              width: '100%'
+            }}>
+              <InsiderRadarCard
+                assessment={radarData}
+                loading={radarLoading}
+                error={radarError}
+                emiten={result.input.emiten}
+                asOf={result.input.toDate}
+                isInWatchlist={isInWatchlist}
+                onToggleWatchlist={handleToggleWatchlist}
+              />
+            </div>
 
             {/* Emiten History Card - Full Width */}
             <div style={{

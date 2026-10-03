@@ -41,6 +41,33 @@ export default function RadarPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEmiten, setSelectedEmiten] = useState<RadarAssessment | null>(null);
 
+  // Watchlist configuration states
+  const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
+  const [watchlistId, setWatchlistId] = useState<number | null>(null);
+  const [newWatchlistSymbol, setNewWatchlistSymbol] = useState('');
+  const [addingWatchlist, setAddingWatchlist] = useState(false);
+  const [watchlistMessage, setWatchlistMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const loadWatchlist = useCallback(async () => {
+    try {
+      const res = await fetch('/api/watchlist');
+      const json = await res.json();
+      if (json.success) {
+        const rawItems = json.data?.data?.result || json.data?.result || json.data || [];
+        const symbols = new Set<string>(
+          rawItems.map((item: any) => String(item.symbol || item.company_code || '').toUpperCase())
+        );
+        setWatchlistSymbols(symbols);
+        const wId = json.data?.data?.watchlist_id || json.data?.watchlist_id;
+        if (wId) {
+          setWatchlistId(Number(wId));
+        }
+      }
+    } catch (err) {
+      console.warn('[Radar] Could not load watchlist symbols:', err);
+    }
+  }, []);
+
   const loadRadar = useCallback(async (asOf: string) => {
     setLoading(true);
     setError(null);
@@ -63,7 +90,84 @@ export default function RadarPage() {
 
   useEffect(() => {
     void loadRadar(date);
-  }, [date, loadRadar]);
+    void loadWatchlist();
+  }, [date, loadRadar, loadWatchlist]);
+
+  // Listen to external watchlist changes
+  useEffect(() => {
+    const handleWatchlistUpdated = () => {
+      void loadWatchlist();
+      void loadRadar(date);
+    };
+    window.addEventListener('watchlist-updated', handleWatchlistUpdated);
+    return () => window.removeEventListener('watchlist-updated', handleWatchlistUpdated);
+  }, [date, loadRadar, loadWatchlist]);
+
+  const handleAddWatchlist = async (symbolToAdd: string) => {
+    const clean = symbolToAdd.trim().toUpperCase();
+    if (!/^[A-Z]{4}$/.test(clean)) {
+      setWatchlistMessage({ text: 'Kode emiten harus 4 huruf IDX', type: 'error' });
+      return;
+    }
+    setAddingWatchlist(true);
+    setWatchlistMessage(null);
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: clean,
+          watchlistId: watchlistId || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || 'Gagal menambahkan ke watchlist');
+      }
+      setWatchlistSymbols((prev) => new Set([...prev, clean]));
+      setWatchlistMessage({ text: `${clean} berhasil ditambahkan ke watchlist & radar`, type: 'success' });
+      setNewWatchlistSymbol('');
+      window.dispatchEvent(
+        new CustomEvent('watchlist-updated', { detail: { action: 'add', symbol: clean, item: json.data } })
+      );
+      void loadRadar(date);
+    } catch (err) {
+      setWatchlistMessage({ text: err instanceof Error ? err.message : 'Gagal menambahkan', type: 'error' });
+    } finally {
+      setAddingWatchlist(false);
+    }
+  };
+
+  const handleRemoveWatchlist = async (symbolToRemove: string) => {
+    const clean = symbolToRemove.trim().toUpperCase();
+    if (!confirm(`Hapus ${clean} dari watchlist dan radar?`)) return;
+    try {
+      const queryParams = new URLSearchParams({ symbol: clean });
+      if (watchlistId) queryParams.set('watchlistId', String(watchlistId));
+
+      const res = await fetch(`/api/watchlist?${queryParams.toString()}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || 'Gagal menghapus dari watchlist');
+      }
+      setWatchlistSymbols((prev) => {
+        const next = new Set(prev);
+        next.delete(clean);
+        return next;
+      });
+      setItems((prev) => prev.filter((i) => i.emiten !== clean));
+      if (selectedEmiten?.emiten === clean) {
+        setSelectedEmiten(null);
+      }
+      window.dispatchEvent(
+        new CustomEvent('watchlist-updated', { detail: { action: 'delete', symbol: clean } })
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Gagal menghapus dari watchlist');
+    }
+  };
 
   const strongAccumCount = items.filter((i) => i.score >= 65).length;
   const heavyDistCount = items.filter((i) => i.score <= 35).length;
@@ -80,25 +184,98 @@ export default function RadarPage() {
             Permukaan penemuan asimetri akumulasi EOD multi-periode (10d, 20d, 60d) & Pasar Nego.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-            Sesi Tanggal:
-          </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            style={{
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-primary)',
-              borderRadius: '8px',
-              padding: '0.4rem 0.6rem',
-              fontSize: '0.85rem',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flexShrink: 0 }}>
+          {/* Quick Add Emiten to Watchlist & Radar */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleAddWatchlist(newWatchlistSymbol);
             }}
-          />
+            style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}
+          >
+            <input
+              type="text"
+              placeholder="+ Emiten (e.g. BBCA)..."
+              value={newWatchlistSymbol}
+              maxLength={4}
+              onChange={(e) => setNewWatchlistSymbol(e.target.value.toUpperCase())}
+              disabled={addingWatchlist}
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                borderRadius: '8px',
+                padding: '0.4rem 0.6rem',
+                fontSize: '0.82rem',
+                width: '150px',
+                textTransform: 'uppercase',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={addingWatchlist || newWatchlistSymbol.trim().length !== 4}
+              style={{
+                background: 'rgba(56, 239, 125, 0.15)',
+                border: '1px solid #38ef7d',
+                color: '#38ef7d',
+                borderRadius: '8px',
+                padding: '0.4rem 0.65rem',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: addingWatchlist || newWatchlistSymbol.trim().length !== 4 ? 'not-allowed' : 'pointer',
+                opacity: addingWatchlist || newWatchlistSymbol.trim().length !== 4 ? 0.5 : 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {addingWatchlist ? '...' : '+ Watchlist'}
+            </button>
+          </form>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              Sesi Tanggal:
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                borderRadius: '8px',
+                padding: '0.4rem 0.6rem',
+                fontSize: '0.85rem',
+              }}
+            />
+          </div>
         </div>
       </div>
+
+      {watchlistMessage && (
+        <div
+          style={{
+            padding: '0.5rem 0.8rem',
+            marginBottom: '1rem',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: watchlistMessage.type === 'success' ? 'rgba(56, 239, 125, 0.1)' : 'rgba(245, 87, 108, 0.1)',
+            border: `1px solid ${watchlistMessage.type === 'success' ? '#38ef7d' : 'var(--accent-warning)'}`,
+            color: watchlistMessage.type === 'success' ? '#38ef7d' : 'var(--accent-warning)',
+          }}
+        >
+          <span>{watchlistMessage.text}</span>
+          <button
+            onClick={() => setWatchlistMessage(null)}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 4px' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Safety Boundary Banner */}
       <div className="glass-card radar-banner">
@@ -373,21 +550,58 @@ export default function RadarPage() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        onClick={() => setSelectedEmiten(row)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.08)',
-                          border: '1px solid var(--border-color)',
-                          color: 'var(--text-primary)',
-                          borderRadius: '6px',
-                          padding: '0.2rem 0.45rem',
-                          cursor: 'pointer',
-                          fontSize: '0.72rem',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Inspeksi
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => setSelectedEmiten(row)}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid var(--border-color)',
+                            color: 'var(--text-primary)',
+                            borderRadius: '6px',
+                            padding: '0.2rem 0.45rem',
+                            cursor: 'pointer',
+                            fontSize: '0.72rem',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Inspeksi
+                        </button>
+                        {watchlistSymbols.has(row.emiten) ? (
+                          <button
+                            onClick={() => void handleRemoveWatchlist(row.emiten)}
+                            title={`Hapus ${row.emiten} dari Watchlist & Radar`}
+                            style={{
+                              background: 'rgba(245, 87, 108, 0.1)',
+                              border: '1px solid rgba(245, 87, 108, 0.25)',
+                              color: 'var(--accent-warning)',
+                              borderRadius: '6px',
+                              padding: '0.2rem 0.45rem',
+                              cursor: 'pointer',
+                              fontSize: '0.72rem',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Hapus
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => void handleAddWatchlist(row.emiten)}
+                            title={`Tambah ${row.emiten} ke Watchlist`}
+                            style={{
+                              background: 'rgba(56, 239, 125, 0.1)',
+                              border: '1px solid rgba(56, 239, 125, 0.25)',
+                              color: '#38ef7d',
+                              borderRadius: '6px',
+                              padding: '0.2rem 0.45rem',
+                              cursor: 'pointer',
+                              fontSize: '0.72rem',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            + WL
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -441,19 +655,54 @@ export default function RadarPage() {
                   As of {selectedEmiten.asOf} &bull; Score: {selectedEmiten.score}/100 ({selectedEmiten.verdict})
                 </span>
               </div>
-              <button
-                onClick={() => setSelectedEmiten(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  fontSize: '1.25rem',
-                  cursor: 'pointer',
-                  padding: '0.2rem 0.5rem',
-                }}
-              >
-                ✕
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {watchlistSymbols.has(selectedEmiten.emiten) ? (
+                  <button
+                    onClick={() => void handleRemoveWatchlist(selectedEmiten.emiten)}
+                    style={{
+                      background: 'rgba(245, 87, 108, 0.12)',
+                      border: '1px solid rgba(245, 87, 108, 0.3)',
+                      color: 'var(--accent-warning)',
+                      borderRadius: '6px',
+                      padding: '0.25rem 0.6rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🗑️ Hapus Watchlist
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void handleAddWatchlist(selectedEmiten.emiten)}
+                    style={{
+                      background: 'rgba(56, 239, 125, 0.15)',
+                      border: '1px solid #38ef7d',
+                      color: '#38ef7d',
+                      borderRadius: '6px',
+                      padding: '0.25rem 0.6rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    + Tambah Watchlist
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedEmiten(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    fontSize: '1.25rem',
+                    cursor: 'pointer',
+                    padding: '0.2rem 0.5rem',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Display-Only Relative Strength vs IHSG Section */}

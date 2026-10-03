@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import type { WatchlistItem, WatchlistGroup } from '@/lib/types';
-import { CheckCircle2, XCircle, MinusCircle, Search, Filter, X, RefreshCw } from 'lucide-react';
+import { CheckCircle2, XCircle, MinusCircle, Search, Filter, X, RefreshCw, Plus } from 'lucide-react';
 
 interface WatchlistSidebarProps {
   onSelect?: (symbol: string) => void;
@@ -23,6 +23,12 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
   const [filterSector, setFilterSector] = useState('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'OK' | 'NG' | 'Neutral'>('all');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Add Emiten States
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newSymbol, setNewSymbol] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   // Fetch groups and watchlist items
   useEffect(() => {
@@ -178,7 +184,71 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
     return () => window.removeEventListener('emiten-flagged' as any, handleFlagUpdate);
   }, []);
 
-  const handleDelete = async (e: React.MouseEvent, companyId: number, symbol: string) => {
+  // Handle external watchlist updates (from Radar, Calculator, etc.)
+  useEffect(() => {
+    const handleWatchlistUpdated = (e: any) => {
+      const detail = e.detail;
+      if (detail?.action === 'add' && detail?.item) {
+        setWatchlist(prev => {
+          const sym = (detail.item.symbol || detail.item.company_code).toUpperCase();
+          if (prev.some(it => (it.symbol || it.company_code).toUpperCase() === sym)) {
+            return prev;
+          }
+          return [detail.item, ...prev];
+        });
+      } else if (detail?.action === 'delete' && detail?.symbol) {
+        setWatchlist(prev => prev.filter(it => (it.symbol || it.company_code).toUpperCase() !== detail.symbol.toUpperCase()));
+      } else {
+        setRefreshSeed(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('watchlist-updated' as any, handleWatchlistUpdated);
+    return () => window.removeEventListener('watchlist-updated' as any, handleWatchlistUpdated);
+  }, []);
+
+  const handleAddEmiten = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newSymbol.trim().toUpperCase();
+    if (!clean) return;
+    if (!/^[A-Z]{4}$/.test(clean)) {
+      setAddError('Kode emiten harus 4 huruf IDX');
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          watchlistId: selectedGroupId,
+          symbol: clean,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || 'Gagal menambahkan emiten');
+      }
+      if (json.data) {
+        setWatchlist(prev => {
+          if (prev.some(item => (item.symbol || item.company_code).toUpperCase() === clean)) {
+            return prev;
+          }
+          return [json.data, ...prev];
+        });
+      }
+      setNewSymbol('');
+      setShowAddForm(false);
+      window.dispatchEvent(new CustomEvent('watchlist-updated', { detail: { action: 'add', symbol: clean, item: json.data } }));
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Gagal menambahkan emiten');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, companyId: number | undefined, symbol: string) => {
     e.stopPropagation(); // Prevent onSelect from firing
     
     if (!selectedGroupId) return;
@@ -187,9 +257,17 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
 
     try {
       // Optimistic update
-      setWatchlist(prev => prev.filter(item => item.id !== companyId));
+      setWatchlist(prev => prev.filter(item => (item.symbol || item.company_code).toUpperCase() !== symbol.toUpperCase()));
       
-      const res = await fetch(`/api/watchlist?watchlistId=${selectedGroupId}&companyId=${companyId}`, {
+      const queryParams = new URLSearchParams({
+        watchlistId: String(selectedGroupId),
+        symbol,
+      });
+      if (companyId) {
+        queryParams.set('companyId', String(companyId));
+      }
+
+      const res = await fetch(`/api/watchlist?${queryParams.toString()}`, {
         method: 'DELETE'
       });
       
@@ -197,6 +275,7 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
       if (!json.success) {
         throw new Error(json.error || 'Failed to delete item');
       }
+      window.dispatchEvent(new CustomEvent('watchlist-updated', { detail: { action: 'delete', symbol } }));
     } catch (err) {
       console.error('Error deleting item:', err);
       // Revert optimistic update on error
@@ -326,6 +405,23 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
             >
               <Filter size={14} />
             </button>
+            <button 
+              onClick={() => setShowAddForm(!showAddForm)}
+              style={{
+                background: showAddForm ? 'rgba(56, 239, 125, 0.2)' : 'transparent',
+                border: 'none',
+                color: showAddForm ? '#38ef7d' : 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.2s'
+              }}
+              title="Tambah Emiten ke Watchlist"
+            >
+              <Plus size={14} />
+            </button>
               <span style={{
                 fontSize: '0.7rem',
                 color: 'var(--text-muted)',
@@ -348,6 +444,106 @@ export default function WatchlistSidebar({ onSelect }: WatchlistSidebarProps) {
             opacity: 0.7
           }}>
             Synced {formatSyncedAt(syncedAt)}
+          </div>
+        )}
+
+        {/* Add Emiten Form */}
+        {showAddForm && (
+          <form
+            onSubmit={handleAddEmiten}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4rem',
+              marginBottom: '0.6rem',
+              padding: '0.5rem',
+              background: 'var(--bg-card)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Kode emiten (misal: BBCA)..."
+              value={newSymbol}
+              maxLength={4}
+              autoFocus
+              onChange={(e) => {
+                setNewSymbol(e.target.value.toUpperCase());
+                if (addError) setAddError(null);
+              }}
+              disabled={adding}
+              style={{
+                width: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+                padding: '0.4rem 0.5rem',
+                fontSize: '0.8rem',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                textTransform: 'uppercase',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                type="submit"
+                disabled={adding || newSymbol.trim().length !== 4}
+                style={{
+                  flex: 1,
+                  background: 'var(--accent-primary)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '0.4rem 0.6rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: adding || newSymbol.trim().length !== 4 ? 'not-allowed' : 'pointer',
+                  opacity: adding || newSymbol.trim().length !== 4 ? 0.6 : 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {adding ? 'Menambahkan...' : 'Tambah'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setNewSymbol('');
+                  setAddError(null);
+                }}
+                disabled={adding}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-secondary)',
+                  padding: '0.4rem 0.6rem',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Batal
+              </button>
+            </div>
+          </form>
+        )}
+        {addError && (
+          <div
+            style={{
+              color: 'var(--accent-warning)',
+              fontSize: '0.72rem',
+              marginBottom: '0.5rem',
+              padding: '0.35rem 0.5rem',
+              background: 'rgba(245, 87, 108, 0.08)',
+              borderRadius: '6px',
+              border: '1px solid rgba(245, 87, 108, 0.2)',
+            }}
+          >
+            ⚠️ {addError}
           </div>
         )}
 

@@ -173,10 +173,16 @@ export function assembleDesk(input: AssembleInput): AssembleResult {
     resolved.skipped.filter((item) => item.reason === 'non-idx').map((item) => item.symbol),
   );
 
+  const allowedEmitens = new Set(resolved.emitens);
   const deskRows = rankDeskRows(
     input.journals
       .map(toDeskRow)
-      .filter((row): row is DeskRow => row !== null && !skippedCodes.has(row.emiten)),
+      .filter(
+        (row): row is DeskRow =>
+          row !== null &&
+          !skippedCodes.has(row.emiten) &&
+          (allowedEmitens.size === 0 || allowedEmitens.has(row.emiten)),
+      ),
   );
 
   const enter = deskRows.filter((row) => row.stance === 'ENTER');
