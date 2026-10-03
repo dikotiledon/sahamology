@@ -184,14 +184,14 @@ export default function RadarPage() {
             Permukaan penemuan asimetri akumulasi EOD multi-periode (10d, 20d, 60d) & Pasar Nego.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', maxWidth: '100%' }}>
           {/* Quick Add Emiten to Watchlist & Radar */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void handleAddWatchlist(newWatchlistSymbol);
             }}
-            style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}
+            style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', maxWidth: '100%' }}
           >
             <input
               type="text"
@@ -207,7 +207,8 @@ export default function RadarPage() {
                 borderRadius: '8px',
                 padding: '0.4rem 0.6rem',
                 fontSize: '0.82rem',
-                width: '150px',
+                width: '135px',
+                maxWidth: '100%',
                 textTransform: 'uppercase',
               }}
             />
@@ -231,7 +232,7 @@ export default function RadarPage() {
             </button>
           </form>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', maxWidth: '100%' }}>
             <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
               Sesi Tanggal:
             </label>
