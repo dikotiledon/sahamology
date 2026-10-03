@@ -26,11 +26,11 @@
 - Modify: `lib/db.ts`
 - Create: `lib/wyckoff-db.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Write migration SQL and DB persistence helpers**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Write migration SQL and DB persistence helpers**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -41,11 +41,11 @@
 - Create: `lib/wyckoff/vsa.ts`
 - Create: `lib/wyckoff/vsa.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement VSA calculations (spread, relative volume, close position)**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement VSA calculations (spread, relative volume, close position)**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -55,11 +55,11 @@
 - Create: `lib/wyckoff/range-finder.ts`
 - Create: `lib/wyckoff/range-finder.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement Trading Range pivot detector**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement Trading Range pivot detector**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -69,11 +69,11 @@
 - Create: `lib/wyckoff/event-detector.ts`
 - Create: `lib/wyckoff/event-detector.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement event detection heuristics with Brosum AQS confluence**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement event detection heuristics with Brosum AQS confluence**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -84,11 +84,11 @@
 - Create: `lib/wyckoff/index.ts`
 - Create: `lib/wyckoff/classifier.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement phase transitions (A through E) and readiness scoring**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement phase transitions (A through E) and readiness scoring**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -98,11 +98,11 @@
 - Create: `app/api/radar/wyckoff/route.ts`
 - Create: `app/api/radar/wyckoff/route.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement API handler with date/emiten filtering and fail-closed holiday response**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement API handler with date/emiten filtering and fail-closed holiday response**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -115,10 +115,10 @@
 - Modify: `app/components/BattlePlanCard.tsx`
 - Modify: `app/globals.css`
 
-- [ ] **Step 1: Author UI components with semantic CSS design tokens**
-- [ ] **Step 2: Integrate Wyckoff phase pills and inspection schematic into Radar table and Battle Plan**
-- [ ] **Step 3: Verify with typecheck, lint, and build**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Author UI components with semantic CSS design tokens**
+- [x] **Step 2: Integrate Wyckoff phase pills and inspection schematic into Radar table and Battle Plan**
+- [x] **Step 3: Verify with typecheck, lint, and build**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -128,7 +128,7 @@
 - Create: `scripts/run-wyckoff-walkforward.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
-- [ ] **Step 2: Add `npm run walkforward:wyckoff` script to `package.json`**
-- [ ] **Step 3: Run full verification suite (`typecheck`, `lint`, `test`, `build`)**
-- [ ] **Step 4: Commit and push**
+- [x] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
+- [x] **Step 2: Add `npm run walkforward:wyckoff` script to `package.json`**
+- [x] **Step 3: Run full verification suite (`typecheck`, `lint`, `test`, `build`)**
+- [x] **Step 4: Commit and push**
