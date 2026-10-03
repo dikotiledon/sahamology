@@ -2173,3 +2173,127 @@ export async function getExecutionTranches(auditId: number): Promise<Array<Recor
   );
   return result.rows as Array<Record<string, unknown>>;
 }
+
+export async function saveWyckoffTradingRange(row: {
+  emiten: string;
+  start_date: string;
+  end_date?: string | null;
+  ice_support_price: number;
+  creek_resistance_price: number;
+  range_width_pct: number;
+  range_status?: string;
+}): Promise<void> {
+  await query(
+    `INSERT INTO wyckoff_trading_ranges (
+       emiten, start_date, end_date, ice_support_price, creek_resistance_price, range_width_pct, range_status
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (emiten, start_date) DO UPDATE SET
+       end_date = EXCLUDED.end_date,
+       ice_support_price = EXCLUDED.ice_support_price,
+       creek_resistance_price = EXCLUDED.creek_resistance_price,
+       range_width_pct = EXCLUDED.range_width_pct,
+       range_status = EXCLUDED.range_status,
+       updated_at = NOW()`,
+    [
+      row.emiten,
+      row.start_date,
+      row.end_date || null,
+      row.ice_support_price,
+      row.creek_resistance_price,
+      row.range_width_pct,
+      row.range_status || 'ACTIVE',
+    ]
+  );
+}
+
+export async function saveWyckoffEvent(row: {
+  emiten: string;
+  trade_date: string;
+  event_type: string;
+  price: number;
+  relative_volume: number;
+  relative_spread: number;
+  close_position: number;
+  aqs_score?: number | null;
+  event_notes?: string | null;
+}): Promise<void> {
+  await query(
+    `INSERT INTO wyckoff_structural_events (
+       emiten, trade_date, event_type, price, relative_volume, relative_spread, close_position, aqs_score, event_notes
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (emiten, trade_date, event_type) DO UPDATE SET
+       price = EXCLUDED.price,
+       relative_volume = EXCLUDED.relative_volume,
+       relative_spread = EXCLUDED.relative_spread,
+       close_position = EXCLUDED.close_position,
+       aqs_score = EXCLUDED.aqs_score,
+       event_notes = EXCLUDED.event_notes`,
+    [
+      row.emiten,
+      row.trade_date,
+      row.event_type,
+      row.price,
+      row.relative_volume,
+      row.relative_spread,
+      row.close_position,
+      row.aqs_score ?? null,
+      row.event_notes ?? null,
+    ]
+  );
+}
+
+export async function saveWyckoffAssessment(row: {
+  emiten: string;
+  trade_date: string;
+  current_phase: string;
+  confidence_score: number;
+  ice_level?: number | null;
+  creek_level?: number | null;
+  last_event?: string | null;
+  spring_low?: number | null;
+  markup_readiness_score?: number | null;
+}): Promise<void> {
+  await query(
+    `INSERT INTO wyckoff_daily_assessments (
+       emiten, trade_date, current_phase, confidence_score, ice_level, creek_level, last_event, spring_low, markup_readiness_score
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (emiten, trade_date) DO UPDATE SET
+       current_phase = EXCLUDED.current_phase,
+       confidence_score = EXCLUDED.confidence_score,
+       ice_level = EXCLUDED.ice_level,
+       creek_level = EXCLUDED.creek_level,
+       last_event = EXCLUDED.last_event,
+       spring_low = EXCLUDED.spring_low,
+       markup_readiness_score = EXCLUDED.markup_readiness_score`,
+    [
+      row.emiten,
+      row.trade_date,
+      row.current_phase,
+      row.confidence_score,
+      row.ice_level ?? null,
+      row.creek_level ?? null,
+      row.last_event ?? null,
+      row.spring_low ?? null,
+      row.markup_readiness_score ?? null,
+    ]
+  );
+}
+
+export async function getLatestWyckoffAssessment(emiten: string): Promise<Record<string, unknown> | null> {
+  const result = await query(
+    `SELECT * FROM wyckoff_daily_assessments WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [emiten]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getWyckoffEventsForEmiten(
+  emiten: string,
+  limit = 10
+): Promise<Array<Record<string, unknown>>> {
+  const result = await query(
+    `SELECT * FROM wyckoff_structural_events WHERE emiten = $1 ORDER BY trade_date DESC LIMIT $2`,
+    [emiten, limit]
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
