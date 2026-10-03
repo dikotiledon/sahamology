@@ -159,6 +159,24 @@ Panduan operasional lengkap (arsitektur, topologi jaringan, perintah verifikasi,
 | `LLM_API_KEY` | ❌ | ❌ | Bearer key untuk endpoint OpenAI-compatible. Wajib saat `LLM_PROVIDER=openai` |
 | `LLM_MODEL` | ❌ | ❌ | Nama model di endpoint OpenAI-compatible (contoh: `power`, `agmanager/gemini-3.8-flash-high`). Wajib saat `LLM_PROVIDER=openai`; tidak ada default |
 | `STOCKBIT_JWT_TOKEN` | ❌ | ⚠️ | Fallback token manual |
+| `PORT` | ❌ | ✅ | Port bind server standalone (default `3000`) |
+| `INTERNAL_API_URL` | ❌ | ✅ | URL loopback untuk self-call scheduler/worker. **Wajib sama dengan `PORT`** — `lib/config.ts` memakai nilai ini apa adanya, jadi kalau `.env` meng-pin `http://127.0.0.1:3000` sementara server jalan di port lain, instrumentation/worker timeout `ETIMEDOUT` |
+
+### Menjalankan di port lain
+
+```bash
+PORT=3411 INTERNAL_API_URL=http://127.0.0.1:3411 npm run start
+```
+
+Kalau muncul `EADDRINUSE` padahal `ss -tlnp` bilang port itu kosong, di WSL itu biasanya proses **di sisi Windows** yang memegang port tersebut (WSL mirrored networking tidak menampilkannya). Cek dari PowerShell:
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen |
+  Select-Object -ExpandProperty OwningProcess |
+  ForEach-Object { (Get-Process -Id $_).ProcessName }
+```
+
+Umum di mesin ini: `com.docker.backend` (Docker Desktop) memegang port 3000.
 
 ---
 
