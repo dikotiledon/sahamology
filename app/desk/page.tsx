@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import MorningCard from '../components/MorningCard';
 import RankedDeskTable from '../components/RankedDeskTable';
 import { BattlePlanCard } from '../components/BattlePlanCard';
+import { CognitiveJournalCard } from '../components/CognitiveJournalCard';
 import type { DeskApiPayload } from '@/lib/desk/assemble';
 import { sessionDateJakarta } from '@/lib/market-calendar';
 
@@ -89,6 +90,17 @@ export default function DeskPage() {
             </label>
           )}
           <RankedDeskTable rows={payload.deskRows} showAvoid={showAvoid} />
+          {(() => {
+            const topCandidate = payload.deskRows.find((r) => r.stance === 'ENTER') || payload.deskRows[0];
+            return (
+              <CognitiveJournalCard
+                emiten={topCandidate?.emiten || 'BBRI'}
+                defaultPlannedEntry={topCandidate?.entry || 5000}
+                defaultPlannedStop={topCandidate?.invalidation || 4850}
+                defaultTargetR1={topCandidate?.r1 || 5300}
+              />
+            );
+          })()}
         </>
       )}
     </div>
