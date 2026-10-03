@@ -2346,3 +2346,76 @@ export async function getLatestVolumeProfileSnapshot(
   );
   return (result.rows[0] as Record<string, unknown>) || null;
 }
+
+export async function saveCognitiveReview(row: {
+  emiten: string;
+  trade_date: string;
+  planned_entry: number;
+  realized_entry: number;
+  planned_stop: number;
+  realized_exit?: number | null;
+  planned_lots: number;
+  realized_lots: number;
+  discipline_score: number;
+  grade: string;
+  deviations?: Array<Record<string, unknown>>;
+  psychological_state?: string;
+  trader_reflection?: string;
+}): Promise<void> {
+  await query(
+    `INSERT INTO cognitive_trade_reviews (
+       emiten, trade_date, planned_entry, realized_entry, planned_stop, realized_exit,
+       planned_lots, realized_lots, discipline_score, grade, deviations, psychological_state, trader_reflection
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [
+      row.emiten,
+      row.trade_date,
+      row.planned_entry,
+      row.realized_entry,
+      row.planned_stop,
+      row.realized_exit ?? null,
+      row.planned_lots,
+      row.realized_lots,
+      row.discipline_score,
+      row.grade,
+      JSON.stringify(row.deviations || []),
+      row.psychological_state || 'CALM',
+      row.trader_reflection ?? null,
+    ]
+  );
+}
+
+export async function getCognitiveReviewsForEmiten(
+  emiten: string,
+  limit = 10
+): Promise<Array<Record<string, unknown>>> {
+  const result = await query(
+    `SELECT * FROM cognitive_trade_reviews WHERE emiten = $1 ORDER BY trade_date DESC, id DESC LIMIT $2`,
+    [emiten, limit]
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+export async function getTraderPsychologicalCapital(): Promise<Record<string, unknown> | null> {
+  const result = await query(
+    `SELECT * FROM trader_psychological_capital WHERE id = 1`
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function saveTraderPsychologicalCapital(row: {
+  capital_score: number;
+  consecutive_violations: number;
+  tilt_state: string;
+}): Promise<void> {
+  await query(
+    `INSERT INTO trader_psychological_capital (id, capital_score, consecutive_violations, tilt_state, updated_at)
+     VALUES (1, $1, $2, $3, NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       capital_score = EXCLUDED.capital_score,
+       consecutive_violations = EXCLUDED.consecutive_violations,
+       tilt_state = EXCLUDED.tilt_state,
+       updated_at = NOW()`,
+    [row.capital_score, row.consecutive_violations, row.tilt_state]
+  );
+}
