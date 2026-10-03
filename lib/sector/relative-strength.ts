@@ -173,7 +173,7 @@ export function evaluateSectorConfluence(
 
   const flowBillions = Math.abs(netFlow5d / 1_000_000_000).toFixed(1);
 
-  let summary = '';
+  let summary: string;
   switch (quadrant) {
     case 'LEADING':
       summary = `Sektor ${sector} berada di kuadran LEADING dengan akumulasi institusi agresif (+Rp ${flowBillions}B 5d) dan outperformance relatif vs IHSG (RS: ${rsRatio.toFixed(1)}). Tailwind sektor kuat.`;
