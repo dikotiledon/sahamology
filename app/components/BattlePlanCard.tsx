@@ -25,6 +25,8 @@ export interface BattlePlanItem {
   poc_price?: number | null;
   vah_price?: number | null;
   val_price?: number | null;
+  sector?: string | null;
+  sector_quadrant?: string | null;
 }
 
 export interface MacroOverlayState {
@@ -155,6 +157,25 @@ export function BattlePlanCard({ date }: { date: string }) {
                     {p.poc_price && (
                       <span className="vp-badge vp-badge--poc" title="Volume Profile Point of Control">
                         POC: Rp {Number(p.poc_price).toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.sector && (
+                      <span
+                        className={`sec-badge ${
+                          p.sector_quadrant === 'LEADING'
+                            ? 'sec-badge--leading'
+                            : p.sector_quadrant === 'IMPROVING'
+                              ? 'sec-badge--improving'
+                              : p.sector_quadrant === 'WEAKENING'
+                                ? 'sec-badge--weakening'
+                                : p.sector_quadrant === 'LAGGING'
+                                  ? 'sec-badge--lagging'
+                                  : 'sec-badge--leading'
+                        }`}
+                        title={`Sektor: ${p.sector} (${p.sector_quadrant || 'ROTATION'})`}
+                      >
+                        {p.sector_quadrant === 'LEADING' ? '🌊 ' : p.sector_quadrant === 'LAGGING' ? '⚠️ ' : ''}
+                        {p.sector}
                       </span>
                     )}
                   </div>

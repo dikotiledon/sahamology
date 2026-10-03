@@ -5,6 +5,8 @@ import {
   getLatestBiRateDecision,
   getLatestWyckoffAssessment,
   getLatestVolumeProfileSnapshot,
+  getSectorRotationForSector,
+  query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
 import {
@@ -89,6 +91,64 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if volume profile table/row is unavailable
         }
 
+        const emitenUpper = String(item.emiten).toUpperCase();
+        const staticSectors: Record<string, string> = {
+          BBRI: 'Financials',
+          BBCA: 'Financials',
+          BMRI: 'Financials',
+          BBNI: 'Financials',
+          TLKM: 'Infrastructure',
+          ISAT: 'Infrastructure',
+          TOWR: 'Infrastructure',
+          ADRO: 'Energy',
+          PTBA: 'Energy',
+          PGAS: 'Energy',
+          MEDC: 'Energy',
+          ASII: 'Industrials',
+          UNTR: 'Industrials',
+          ICBP: 'Consumer Non-Cyclical',
+          INDF: 'Consumer Non-Cyclical',
+          MYOR: 'Consumer Non-Cyclical',
+          AMRT: 'Consumer Non-Cyclical',
+          MDKA: 'Basic Materials',
+          ANTM: 'Basic Materials',
+          INCO: 'Basic Materials',
+          KLBF: 'Healthcare',
+          MIKA: 'Healthcare',
+          BSDE: 'Properties',
+          CTRA: 'Properties',
+          SMRA: 'Properties',
+          GOTO: 'Technology',
+          EMTK: 'Technology',
+        };
+
+        let sector: string | null = staticSectors[emitenUpper] || null;
+        if (!sector) {
+          try {
+            const cacheRes = await query(
+              `SELECT sector FROM emiten_cache WHERE symbol = $1 LIMIT 1`,
+              [emitenUpper]
+            );
+            if (cacheRes?.rows?.[0]?.sector) {
+              sector = String(cacheRes.rows[0].sector);
+            }
+          } catch {
+            // Graceful fallback if cache table is unavailable
+          }
+        }
+
+        let sectorQuadrant: string | null = null;
+        if (sector) {
+          try {
+            const secRow = await getSectorRotationForSector(sector);
+            if (secRow?.quadrant) {
+              sectorQuadrant = String(secRow.quadrant);
+            }
+          } catch {
+            // Graceful fallback if sector table is unavailable
+          }
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -99,6 +159,8 @@ export async function GET(request: NextRequest) {
           poc_price: pocPrice,
           vah_price: vahPrice,
           val_price: valPrice,
+          sector,
+          sector_quadrant: sectorQuadrant,
         };
       })
     );

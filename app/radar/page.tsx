@@ -7,6 +7,8 @@ import { WyckoffSchematicCard } from '@/app/components/WyckoffSchematicCard';
 import type { WyckoffAssessment } from '@/lib/wyckoff/types';
 import { VolumeProfileCard } from '@/app/components/VolumeProfileCard';
 import type { VolumeProfileResult, VolumeProfileConfluence } from '@/lib/volume-profile';
+import { SectorRotationMatrixCard } from '@/app/components/SectorRotationMatrixCard';
+import type { SectorRotationMetric } from '@/lib/sector';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -49,6 +51,7 @@ export default function RadarPage() {
   const [volumeProfile, setVolumeProfile] = useState<VolumeProfileResult | null>(null);
   const [volumeProfileConfluence, setVolumeProfileConfluence] = useState<VolumeProfileConfluence | undefined>(undefined);
   const [volumeProfileLoading, setVolumeProfileLoading] = useState(false);
+  const [rotationSectors, setRotationSectors] = useState<SectorRotationMetric[]>([]);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -88,9 +91,20 @@ export default function RadarPage() {
       }
       setItems(json.data.items || []);
       setSectorFlow(json.data.sectorFlow || []);
+
+      try {
+        const rotRes = await fetch(`/api/radar/sectors/rotation?date=${encodeURIComponent(asOf)}`);
+        const rotJson = await rotRes.json();
+        if (rotJson.status === 'success') {
+          setRotationSectors(rotJson.sectors || []);
+        }
+      } catch {
+        // Fallback gracefully
+      }
     } catch (err) {
       setItems([]);
       setSectorFlow([]);
+      setRotationSectors([]);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
@@ -461,6 +475,14 @@ export default function RadarPage() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix */}
+      {!loading && (
+        <SectorRotationMatrixCard
+          sectors={rotationSectors.length > 0 ? rotationSectors : undefined}
+          asOfDate={date}
+        />
       )}
 
       {/* Loading & Error States */}
