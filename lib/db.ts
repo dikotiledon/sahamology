@@ -2486,3 +2486,94 @@ export async function getSectorRotationForSector(
   );
   return (result.rows[0] as Record<string, unknown>) || null;
 }
+
+export async function saveVcpPatternSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  trend_template_passed: boolean;
+  sma_50?: number | null;
+  sma_150?: number | null;
+  sma_200?: number | null;
+  pct_from_52w_high?: number | null;
+  pct_from_52w_low?: number | null;
+  contraction_count?: number;
+  contractions?: unknown[];
+  pivot_price?: number | null;
+  stop_loss_price?: number | null;
+  volume_dry_up_ratio?: number | null;
+  vcp_stage: string;
+  confluence_tag?: string | null;
+}): Promise<void> {
+  await query(
+    `INSERT INTO vcp_patterns_daily (
+       emiten, trade_date, trend_template_passed, sma_50, sma_150, sma_200,
+       pct_from_52w_high, pct_from_52w_low, contraction_count, contractions,
+       pivot_price, stop_loss_price, volume_dry_up_ratio, vcp_stage, confluence_tag, created_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+     ON CONFLICT (emiten, trade_date) DO UPDATE SET
+       trend_template_passed = EXCLUDED.trend_template_passed,
+       sma_50 = EXCLUDED.sma_50,
+       sma_150 = EXCLUDED.sma_150,
+       sma_200 = EXCLUDED.sma_200,
+       pct_from_52w_high = EXCLUDED.pct_from_52w_high,
+       pct_from_52w_low = EXCLUDED.pct_from_52w_low,
+       contraction_count = EXCLUDED.contraction_count,
+       contractions = EXCLUDED.contractions,
+       pivot_price = EXCLUDED.pivot_price,
+       stop_loss_price = EXCLUDED.stop_loss_price,
+       volume_dry_up_ratio = EXCLUDED.volume_dry_up_ratio,
+       vcp_stage = EXCLUDED.vcp_stage,
+       confluence_tag = EXCLUDED.confluence_tag`,
+    [
+      row.emiten,
+      row.trade_date,
+      row.trend_template_passed,
+      row.sma_50 ?? null,
+      row.sma_150 ?? null,
+      row.sma_200 ?? null,
+      row.pct_from_52w_high ?? null,
+      row.pct_from_52w_low ?? null,
+      row.contraction_count ?? 0,
+      JSON.stringify(row.contractions || []),
+      row.pivot_price ?? null,
+      row.stop_loss_price ?? null,
+      row.volume_dry_up_ratio ?? null,
+      row.vcp_stage,
+      row.confluence_tag ?? null,
+    ]
+  );
+}
+
+export async function getLatestVcpSnapshot(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM vcp_patterns_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [emiten, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM vcp_patterns_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [emiten]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestVcpUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM vcp_patterns_daily WHERE trade_date = $1 ORDER BY contraction_count DESC, volume_dry_up_ratio ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM vcp_patterns_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}

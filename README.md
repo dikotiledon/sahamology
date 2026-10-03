@@ -16,14 +16,14 @@
 
 ## Changelog
 
+### Unreleased / v0.18.0 (draft) — Phase 14: Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine
+Phase 14 introduces the **Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine (SEPA for IDX)**, formalizing institutional supply absorption via progressive contraction waves ($T_1 > T_2 > T_3 > T_4$), volume dry-up quantification ($\le 0.60 \times \text{SMA}_{50}(V)$), cheat/pivot breakout triggers, asymmetric invalidation stops, and Minervini Stage 2 Trend Template gating.
+
 ### Unreleased / v0.17.0 (draft) — Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix
 Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Momentum Matrix Engine**, formalizing Relative Strength ($RS$) benchmarking against IHSG, multi-session sectoral foreign net flow velocity ($5d, 20d$), RRG-adapted institutional quadrant classification (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), and tactical execution confluence for the Discovery Radar and Pre-Market Battle Plan.
 
 ### Unreleased / v0.16.0 (draft) — Phase 12: Cognitive Post-Trade Journal & Trader Discipline Engine
 Phase 12 introduces the **Cognitive Post-Trade Journal & Execution Discipline Engine**, formalizing post-trade execution audits, behavioral deviation detection (FOMO Chase, Stop Widening, Premature Exit, Oversizing, Revenge Trading), quantitative discipline scoring ($0$–$100$), and automated psychological capital tracking with Trader Tilt Lockout protection.
-
-### Unreleased / v0.15.0 (draft) — Phase 11: Volume Profile Liquidity Shelves & Value Area Confluence
-Phase 11 introduces **Volume Profile Liquidity Shelves & Value Area Confluence**, formalizing discrete intraday volume-by-price accumulation, Point of Control (POC) shelf identification, 70% Value Area (VAH, VAL) calculation via Auction Market Theory, and high/low volume node liquidity clustering.
 
 📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -31,6 +31,7 @@ Phase 11 introduces **Volume Profile Liquidity Shelves & Value Area Confluence**
 
 ## Fitur Utama
 
+- **Volatility Contraction Pattern (VCP) & Trend Template (Phase 14)**: Engine pengenalan pola VCP Minervini (SEPA) mendeteksi kompresi volatilitas progresif ($T_1 > T_2 > T_3 > T_4$), pengeringan volume pasokan ($\le 0.60 \times \text{SMA}_{50}$), level trigger cheat/pivot breakout, serta stop loss asimetris ketat (1 tick di bawah wave terakhir) dengan verifikasi 6 kriteria Stage 2 Trend Template.
 - **Cross-Sector Capital Rotation (Phase 13)**: Engine rotasi sektoral multi-sesi memetakan pergerakan modal institusi dan Relative Strength (RS) terhadap IHSG ke dalam kuadran rotasi (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`). Mengidentifikasi *Sector Tailwind* (`🌊`) dan *Sector Headwind* (`⚠️`) pada `/radar` dan Battle Plan `/desk` tanpa melanggar batasan gerbang nol-stance G0–G4.
 - **Cognitive Post-Trade Journal & Tilt Lockout (Phase 12)**: Audit psikologis dan disiplin eksekusi pasca-trade mendeteksi deviasi perilaku (FOMO entry slippage, pelebaran stop-loss, exit prematur, oversizing lot, revenge trading). Menghitung Skor Disiplin ($0$–$100$) serta mengelola modal psikologis dengan proteksi *Trader Tilt Lockout* otomatis.
 - **Volume Profile Liquidity Shelves (Phase 11)**: Distribusi likuiditas volume-by-price fraksi harga IDX menghitung Point of Control (POC), 70% Value Area (VAH/VAL), serta kluster HVN/LVN untuk konfluensi entri di laci inspeksi `/radar` dan kartu battle plan `/desk`.

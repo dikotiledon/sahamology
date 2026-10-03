@@ -2,6 +2,24 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.18.0 (draft) — Phase 14: Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine
+
+Phase 14 introduces the **Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine (SEPA for IDX)**, formalizing institutional supply absorption via progressive contraction waves ($T_1 > T_2 > T_3 > T_4$), volume dry-up quantification ($\le 0.60 \times \text{SMA}_{50}(V)$), cheat/pivot breakout triggers, asymmetric invalidation stops, and Minervini Stage 2 Trend Template gating.
+
+- **Relational Schema (`supabase/034_vcp_pattern_daily.sql`)**:
+  - `vcp_patterns_daily`: Time-series table tracking `emiten`, `trade_date`, `trend_template_passed`, `sma_50`, `sma_150`, `sma_200`, `pct_from_52w_high`, `pct_from_52w_low`, `contraction_count`, `contractions` JSONB, `pivot_price`, `stop_loss_price`, `volume_dry_up_ratio`, `vcp_stage`, and `confluence_tag`.
+  - Composite unique constraint `(emiten, trade_date)` and chronological index `idx_vcp_date_stage`.
+- **VCP & Trend Template Core Engine (`lib/vcp/`)**:
+  - `trend-template.ts`: Evaluates Minervini's 6-point Stage 2 criteria ($\text{Price} > \text{SMA}_{50} > \text{SMA}_{150} > \text{SMA}_{200}$, $\text{SMA}_{200}$ slope upward $\ge 20$ sessions, within $25\%$ of 52-week high, $\ge 25\%$ above 52-week low).
+  - `contraction-detector.ts`: Identifies 2 to 4 progressive contraction waves with diminishing pullback depths ($D_1 > D_2 > D_3$), volume dry-up ratio ($V_{\text{final}} / \text{SMA}_{50}(V)$), breakout pivot price ($P_{\text{pivot}}$), and tight invalidation stop ($P_{\text{stop}}$) 1 tick below final contraction trough.
+  - `confluence.ts`: Evaluates multi-factor confluence with Brosum AQS ($\ge 65$), Wyckoff phase, and Volume Profile Point of Control.
+- **API & UI Surfaces**:
+  - `GET /api/radar/vcp`: Exposes single emiten VCP assessment and universe-wide candidate screening.
+  - `VcpPatternCard.tsx`: Interactive component displaying contraction wave progress meters, execution pivot/stop grid, Minervini 6-point checklist, and architectural boundary notices.
+  - Mounted on `/radar` in the emiten detail inspection drawer; integrated VCP pivot badge (`🎯 VCP: Rp X.XXX`) into `BattlePlanCard.tsx` on `/desk`.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:vcp` (`scripts/run-vcp-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.17.0 (draft) — Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix
 
 Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Momentum Matrix Engine**, formalizing Relative Strength ($RS$) benchmarking against IHSG, multi-session sectoral foreign net flow velocity ($5d, 20d$), RRG-adapted institutional quadrant classification (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), and tactical execution confluence for the Discovery Radar and Pre-Market Battle Plan.

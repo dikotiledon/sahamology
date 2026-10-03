@@ -27,6 +27,9 @@ export interface BattlePlanItem {
   val_price?: number | null;
   sector?: string | null;
   sector_quadrant?: string | null;
+  vcp_stage?: string | null;
+  vcp_pivot?: number | null;
+  vcp_risk_pct?: number | null;
 }
 
 export interface MacroOverlayState {
@@ -176,6 +179,26 @@ export function BattlePlanCard({ date }: { date: string }) {
                       >
                         {p.sector_quadrant === 'LEADING' ? '🌊 ' : p.sector_quadrant === 'LAGGING' ? '⚠️ ' : ''}
                         {p.sector}
+                      </span>
+                    )}
+                    {p.vcp_pivot && (
+                      <span
+                        className="vcp-badge"
+                        title={`VCP ${p.vcp_stage || 'Setup'} (Pivot: Rp ${Number(p.vcp_pivot).toLocaleString('id-ID')}${p.vcp_risk_pct ? `, Resiko: ${p.vcp_risk_pct}%` : ''})`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background: p.vcp_stage === 'PIVOT_READY' ? 'rgba(56, 239, 125, 0.12)' : 'rgba(99, 102, 241, 0.12)',
+                          color: p.vcp_stage === 'PIVOT_READY' ? '#38ef7d' : '#a5b4fc',
+                          border: p.vcp_stage === 'PIVOT_READY' ? '1px solid rgba(56, 239, 125, 0.3)' : '1px solid rgba(99, 102, 241, 0.3)',
+                        }}
+                      >
+                        🎯 VCP: Rp {Number(p.vcp_pivot).toLocaleString('id-ID')}
                       </span>
                     )}
                   </div>

@@ -9,6 +9,8 @@ import { VolumeProfileCard } from '@/app/components/VolumeProfileCard';
 import type { VolumeProfileResult, VolumeProfileConfluence } from '@/lib/volume-profile';
 import { SectorRotationMatrixCard } from '@/app/components/SectorRotationMatrixCard';
 import type { SectorRotationMetric } from '@/lib/sector';
+import { VcpPatternCard } from '@/app/components/VcpPatternCard';
+import type { VcpAssessment } from '@/lib/vcp/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -52,6 +54,8 @@ export default function RadarPage() {
   const [volumeProfileConfluence, setVolumeProfileConfluence] = useState<VolumeProfileConfluence | undefined>(undefined);
   const [volumeProfileLoading, setVolumeProfileLoading] = useState(false);
   const [rotationSectors, setRotationSectors] = useState<SectorRotationMetric[]>([]);
+  const [vcpAssessment, setVcpAssessment] = useState<VcpAssessment | null>(null);
+  const [vcpLoading, setVcpLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -132,11 +136,13 @@ export default function RadarPage() {
       setWyckoffAssessment(null);
       setVolumeProfile(null);
       setVolumeProfileConfluence(undefined);
+      setVcpAssessment(null);
       return;
     }
     let active = true;
     setWyckoffLoading(true);
     setVolumeProfileLoading(true);
+    setVcpLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -169,6 +175,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setVolumeProfileLoading(false);
+      });
+
+    // 3. Fetch VCP & Trend Template
+    fetch(`/api/radar/vcp?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setVcpAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load VCP assessment:', err);
+      })
+      .finally(() => {
+        if (active) setVcpLoading(false);
       });
 
     return () => {
@@ -905,6 +926,16 @@ export default function RadarPage() {
             )}
             {!volumeProfileLoading && volumeProfile && (
               <VolumeProfileCard profile={volumeProfile} confluence={volumeProfileConfluence} />
+            )}
+
+            {/* Volatility Contraction Pattern (VCP) & Trend Template Section */}
+            {vcpLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Pola VCP &amp; Minervini Trend Template...
+              </div>
+            )}
+            {!vcpLoading && vcpAssessment && (
+              <VcpPatternCard assessment={vcpAssessment} />
             )}
           </div>
         </div>
