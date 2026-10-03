@@ -16,6 +16,9 @@
 
 ## Changelog
 
+### Unreleased / v0.12.0 (draft) — Phase 8: The Institutional Trading Lifecycle
+Phase 8 formalizes the end-to-end **Institutional Trading Lifecycle**: multi-window supply absorption ($T-1$ to $T-20$ broker flow, concentration $C_W$, deterministic AQS 0–100 score), dynamic ADTV-scaled divergence tracking ($\max(\text{IDR } 500\text{M},\; 0.10 \times \text{ADTV}_{20d})$), 08:30 WIB pre-market tactical battle plans with early volume confirmation ($V_{15m}$), continuous trading broker masking-compliant tape velocity and Pasar Nego crossing monitors, dynamic IDX 5-tier Fraksi Harga position sizing, and post-trade execution slippage audits.
+
 ### Unreleased / v0.11.0 (draft) — Phase 6 Hardening
 Phase 6 ships process health, weekday holiday no-ops, and fail-closed Stockbit deadlines. Phase 4 remains capture-complete, not ship-complete. No gate is armed. Docker HEALTHCHECK is live-only (`/api/health?level=live`). Open `/desk` for the last ranked session even on a holiday.
 

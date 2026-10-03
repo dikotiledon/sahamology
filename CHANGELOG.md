@@ -2,6 +2,40 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.12.0 (draft) — Phase 8: The Institutional Trading Lifecycle
+
+Phase 8 introduces the **Institutional Trading Lifecycle**, formalizing multi-day supply absorption, participant archetype divergence, pre-market tactical planning, block crossings, dynamic IDX lot sizing, and post-trade execution audits.
+
+- **Relational Schema (`supabase/028_institutional_lifecycle.sql`)**:
+  - `broker_archetypes`: Registry mapping IDX broker codes to institutional whales, domestic institutions, proprietary desks, or retail crowds.
+  - `flow_absorption_daily`: Rolling multi-window broker values (1d, 3d, 5d, 20d), Top 3 concentration, Accumulation Quality Score (AQS: 0–100), and absorption tagging.
+  - `premarket_battle_plans`: 08:30 WIB pre-market setups with early $V_{15m}$ liquidity confirmation thresholds.
+  - `intraday_tape_alerts`: Logs velocity surges, Pasar Nego crossing blocks, pre-closing auction deviations, and UMA radar flags.
+  - `execution_audits`: Linked to `decision_journal(id)` (nullable) capturing planned vs. executed price, tick slippage, fee friction, and realized efficiency ratios.
+- **Multi-Window Brosum Absorption (`lib/flow/absorption.ts`)**:
+  - Deterministic Accumulation Quality Score (AQS: 0–100) combining rolling Top 3 concentration (0–30 pts), multi-window flow persistence (0–30 pts), and price consolidation absorption (0–40 pts).
+  - Tags: `HEAVY_ABSORPTION` ($\ge 75$), `MODERATE_ABSORPTION` ($\ge 50$), `NEUTRAL` ($\ge 30$), and `DISTRIBUTION` ($< 30$).
+- **Foreign vs. Domestic Divergence Tracker (`lib/flow/divergence.ts`)**:
+  - Dynamic ADTV-scaled threshold: $\text{Effective Whale Threshold} = \max(\text{IDR } 500,000,000,\; 0.10 \times \text{ADTV}_{20d})$, eliminating nominal penny-stock distortions.
+  - Regimes: `WHALE_ABSORPTION`, `RETAIL_TRAP`, `SYNCHRONIZED_ACCUMULATION`, and `DOMESTIC_DRIVEN`.
+- **08:30 WIB Tactical Pre-Market Battle Plan (`lib/tactical/battle-plan.ts`)**:
+  - Automatically evaluates active ENTER and WAIT setups before the 09:00 WIB opening bell.
+  - $V_{15m}$ Volume Rule: $V_{15m} = \text{round}(0.15 \times \text{AvgDailyVolume}_{20d})$ to filter out low-liquidity fakeouts.
+  - Integrated Jakarta calendar guard skipping weekends and official IDX exchange holidays.
+- **Intraday Tape Alert & Crossing Engine (`lib/tape/alert-engine.ts`)**:
+  - Compliant with IDX continuous trading broker code masking: operates strictly on **aggregate foreign flow acceleration** ($> 3.0\times$ run rate) and **Pasar Nego crossing reports**.
+  - Flags block crossings $\ge \text{IDR } 5\text{B}$ or $\ge 20\%$ volume, calculating premium/discount percentages vs. regular market price (`ANOMALOUS_DISPERSION` if $> 20\%$).
+- **Dynamic IDX Position Sizer & Execution Audit (`lib/risk/sizer.ts`, `lib/risk/audit.ts`)**:
+  - Computes exact lot quantities adhering to IDX 5-tier Fraksi Harga brackets, buy ($0.15\%$) and sell ($0.25\%$) transaction friction.
+  - Sizing constraints: maximum 20% portfolio equity cap and 2.5% ADTV liquidity ceiling. Fail-closed guard on Full Call Auction (FCA) securities.
+  - Realized execution tracking: tick distance slippage, VWAP multi-tier fill calculations, and execution quality tags (`EXCELLENT_FILL`, `ACCEPTABLE_FILL`, `SUBOPTIMAL_FILL`).
+- **UI Surfaces & Watchlist Controls**:
+  - `BattlePlanCard` rendered at the top of `/desk` with trigger levels, $V_{15m}$ targets, and 1-click "Hitung Lot" button.
+  - `PositionSizerModal` dynamic lot risk modal integrated into `/desk`.
+  - Custom emiten Watchlist CRUD: 4-letter IDX symbol validation, sidebar addition form, and quick-toggle controls on `/radar`.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:lifecycle` evaluating institutional lifecycle performance with a 30-trade sample size floor.
+
 ### Unreleased / v0.11.0 (draft) — Phase 6 Hardening
 
 Phase 6 ships process health, weekday holiday no-ops, and fail-closed Stockbit deadlines. Phase 4 remains capture-complete, not ship-complete. No gate is armed.
