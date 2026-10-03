@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sessionDateJakarta } from '@/lib/market-calendar';
 import { getLatestWyckoffAssessment, getPriceHistory, saveWyckoffAssessment } from '@/lib/db';
 import { classifyWyckoffStructure } from '@/lib/wyckoff';
-import type { WyckoffBar } from '@/lib/wyckoff/types';
+import type { WyckoffBar, WyckoffAssessment } from '@/lib/wyckoff/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,9 +15,37 @@ export async function GET(request: NextRequest) {
       try {
         const stored = await getLatestWyckoffAssessment(emiten);
         if (stored && stored.trade_date === tradeDate) {
+          const mappedAssessment: WyckoffAssessment = {
+            emiten,
+            asOfDate: String(stored.trade_date),
+            phase: (stored.current_phase as any) || 'WYCKOFF_UNCLASSIFIED',
+            confidenceScore: Number(stored.confidence_score) || 0,
+            markupReadinessScore: Number(stored.markup_readiness_score) || 0,
+            tradingRange: (stored.ice_level && stored.creek_level) ? {
+              startDate: '',
+              iceSupport: Number(stored.ice_level),
+              creekResistance: Number(stored.creek_level),
+              midpoint: (Number(stored.ice_level) + Number(stored.creek_level)) / 2,
+              rangeWidthPct: Number((((Number(stored.creek_level) - Number(stored.ice_level)) / Number(stored.ice_level)) * 100).toFixed(1)),
+              barCount: 25,
+              status: 'ACTIVE',
+            } : null,
+            activeEvents: stored.last_event ? [{
+              type: String(stored.last_event) as any,
+              date: String(stored.trade_date),
+              price: Number(stored.spring_low || stored.ice_level || 0),
+              relativeVolume: 1,
+              relativeSpread: 1,
+              closePosition: 0.5,
+              notes: `Recorded milestone ${stored.last_event}`,
+            }] : [],
+            springDetected: stored.last_event === 'SPRING' || stored.spring_low != null,
+            springLow: stored.spring_low != null ? Number(stored.spring_low) : undefined,
+            confluenceTags: [],
+          };
           return NextResponse.json({
             status: 'success',
-            data: stored,
+            data: mappedAssessment,
           });
         }
       } catch (dbErr) {

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { RadarAssessment, RadarVerdict, SectorFlowSummary } from '@/lib/radar';
 import { sessionDateJakarta } from '@/lib/market-calendar';
+import { WyckoffSchematicCard } from '@/app/components/WyckoffSchematicCard';
+import type { WyckoffAssessment } from '@/lib/wyckoff/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -40,6 +42,8 @@ export default function RadarPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedEmiten, setSelectedEmiten] = useState<RadarAssessment | null>(null);
+  const [wyckoffAssessment, setWyckoffAssessment] = useState<WyckoffAssessment | null>(null);
+  const [wyckoffLoading, setWyckoffLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -102,6 +106,32 @@ export default function RadarPage() {
     window.addEventListener('watchlist-updated', handleWatchlistUpdated);
     return () => window.removeEventListener('watchlist-updated', handleWatchlistUpdated);
   }, [date, loadRadar, loadWatchlist]);
+
+  // Fetch Wyckoff structural assessment when an emiten is inspected
+  useEffect(() => {
+    if (!selectedEmiten) {
+      setWyckoffAssessment(null);
+      return;
+    }
+    let active = true;
+    setWyckoffLoading(true);
+    fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setWyckoffAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load Wyckoff assessment:', err);
+      })
+      .finally(() => {
+        if (active) setWyckoffLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedEmiten, date]);
 
   const handleAddWatchlist = async (symbolToAdd: string) => {
     const clean = symbolToAdd.trim().toUpperCase();
@@ -803,6 +833,16 @@ export default function RadarPage() {
                 <span style={{ color: 'var(--text-muted)' }}>Tidak ada transaksi crossing signifikan di atas 5B IDR.</span>
               )}
             </div>
+
+            {/* Wyckoff Structural Analysis & VSA Section */}
+            {wyckoffLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat analisis struktur Wyckoff &amp; VSA...
+              </div>
+            )}
+            {!wyckoffLoading && wyckoffAssessment && (
+              <WyckoffSchematicCard assessment={wyckoffAssessment} />
+            )}
           </div>
         </div>
       )}

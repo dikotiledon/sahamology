@@ -61,9 +61,9 @@ export function classifyWyckoffStructure(params: {
   const recentUt = recentEvents.find((e) => e.type === 'UPTHRUST' || e.type === 'UTAD');
   const recentSc = mediumEvents.find((e) => e.type === 'SELLING_CLIMAX');
 
-  let phase: WyckoffPhase = 'PHASE_B_ABSORPTION';
-  let confidenceScore = 70;
-  let markupReadinessScore = 50;
+  let phase: WyckoffPhase;
+  let confidenceScore: number;
+  let markupReadinessScore: number;
   let springDetected = false;
   let springLow: number | undefined;
 

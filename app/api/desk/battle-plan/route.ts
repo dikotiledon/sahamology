@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBattlePlanForDate, getLatestMacroPressure, getLatestBiRateDecision } from '@/lib/db';
+import {
+  getBattlePlanForDate,
+  getLatestMacroPressure,
+  getLatestBiRateDecision,
+  getLatestWyckoffAssessment,
+} from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
 import {
   evaluateMacroPressureState,
@@ -46,22 +51,39 @@ export async function GET(request: NextRequest) {
       latestBiDecision: biDecision,
     });
 
-    const adjustedItems = rows.map((item) => {
-      const macroInput: BattlePlanMacroInput = {
-        emiten: String(item.emiten),
-        entryPrice: Number(item.planned_entry || item.entry_price || 0),
-        invalidationPrice: Number(item.invalidation_price || 0),
-        targetR1: Number(item.target_r1 || 0),
-        v15mTargetShares: Number(item.v15m_target_shares || 0),
-      };
-      const adjusted = applyMacroOverlayToBattlePlan(macroInput, macroOverlay);
-      return {
-        ...item,
-        macro_regime: adjusted.macroRegime,
-        adjusted_invalidation_price: adjusted.adjustedInvalidationPrice,
-        adjusted_v15m_shares: adjusted.adjustedV15mShares,
-      };
-    });
+    const adjustedItems = await Promise.all(
+      rows.map(async (item) => {
+        const macroInput: BattlePlanMacroInput = {
+          emiten: String(item.emiten),
+          entryPrice: Number(item.planned_entry || item.entry_price || 0),
+          invalidationPrice: Number(item.invalidation_price || 0),
+          targetR1: Number(item.target_r1 || 0),
+          v15mTargetShares: Number(item.v15m_target_shares || 0),
+        };
+        const adjusted = applyMacroOverlayToBattlePlan(macroInput, macroOverlay);
+
+        let wyckoffPhase: string | null = null;
+        let wyckoffReadiness: number | null = null;
+        try {
+          const wyckoffRow = await getLatestWyckoffAssessment(String(item.emiten));
+          if (wyckoffRow) {
+            wyckoffPhase = (wyckoffRow.current_phase as string) || null;
+            wyckoffReadiness = wyckoffRow.markup_readiness_score != null ? Number(wyckoffRow.markup_readiness_score) : null;
+          }
+        } catch {
+          // Graceful fallback if Wyckoff table/row is unavailable
+        }
+
+        return {
+          ...item,
+          macro_regime: adjusted.macroRegime,
+          adjusted_invalidation_price: adjusted.adjustedInvalidationPrice,
+          adjusted_v15m_shares: adjusted.adjustedV15mShares,
+          wyckoff_phase: wyckoffPhase,
+          wyckoff_readiness: wyckoffReadiness,
+        };
+      })
+    );
 
     return NextResponse.json({
       status: 'success',

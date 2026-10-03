@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { PositionSizerModal } from './PositionSizerModal';
+import { WyckoffBadge } from './WyckoffBadge';
+import type { WyckoffPhase } from '@/lib/wyckoff/types';
 
 export interface BattlePlanItem {
   id: number;
@@ -18,6 +20,8 @@ export interface BattlePlanItem {
   macro_regime?: string;
   adjusted_invalidation_price?: number;
   adjusted_v15m_shares?: number;
+  wyckoff_phase?: string | null;
+  wyckoff_readiness?: number | null;
 }
 
 export interface MacroOverlayState {
@@ -137,7 +141,15 @@ export function BattlePlanCard({ date }: { date: string }) {
             <article key={p.emiten} className="battle-plan-card">
               <div>
                 <div className="battle-plan-card-head">
-                  <span className="battle-plan-emiten">{p.emiten}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className="battle-plan-emiten">{p.emiten}</span>
+                    {p.wyckoff_phase && (
+                      <WyckoffBadge
+                        phase={p.wyckoff_phase as WyckoffPhase}
+                        confidenceScore={p.wyckoff_readiness ?? undefined}
+                      />
+                    )}
+                  </div>
                   <span className="battle-plan-stance">{p.stance}</span>
                 </div>
 

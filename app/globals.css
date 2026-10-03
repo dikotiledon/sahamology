@@ -3295,3 +3295,280 @@ body.modal-open .app-layout {
     padding: 0.65rem;
   }
 }
+
+/* =====================================================================
+   Phase 10 — Wyckoff Structural Screener & Accumulation Phase Detector
+   Semantic design tokens for Wyckoff badges and schematic cards.
+   ===================================================================== */
+
+.wyckoff-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.wyckoff-badge--stopping {
+  color: var(--accent-orange-text);
+  background: var(--accent-orange-surface);
+  border-color: var(--accent-orange-border);
+}
+
+.wyckoff-badge--absorption {
+  color: var(--accent-teal-text);
+  background: var(--accent-teal-surface);
+  border-color: var(--accent-teal-border);
+}
+
+.wyckoff-badge--spring {
+  color: var(--accent-success-text);
+  background: rgba(56, 239, 125, 0.12);
+  border-color: rgba(56, 239, 125, 0.35);
+}
+
+.wyckoff-badge--transition {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.12);
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+.wyckoff-badge--markup {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.wyckoff-badge--distribution {
+  color: var(--sentiment-negative);
+  background: rgba(245, 87, 108, 0.12);
+  border-color: rgba(245, 87, 108, 0.35);
+}
+
+.wyckoff-badge--unclassified {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.wyckoff-card {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+}
+
+.wyckoff-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.wyckoff-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wyckoff-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.wyckoff-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin: 0.2rem 0 0 0;
+}
+
+.wyckoff-readiness-pill {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.wyckoff-readiness-pill strong {
+  font-size: 0.9rem;
+  color: var(--accent-success-text);
+  font-weight: 800;
+}
+
+.wyckoff-spring-alert {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(56, 239, 125, 0.08);
+  border: 1px solid rgba(56, 239, 125, 0.28);
+  color: var(--accent-success-text);
+  font-size: 0.75rem;
+}
+
+.wyckoff-spring-alert strong {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+
+.wyckoff-spring-alert span {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.wyckoff-range-box {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--border-color);
+}
+
+.wyckoff-range-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.wyckoff-range-status {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.wyckoff-range-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.5rem;
+}
+
+.wyckoff-level-box {
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  font-size: 0.7rem;
+}
+
+.wyckoff-level-box span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  margin-bottom: 0.15rem;
+}
+
+.wyckoff-level-box strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.wyckoff-level--ice strong {
+  color: var(--sentiment-negative);
+}
+
+.wyckoff-level--creek strong {
+  color: var(--accent-success-text);
+}
+
+.wyckoff-no-range {
+  margin-top: 0.85rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.wyckoff-events-container {
+  margin-top: 0.85rem;
+}
+
+.wyckoff-events-title {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin: 0 0 0.4rem 0;
+}
+
+.wyckoff-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.wyckoff-event-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  font-size: 0.7rem;
+}
+
+.wyckoff-event-tag {
+  font-weight: 700;
+  color: var(--accent-title);
+  white-space: nowrap;
+}
+
+.wyckoff-event-date {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+.wyckoff-event-desc {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wyckoff-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.wyckoff-tag {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.wyckoff-boundary-notice {
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
