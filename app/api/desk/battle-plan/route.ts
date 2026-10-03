@@ -10,6 +10,7 @@ import {
   getLatestMarketBreadthSnapshot,
   getLatestAnchoredVwap,
   getLatestSmartMoney,
+  getLatestMtf,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -209,6 +210,20 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if SMC table is unavailable
         }
 
+        let mtfRegime: string | null = null;
+        let mtfStage: string | null = null;
+        let mtfSizingMultiplier: number | null = null;
+        try {
+          const mtfRow = await getLatestMtf(emitenUpper);
+          if (mtfRow) {
+            mtfRegime = (mtfRow.alignment_regime as string) || null;
+            mtfStage = (mtfRow.weekly_stage as string) || null;
+            mtfSizingMultiplier = mtfRow.sizing_multiplier != null ? Number(mtfRow.sizing_multiplier) : null;
+          }
+        } catch {
+          // Graceful fallback if MTF table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -231,6 +246,9 @@ export async function GET(request: NextRequest) {
           fvg_top: fvgTop,
           fvg_bottom: fvgBottom,
           smc_regime: smcRegime,
+          mtf_regime: mtfRegime,
+          mtf_stage: mtfStage,
+          mtf_sizing_multiplier: mtfSizingMultiplier,
         };
       })
     );

@@ -2842,3 +2842,102 @@ export async function getLatestSmartMoneyUniverse(
   return result.rows as Array<Record<string, unknown>>;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 18: Multi-Timeframe Alignment & Institutional Trend Matrix
+// ---------------------------------------------------------------------------
+
+export async function saveMtfSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  weekly_stage: string;
+  weekly_ema10?: number | null;
+  weekly_ema30?: number | null;
+  weekly_slope_pct?: number | null;
+  daily_trend: string;
+  daily_ema20?: number | null;
+  daily_sma50?: number | null;
+  daily_sma200?: number | null;
+  alignment_regime: string;
+  sizing_multiplier?: number;
+  alignment_score?: number;
+  advisory?: string | null;
+  metadata?: Record<string, unknown> | null;
+}): Promise<void> {
+  const symbol = row.emiten.toUpperCase();
+  await query(
+    `INSERT INTO multi_timeframe_matrix_daily (
+      emiten, trade_date, weekly_stage, weekly_ema10, weekly_ema30, weekly_slope_pct,
+      daily_trend, daily_ema20, daily_sma50, daily_sma200,
+      alignment_regime, sizing_multiplier, alignment_score, advisory, metadata
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      weekly_stage = EXCLUDED.weekly_stage,
+      weekly_ema10 = EXCLUDED.weekly_ema10,
+      weekly_ema30 = EXCLUDED.weekly_ema30,
+      weekly_slope_pct = EXCLUDED.weekly_slope_pct,
+      daily_trend = EXCLUDED.daily_trend,
+      daily_ema20 = EXCLUDED.daily_ema20,
+      daily_sma50 = EXCLUDED.daily_sma50,
+      daily_sma200 = EXCLUDED.daily_sma200,
+      alignment_regime = EXCLUDED.alignment_regime,
+      sizing_multiplier = EXCLUDED.sizing_multiplier,
+      alignment_score = EXCLUDED.alignment_score,
+      advisory = EXCLUDED.advisory,
+      metadata = EXCLUDED.metadata,
+      created_at = NOW()`,
+    [
+      symbol,
+      row.trade_date,
+      row.weekly_stage,
+      row.weekly_ema10 ?? null,
+      row.weekly_ema30 ?? null,
+      row.weekly_slope_pct ?? null,
+      row.daily_trend,
+      row.daily_ema20 ?? null,
+      row.daily_sma50 ?? null,
+      row.daily_sma200 ?? null,
+      row.alignment_regime,
+      row.sizing_multiplier ?? 1.0,
+      row.alignment_score ?? 50,
+      row.advisory ?? null,
+      row.metadata ? JSON.stringify(row.metadata) : null,
+    ]
+  );
+}
+
+export async function getLatestMtf(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM multi_timeframe_matrix_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM multi_timeframe_matrix_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestMtfUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM multi_timeframe_matrix_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM multi_timeframe_matrix_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+

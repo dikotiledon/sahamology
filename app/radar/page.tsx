@@ -16,6 +16,8 @@ import { AnchoredVwapCard } from '@/app/components/AnchoredVwapCard';
 import type { AnchoredVwapResult } from '@/lib/vwap/types';
 import { SmartMoneyCard } from '@/app/components/SmartMoneyCard';
 import type { SmartMoneyAssessment } from '@/lib/smc/types';
+import { MultiTimeframeCard } from '@/app/components/MultiTimeframeCard';
+import type { MtfAssessment } from '@/lib/mtf/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -65,6 +67,8 @@ export default function RadarPage() {
   const [avwapLoading, setAvwapLoading] = useState(false);
   const [smcAssessment, setSmcAssessment] = useState<SmartMoneyAssessment | null>(null);
   const [smcLoading, setSmcLoading] = useState(false);
+  const [mtfAssessment, setMtfAssessment] = useState<MtfAssessment | null>(null);
+  const [mtfLoading, setMtfLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -148,6 +152,7 @@ export default function RadarPage() {
       setVcpAssessment(null);
       setAvwapAssessment(null);
       setSmcAssessment(null);
+      setMtfAssessment(null);
       return;
     }
     let active = true;
@@ -156,6 +161,7 @@ export default function RadarPage() {
     setVcpLoading(true);
     setAvwapLoading(true);
     setSmcLoading(true);
+    setMtfLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -233,6 +239,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setSmcLoading(false);
+      });
+
+    // 6. Fetch Multi-Timeframe Alignment Matrix
+    fetch(`/api/radar/mtf?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setMtfAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load MTF assessment:', err);
+      })
+      .finally(() => {
+        if (active) setMtfLoading(false);
       });
 
     return () => {
@@ -1004,6 +1025,16 @@ export default function RadarPage() {
             )}
             {!smcLoading && smcAssessment && (
               <SmartMoneyCard emiten={selectedEmiten.emiten} initialData={smcAssessment} />
+            )}
+
+            {/* Multi-Timeframe Alignment Matrix Section */}
+            {mtfLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Multi-Timeframe Alignment Matrix...
+              </div>
+            )}
+            {!mtfLoading && mtfAssessment && (
+              <MultiTimeframeCard emiten={selectedEmiten.emiten} initialData={mtfAssessment} />
             )}
           </div>
         </div>

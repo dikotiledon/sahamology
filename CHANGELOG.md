@@ -2,6 +2,29 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.22.0 (draft) — Phase 18: Multi-Timeframe Alignment & Institutional Trend Matrix
+
+Phase 18 introduces the **Multi-Timeframe Alignment & Institutional Trend Matrix Engine (Triple Screen & Weinstein Stages for IDX)**, formalizing synthetic calendar-week bar aggregation, higher-timeframe secular trend classification (Stan Weinstein Stages 1–4, $\text{EMA}_{10\text{w}}$, $\text{EMA}_{30\text{w}}$, 30w slope), intermediate daily wave alignment ($\text{EMA}_{20}$, $\text{SMA}_{50}$, $\text{SMA}_{200}$), alignment matrix regime synthesis, and tactical position sizing multipliers ($0.00\times$ to $1.00\times$) for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/038_multi_timeframe_matrix_daily.sql`)**:
+  - `multi_timeframe_matrix_daily`: Time-series table tracking `emiten`, `trade_date`, `weekly_stage`, `weekly_ema10`, `weekly_ema30`, `weekly_slope_pct`, `daily_trend`, `daily_ema20`, `daily_sma50`, `daily_sma200`, `alignment_regime`, `sizing_multiplier`, `alignment_score`, and `advisory`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_mtf_date_regime`.
+- **Multi-Timeframe Alignment & Trend Matrix Engine (`lib/mtf/`)**:
+  - `types.ts`: Defines `MtfAssessment`, `WeeklyBar`, `WeeklyMetrics`, `DailyMetrics`, `WeinsteinStage`, and `MtfRegime`.
+  - `weekly-aggregator.ts`: Aggregates daily trading history into calendar weekly OHLCV bars using ISO week definitions.
+  - `weekly-analyzer.ts`: Computes weekly $\text{EMA}_{10}$, $\text{EMA}_{30}$, 30-week moving average slope, and classifies Stan Weinstein Stages 1 through 4 (`STAGE_1_BASING`, `STAGE_2_EXPANSION`, `STAGE_3_DISTRIBUTION`, `STAGE_4_CAPITULATION`).
+  - `daily-analyzer.ts`: Computes daily $\text{EMA}_{20}$, $\text{SMA}_{50}$, $\text{SMA}_{200}$, and determines daily wave trend state (`BULLISH_EXPANSION`, `PULLBACK_SUPPORT`, `BEARISH_CONTRACTION`, `NEUTRAL`).
+  - `alignment-matrix.ts`: Synthesizes higher timeframe and intermediate timeframe into 6 deterministic regimes (`PERFECT_TIDE_ALIGNMENT`, `HIGH_PROBABILITY_PULLBACK`, `RANGE_BOUND_COMPRESSION`, `COUNTER_TREND_TRAP_HAZARD`, `SECULAR_LIQUIDATION`, `MIXED_TRANSITION`) and assigns position sizing multipliers ($0.00\times$ to $1.00\times$).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveMtfSnapshot`, `getLatestMtf`, `getLatestMtfUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/mtf`: Exposes single emiten MTF assessment with price bar calculation fallback and universe-wide candidate screening.
+  - `MultiTimeframeCard.tsx`: Interactive component displaying Higher Timeframe (Weekly Tide), Intermediate Timeframe (Daily Wave), sizing multiplier, alignment score, and architectural notices.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `🌊 MTF: {regime} ({multiplier}x)` badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:mtf` (`scripts/run-mtf-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.21.0 (draft) — Phase 17: Institutional Order Blocks, Fair Value Gaps (FVG) & Liquidity Sweep Engine
 
 Phase 17 introduces the **Institutional Order Blocks, Fair Value Gaps (FVG) & Liquidity Sweep Engine (Smart Money Concepts / SMC for IDX)**, formalizing structural swing pivot detection ($k=2$), Break of Structure (BOS), Change of Character (CHoCH), pre-impulse base Order Blocks with mitigation tracking, 3-bar Fair Value Gaps with 50% Consequent Encroachment (CE) magnetic targets, and Turtle Soup liquidity sweeps for the Indonesia Stock Exchange.

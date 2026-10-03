@@ -37,6 +37,9 @@ export interface BattlePlanItem {
   fvg_top?: number | null;
   fvg_bottom?: number | null;
   smc_regime?: string | null;
+  mtf_regime?: string | null;
+  mtf_stage?: string | null;
+  mtf_sizing_multiplier?: number | null;
 }
 
 export interface MacroOverlayState {
@@ -306,6 +309,41 @@ export function BattlePlanCard({ date }: { date: string }) {
                         title={`Fair Value Gap (FVG): Rp ${Math.round(p.fvg_bottom).toLocaleString('id-ID')} - Rp ${Math.round(p.fvg_top).toLocaleString('id-ID')}`}
                       >
                         ⚡ FVG: Rp {Math.round(p.fvg_bottom).toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.mtf_regime && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background:
+                            p.mtf_regime === 'PERFECT_TIDE_ALIGNMENT' || p.mtf_regime === 'HIGH_PROBABILITY_PULLBACK'
+                              ? 'rgba(14, 165, 233, 0.12)'
+                              : p.mtf_regime === 'COUNTER_TREND_TRAP_HAZARD' || p.mtf_regime === 'SECULAR_LIQUIDATION'
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : 'rgba(148, 163, 184, 0.12)',
+                          color:
+                            p.mtf_regime === 'PERFECT_TIDE_ALIGNMENT' || p.mtf_regime === 'HIGH_PROBABILITY_PULLBACK'
+                              ? '#38bdf8'
+                              : p.mtf_regime === 'COUNTER_TREND_TRAP_HAZARD' || p.mtf_regime === 'SECULAR_LIQUIDATION'
+                              ? '#f87171'
+                              : '#cbd5e1',
+                          border:
+                            p.mtf_regime === 'PERFECT_TIDE_ALIGNMENT' || p.mtf_regime === 'HIGH_PROBABILITY_PULLBACK'
+                              ? '1px solid rgba(14, 165, 233, 0.3)'
+                              : p.mtf_regime === 'COUNTER_TREND_TRAP_HAZARD' || p.mtf_regime === 'SECULAR_LIQUIDATION'
+                              ? '1px solid rgba(239, 68, 68, 0.3)'
+                              : '1px solid rgba(148, 163, 184, 0.3)',
+                        }}
+                        title={`Multi-Timeframe Alignment: ${p.mtf_regime.replace(/_/g, ' ')}${p.mtf_sizing_multiplier != null ? ` | Sizing: ${p.mtf_sizing_multiplier.toFixed(2)}x` : ''}${p.mtf_stage ? ` | Weekly: ${p.mtf_stage.replace(/_/g, ' ')}` : ''}`}
+                      >
+                        🌊 MTF: {p.mtf_regime.replace(/_/g, ' ')}{p.mtf_sizing_multiplier != null ? ` (${p.mtf_sizing_multiplier.toFixed(2)}x)` : ''}
                       </span>
                     )}
                   </div>

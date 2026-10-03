@@ -5443,3 +5443,362 @@ body.modal-open .app-layout {
   line-height: 1.4;
 }
 
+/* ==========================================================================
+   Phase 18: Multi-Timeframe Alignment & Institutional Trend Matrix
+   ========================================================================== */
+
+.mtf-card {
+  background: var(--bg-tertiary, #121824);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.mtf-card--loading {
+  min-height: 140px;
+  justify-content: center;
+  align-items: center;
+}
+
+.mtf-loading-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.mtf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #232d42);
+  padding-bottom: 0.85rem;
+}
+
+.mtf-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mtf-icon {
+  font-size: 1.15rem;
+}
+
+.mtf-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+
+.mtf-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0.25rem 0 0 0;
+}
+
+.mtf-score-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mtf-score-badge {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--text-primary, #f1f5f9);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.mtf-score-badge strong {
+  color: var(--accent-light, #818cf8);
+  font-size: 0.95rem;
+}
+
+.mtf-multiplier-badge {
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.multiplier-full {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.multiplier-reduced {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.multiplier-zero {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.mtf-regime-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+}
+
+.mtf-regime--perfect {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.mtf-regime--pullback {
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #38bdf8;
+}
+
+.mtf-regime--compression {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.mtf-regime--hazard {
+  background: rgba(249, 115, 22, 0.15);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  color: #fb923c;
+}
+
+.mtf-regime--liquidation {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.mtf-regime--transition {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+}
+
+.mtf-advisory {
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.mtf-advisory.mtf-regime--perfect {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #a7f3d0;
+}
+
+.mtf-advisory.mtf-regime--pullback {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #bae6fd;
+}
+
+.mtf-advisory.mtf-regime--compression {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fde68a;
+}
+
+.mtf-advisory.mtf-regime--hazard {
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  color: #fed7aa;
+}
+
+.mtf-advisory.mtf-regime--liquidation {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
+.mtf-advisory.mtf-regime--transition {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.mtf-advisory-text {
+  font-weight: 500;
+}
+
+.mtf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .mtf-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mtf-box {
+  background: var(--bg-secondary, #0d121c);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.mtf-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mtf-box-name {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mtf-box-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mtf-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.mtf-metric-label {
+  color: var(--text-muted, #94a3b8);
+}
+
+.mtf-metric-value {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-primary, #f1f5f9);
+}
+
+.mtf-stage-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.badge-stage-2 {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.badge-stage-1 {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.badge-stage-3 {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+.badge-stage-4 {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.badge-stage-unknown {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.mtf-trend-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.mtf-ma-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.mtf-ma-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+}
+
+.pill-pass {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.pill-fail {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.mtf-box-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted, #64748b);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.mtf-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border-color, #232d42);
+  padding-top: 0.75rem;
+}
+
+.mtf-notice-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.mtf-notice-text {
+  font-size: 0.6875rem;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+
