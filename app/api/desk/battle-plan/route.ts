@@ -9,6 +9,7 @@ import {
   getLatestVcpSnapshot,
   getLatestMarketBreadthSnapshot,
   getLatestAnchoredVwap,
+  getLatestSmartMoney,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -184,6 +185,30 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if AVWAP table is unavailable
         }
 
+        let orderBlockTop: number | null = null;
+        let orderBlockBottom: number | null = null;
+        let fvgTop: number | null = null;
+        let fvgBottom: number | null = null;
+        let smcRegime: string | null = null;
+        try {
+          const smcRow = await getLatestSmartMoney(emitenUpper);
+          if (smcRow) {
+            smcRegime = (smcRow.confluence_regime as string) || null;
+            const ob = smcRow.active_bullish_ob as { top?: number; bottom?: number } | null;
+            if (ob) {
+              orderBlockTop = ob.top != null ? Number(ob.top) : null;
+              orderBlockBottom = ob.bottom != null ? Number(ob.bottom) : null;
+            }
+            const fvg = smcRow.active_bullish_fvg as { top?: number; bottom?: number } | null;
+            if (fvg) {
+              fvgTop = fvg.top != null ? Number(fvg.top) : null;
+              fvgBottom = fvg.bottom != null ? Number(fvg.bottom) : null;
+            }
+          }
+        } catch {
+          // Graceful fallback if SMC table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -201,6 +226,11 @@ export async function GET(request: NextRequest) {
           vcp_risk_pct: vcpRiskPct,
           base_avwap: baseAvwap,
           bandar_vwap: bandarVwap,
+          order_block_top: orderBlockTop,
+          order_block_bottom: orderBlockBottom,
+          fvg_top: fvgTop,
+          fvg_bottom: fvgBottom,
+          smc_regime: smcRegime,
         };
       })
     );

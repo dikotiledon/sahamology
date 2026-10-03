@@ -32,6 +32,11 @@ export interface BattlePlanItem {
   vcp_risk_pct?: number | null;
   base_avwap?: number | null;
   bandar_vwap?: number | null;
+  order_block_top?: number | null;
+  order_block_bottom?: number | null;
+  fvg_top?: number | null;
+  fvg_bottom?: number | null;
+  smc_regime?: string | null;
 }
 
 export interface MacroOverlayState {
@@ -261,6 +266,46 @@ export function BattlePlanCard({ date }: { date: string }) {
                         title={`Anchored VWAP Basis: Rp ${Math.round(p.base_avwap).toLocaleString('id-ID')}${p.bandar_vwap ? ` | Bandar VWAP: Rp ${Math.round(p.bandar_vwap).toLocaleString('id-ID')}` : ''}`}
                       >
                         ⚓ AVWAP: Rp {Math.round(p.base_avwap).toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.order_block_bottom && p.order_block_top && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background: 'rgba(52, 211, 153, 0.12)',
+                          color: '#34d399',
+                          border: '1px solid rgba(52, 211, 153, 0.3)',
+                        }}
+                        title={`Bullish Order Block: Rp ${Math.round(p.order_block_bottom).toLocaleString('id-ID')} - Rp ${Math.round(p.order_block_top).toLocaleString('id-ID')}`}
+                      >
+                        🧱 OB: Rp {Math.round(p.order_block_bottom).toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.fvg_bottom && p.fvg_top && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background: 'rgba(251, 191, 36, 0.12)',
+                          color: '#fbbf24',
+                          border: '1px solid rgba(251, 191, 36, 0.3)',
+                        }}
+                        title={`Fair Value Gap (FVG): Rp ${Math.round(p.fvg_bottom).toLocaleString('id-ID')} - Rp ${Math.round(p.fvg_top).toLocaleString('id-ID')}`}
+                      >
+                        ⚡ FVG: Rp {Math.round(p.fvg_bottom).toLocaleString('id-ID')}
                       </span>
                     )}
                   </div>

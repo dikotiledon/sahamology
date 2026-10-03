@@ -14,6 +14,8 @@ import { VcpPatternCard } from '@/app/components/VcpPatternCard';
 import type { VcpAssessment } from '@/lib/vcp/types';
 import { AnchoredVwapCard } from '@/app/components/AnchoredVwapCard';
 import type { AnchoredVwapResult } from '@/lib/vwap/types';
+import { SmartMoneyCard } from '@/app/components/SmartMoneyCard';
+import type { SmartMoneyAssessment } from '@/lib/smc/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -61,6 +63,8 @@ export default function RadarPage() {
   const [vcpLoading, setVcpLoading] = useState(false);
   const [avwapAssessment, setAvwapAssessment] = useState<AnchoredVwapResult | null>(null);
   const [avwapLoading, setAvwapLoading] = useState(false);
+  const [smcAssessment, setSmcAssessment] = useState<SmartMoneyAssessment | null>(null);
+  const [smcLoading, setSmcLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -143,6 +147,7 @@ export default function RadarPage() {
       setVolumeProfileConfluence(undefined);
       setVcpAssessment(null);
       setAvwapAssessment(null);
+      setSmcAssessment(null);
       return;
     }
     let active = true;
@@ -150,6 +155,7 @@ export default function RadarPage() {
     setVolumeProfileLoading(true);
     setVcpLoading(true);
     setAvwapLoading(true);
+    setSmcLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -212,6 +218,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setAvwapLoading(false);
+      });
+
+    // 5. Fetch Smart Money Concepts (Order Blocks, FVG, Sweeps)
+    fetch(`/api/radar/smc?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setSmcAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load SMC assessment:', err);
+      })
+      .finally(() => {
+        if (active) setSmcLoading(false);
       });
 
     return () => {
@@ -973,6 +994,16 @@ export default function RadarPage() {
             )}
             {!avwapLoading && avwapAssessment && (
               <AnchoredVwapCard emiten={selectedEmiten.emiten} initialData={avwapAssessment} />
+            )}
+
+            {/* Smart Money Concepts: Order Blocks & FVG Section */}
+            {smcLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Smart Money Concepts (Order Blocks &amp; FVG)...
+              </div>
+            )}
+            {!smcLoading && smcAssessment && (
+              <SmartMoneyCard emiten={selectedEmiten.emiten} initialData={smcAssessment} />
             )}
           </div>
         </div>

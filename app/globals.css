@@ -5122,3 +5122,324 @@ body.modal-open .app-layout {
   padding-top: 0.75rem;
   line-height: 1.4;
 }
+
+/* ==========================================================================
+   Phase 17: Smart Money Concepts (Order Blocks, FVGs, Liquidity Sweeps)
+   ========================================================================== */
+
+.smc-card {
+  background: var(--bg-tertiary, #121824);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.smc-card--loading {
+  min-height: 140px;
+  justify-content: center;
+  align-items: center;
+}
+
+.smc-loading-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.smc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #232d42);
+  padding-bottom: 0.85rem;
+}
+
+.smc-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.smc-icon {
+  font-size: 1.15rem;
+}
+
+.smc-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+
+.smc-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0.25rem 0 0 0;
+}
+
+.smc-score-badge {
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--text-primary, #f1f5f9);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.smc-score-badge strong {
+  color: var(--accent-light, #818cf8);
+  font-size: 0.95rem;
+}
+
+.smc-regime-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+}
+
+.smc-regime--defense {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.smc-regime--expansion {
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #38bdf8;
+}
+
+.smc-regime--sweep {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.smc-regime--fvg {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.smc-regime--choch {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.smc-regime--neutral {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
+}
+
+.smc-advisory {
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.smc-advisory.smc-regime--defense {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #a7f3d0;
+}
+
+.smc-advisory.smc-regime--expansion {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #bae6fd;
+}
+
+.smc-advisory.smc-regime--sweep {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #e9d5ff;
+}
+
+.smc-advisory.smc-regime--fvg {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fde68a;
+}
+
+.smc-advisory.smc-regime--choch {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fecaca;
+}
+
+.smc-advisory.smc-regime--neutral {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.smc-advisory-text {
+  font-weight: 500;
+}
+
+.smc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 1024px) {
+  .smc-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .smc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.smc-box {
+  background: var(--bg-secondary, #0d121c);
+  border: 1px solid var(--border-color, #232d42);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.smc-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.smc-box-name {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.smc-box-price {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  font-family: var(--font-mono, monospace);
+}
+
+.smc-box-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--text-muted, #94a3b8);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.35rem;
+}
+
+.smc-box-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.smc-structure-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.badge-bullish {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.badge-bearish {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.badge-neutral {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.smc-mitigation-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.smc-mitigation--unmitigated {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+}
+
+.smc-mitigation--partially_mitigated {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.smc-mitigation--mitigated {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+}
+
+.smc-mitigation--invalidated {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.smc-sweep-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.badge-reclaimed {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+.smc-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border-color, #232d42);
+  padding-top: 0.75rem;
+}
+
+.smc-notice-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.smc-notice-text {
+  font-size: 0.6875rem;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+  line-height: 1.4;
+}
+

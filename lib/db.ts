@@ -2755,3 +2755,90 @@ export async function getLatestAnchoredVwapUniverse(
   );
   return result.rows as Array<Record<string, unknown>>;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 17: Smart Money Concepts (Order Blocks, FVGs, Liquidity Sweeps)
+// ---------------------------------------------------------------------------
+
+export async function saveSmartMoneySnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  market_structure: string;
+  last_bos_price?: number | null;
+  last_bos_date?: string | null;
+  active_bullish_ob?: Record<string, unknown> | null;
+  active_bullish_fvg?: Record<string, unknown> | null;
+  last_liquidity_sweep?: Record<string, unknown> | null;
+  confluence_regime: string;
+  regime_score?: number;
+  advisory?: string | null;
+}): Promise<void> {
+  const symbol = row.emiten.toUpperCase();
+  await query(
+    `INSERT INTO smart_money_structure_daily (
+      emiten, trade_date, market_structure, last_bos_price, last_bos_date,
+      active_bullish_ob, active_bullish_fvg, last_liquidity_sweep,
+      confluence_regime, regime_score, advisory
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      market_structure = EXCLUDED.market_structure,
+      last_bos_price = EXCLUDED.last_bos_price,
+      last_bos_date = EXCLUDED.last_bos_date,
+      active_bullish_ob = EXCLUDED.active_bullish_ob,
+      active_bullish_fvg = EXCLUDED.active_bullish_fvg,
+      last_liquidity_sweep = EXCLUDED.last_liquidity_sweep,
+      confluence_regime = EXCLUDED.confluence_regime,
+      regime_score = EXCLUDED.regime_score,
+      advisory = EXCLUDED.advisory,
+      created_at = NOW()`,
+    [
+      symbol,
+      row.trade_date,
+      row.market_structure,
+      row.last_bos_price ?? null,
+      row.last_bos_date ?? null,
+      row.active_bullish_ob ? JSON.stringify(row.active_bullish_ob) : null,
+      row.active_bullish_fvg ? JSON.stringify(row.active_bullish_fvg) : null,
+      row.last_liquidity_sweep ? JSON.stringify(row.last_liquidity_sweep) : null,
+      row.confluence_regime,
+      row.regime_score ?? 50,
+      row.advisory ?? null,
+    ]
+  );
+}
+
+export async function getLatestSmartMoney(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM smart_money_structure_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM smart_money_structure_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestSmartMoneyUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM smart_money_structure_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM smart_money_structure_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+

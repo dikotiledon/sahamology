@@ -2,6 +2,30 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.21.0 (draft) — Phase 17: Institutional Order Blocks, Fair Value Gaps (FVG) & Liquidity Sweep Engine
+
+Phase 17 introduces the **Institutional Order Blocks, Fair Value Gaps (FVG) & Liquidity Sweep Engine (Smart Money Concepts / SMC for IDX)**, formalizing structural swing pivot detection ($k=2$), Break of Structure (BOS), Change of Character (CHoCH), pre-impulse base Order Blocks with mitigation tracking, 3-bar Fair Value Gaps with 50% Consequent Encroachment (CE) magnetic targets, and Turtle Soup liquidity sweeps for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/037_smart_money_structure_daily.sql`)**:
+  - `smart_money_structure_daily`: Time-series table tracking `emiten`, `trade_date`, `market_structure`, `last_bos_price`, `last_bos_date`, `active_bullish_ob`, `active_bullish_fvg`, `last_liquidity_sweep`, `confluence_regime`, `regime_score`, and `advisory`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_smc_date_regime`.
+- **Smart Money Concepts (SMC) Core Engine (`lib/smc/`)**:
+  - `types.ts`: Defines `SmartMoneyAssessment`, `OrderBlockZone`, `FairValueGapZone`, `LiquiditySweepEvent`, `MarketStructureType`, and `SmcRegime`.
+  - `swing-detector.ts`: Detects swing highs/lows ($k=2$) and classifies Break of Structure (BOS) vs. Change of Character (CHoCH) with volume confirmation.
+  - `order-block-detector.ts`: Identifies pre-impulse base origin candles (Bullish/Bearish Order Blocks) and evaluates mitigation states (`UNMITIGATED`, `PARTIALLY_MITIGATED`, `MITIGATED`, `INVALIDATED`).
+  - `fvg-detector.ts`: Detects 3-bar Fair Value Gaps (BISI / SIBI imbalances), calculates 50% Consequent Encroachment (CE), and tracks rebalancing.
+  - `sweep-detector.ts`: Identifies liquidity sweeps / turtle soup stop-runs on swing lows/highs with immediate range reclamation.
+  - `confluence.ts`: Evaluates multi-factor structure alignment into 5 deterministic regimes (`PRIME_ORDER_BLOCK_DEFENSE`, `BOS_BULLISH_EXPANSION`, `LIQUIDITY_SWEEP_REVERSAL`, `FVG_REBALANCING_PULLBACK`, `BEARISH_STRUCTURE_CHOCH`, `NEUTRAL_STRUCTURE`).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveSmartMoneySnapshot`, `getLatestSmartMoney`, `getLatestSmartMoneyUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/smc`: Exposes single emiten SMC assessment with price bar calculation fallback and universe-wide candidate screening.
+  - `SmartMoneyCard.tsx`: Interactive component displaying Market Structure & BOS, Order Block zones, Fair Value Gaps (CE), Liquidity Sweeps, and architectural notices.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `🧱 OB: Rp X-Y` and `⚡ FVG: Rp X-Y` badges.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:smc` (`scripts/run-smc-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.20.0 (draft) — Phase 16: Anchored VWAP (AVWAP) & Institutional Broker Benchmark Engine
 
 Phase 16 introduces the **Anchored VWAP (AVWAP) & Institutional Broker Benchmark Engine (Bandar VWAP & Multi-Anchor Defense)**, formalizing volume-weighted average price calculations from structural anchor points (Accumulation Base, Volume Climax, 52-Week High) alongside multi-day broker summary cost benchmarks (Bandar VWAP Top 3 / Top 5) for the Indonesia Stock Exchange.
