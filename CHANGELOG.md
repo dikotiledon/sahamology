@@ -2,6 +2,34 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.13.0 (draft) — Phase 9: Macro Dynamic Overlay & Tranche Execution
+
+Phase 9 introduces the **Macro Dynamic Overlay & Multi-Account Tranche Execution Engine**, formalizing Bank Indonesia interest rate decision tracking, Rupiah spot pressure metrics, macro-adjusted pre-market risk bands, and phased order tranche decomposition for institutional-scale IDX trade sizing.
+
+- **Relational Schema (`supabase/029_macro_tranche_lifecycle.sql`)**:
+  - `bi_rate_decisions`: Registry storing Bank Indonesia RDG policy announcements, benchmark rates (e.g. 6.00%), previous rates, and action tags (`HOLD`, `HIKE`, `CUT`).
+  - `macro_pressure_daily`: Daily time-series tracking USD/IDR spot velocity ($\Delta \%_{5d}, \Delta \%_{20d}$), Rupiah Pressure Index (RPI: 0–100), and macro regime tags (`MACRO_HEADWIND`, `MACRO_NEUTRAL`, `MACRO_TAILWIND`).
+  - `execution_tranches`: Granular order schedule linked to `execution_audits(id)` capturing planned vs. executed lots, session targets, and tick slippage per execution slice.
+- **Dynamic Macro Overlay Engine (`lib/tactical/macro-overlay.ts`)**:
+  - Evaluates Rupiah spot velocity against the 16,200 and 16,500 psychological risk levels.
+  - Automatically classifies regimes: `MACRO_HEADWIND`, `MACRO_TAILWIND`, or `MACRO_NEUTRAL`.
+  - Dynamically adjusts Pre-Market Battle Plans during HEADWIND: tightens stop distance by 15% and increases $V_{15m}$ liquidity confirmation volume to $20\%$ ADTV ($1.33\times$ base).
+  - Fail-open invariant: Missing macro data gracefully falls back to `MACRO_NEUTRAL` without interrupting trade operations.
+- **Multi-Account Tranche Sizing Engine (`lib/risk/tranche-sizer.ts`)**:
+  - Automatically decomposes large institutional allocations into 3 phased market sessions:
+    - **Tranche 1 (30%)**: Opening auction & $V_{15m}$ confirmation (09:00–09:15 WIB).
+    - **Tranche 2 (40%)**: Continuous session pullback toward Bandar Average (10:00–14:30 WIB).
+    - **Tranche 3 (30%)**: Pre-closing auction accumulation follow-through (15:50–16:00 WIB).
+  - Strictly enforces the IDX single-order cap (50,000 lots) and evaluates queue depth ratios, flagging `HIGH_MARKET_IMPACT` and recommending TWAP execution when orders exceed $2\times$ average queue depth.
+- **API & UI Surfaces**:
+  - `GET /api/macro/pressure`: Exposes live RPI score, spot velocities, and latest BI-Rate decision status.
+  - Extended `GET /api/desk/battle-plan`: Injects `macroOverlay` and macro-adjusted stop/volume levels into battle plan rows.
+  - Extended `POST /api/desk/execution-audit`: Persists planned and executed tranches directly into `execution_tranches`.
+  - `PositionSizerModal.tsx`: Adds interactive "Pecah Order (Tranche)" schedule view with tranche breakdown, lot percentages, and slippage estimates.
+  - `BattlePlanCard.tsx`: Displays active Macro Overlay badges (`⚠️ Macro Headwind`, `🌊 Macro Tailwind`) with contextual market advisory banners.
+- **Seed Utilities**:
+  - CLI `npm run seed:bi-rates` (`scripts/seed-bi-rates.ts`): Seeds Bank Indonesia 2026 RDG rate decisions and policy statements.
+
 ### Unreleased / v0.12.0 (draft) — Phase 8: The Institutional Trading Lifecycle
 
 Phase 8 introduces the **Institutional Trading Lifecycle**, formalizing multi-day supply absorption, participant archetype divergence, pre-market tactical planning, block crossings, dynamic IDX lot sizing, and post-trade execution audits.

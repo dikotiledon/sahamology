@@ -2038,3 +2038,138 @@ export async function saveExecutionAudit(row: {
   );
   return first(result);
 }
+
+export async function saveBiRateDecision(decision: {
+  meeting_date: string;
+  rate: number;
+  previous_rate: number;
+  action: 'HOLD' | 'HIKE' | 'CUT';
+  governor_statement?: string;
+}): Promise<void> {
+  await query(
+    `INSERT INTO bi_rate_decisions (meeting_date, rate, previous_rate, action, governor_statement)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (meeting_date) DO UPDATE SET
+       rate = EXCLUDED.rate,
+       previous_rate = EXCLUDED.previous_rate,
+       action = EXCLUDED.action,
+       governor_statement = EXCLUDED.governor_statement`,
+    [
+      decision.meeting_date,
+      decision.rate,
+      decision.previous_rate,
+      decision.action,
+      decision.governor_statement || null,
+    ]
+  );
+}
+
+export async function getLatestBiRateDecision(): Promise<{
+  meetingDate: string;
+  rate: number;
+  previousRate: number;
+  action: 'HOLD' | 'HIKE' | 'CUT';
+  governorStatement?: string | null;
+} | null> {
+  const result = await query(
+    `SELECT * FROM bi_rate_decisions ORDER BY meeting_date DESC LIMIT 1`
+  );
+  const row = first(result) as Record<string, unknown> | null;
+  if (!row) return null;
+  return {
+    meetingDate: String(row.meeting_date),
+    rate: Number(row.rate),
+    previousRate: Number(row.previous_rate),
+    action: row.action as 'HOLD' | 'HIKE' | 'CUT',
+    governorStatement: row.governor_statement ? String(row.governor_statement) : null,
+  };
+}
+
+export async function saveMacroPressure(pressure: {
+  trade_date: string;
+  usd_idr_close: number;
+  velocity_5d_pct: number;
+  velocity_20d_pct: number;
+  pressure_score: number;
+  regime: string;
+}): Promise<void> {
+  await query(
+    `INSERT INTO macro_pressure_daily (trade_date, usd_idr_close, velocity_5d_pct, velocity_20d_pct, pressure_score, regime)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (trade_date) DO UPDATE SET
+       usd_idr_close = EXCLUDED.usd_idr_close,
+       velocity_5d_pct = EXCLUDED.velocity_5d_pct,
+       velocity_20d_pct = EXCLUDED.velocity_20d_pct,
+       pressure_score = EXCLUDED.pressure_score,
+       regime = EXCLUDED.regime`,
+    [
+      pressure.trade_date,
+      pressure.usd_idr_close,
+      pressure.velocity_5d_pct,
+      pressure.velocity_20d_pct,
+      pressure.pressure_score,
+      pressure.regime,
+    ]
+  );
+}
+
+export async function getLatestMacroPressure(): Promise<{
+  tradeDate: string;
+  usdIdrClose: number;
+  velocity5dPct: number;
+  velocity20dPct: number;
+  pressureScore: number;
+  regime: string;
+} | null> {
+  const result = await query(
+    `SELECT * FROM macro_pressure_daily ORDER BY trade_date DESC LIMIT 1`
+  );
+  const row = first(result) as Record<string, unknown> | null;
+  if (!row) return null;
+  return {
+    tradeDate: String(row.trade_date),
+    usdIdrClose: Number(row.usd_idr_close),
+    velocity5dPct: Number(row.velocity_5d_pct),
+    velocity20dPct: Number(row.velocity_20d_pct),
+    pressureScore: Number(row.pressure_score),
+    regime: String(row.regime),
+  };
+}
+
+export async function saveExecutionTranches(
+  auditId: number,
+  tranches: Array<{
+    tranche_number: number;
+    name: string;
+    lot_size: number;
+    target_session: string;
+    executed_price?: number;
+    slippage_ticks?: number;
+    status?: string;
+  }>
+): Promise<void> {
+  for (const t of tranches) {
+    await query(
+      `INSERT INTO execution_tranches (audit_id, tranche_number, name, lot_size, target_session, executed_price, slippage_ticks, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        auditId,
+        t.tranche_number,
+        t.name,
+        t.lot_size,
+        t.target_session,
+        t.executed_price || null,
+        t.slippage_ticks || 0,
+        t.status || 'PLANNED',
+      ]
+    );
+  }
+}
+
+export async function getExecutionTranches(auditId: number): Promise<Array<Record<string, unknown>>> {
+  const result = await query(
+    `SELECT * FROM execution_tranches WHERE audit_id = $1 ORDER BY tranche_number ASC`,
+    [auditId]
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}

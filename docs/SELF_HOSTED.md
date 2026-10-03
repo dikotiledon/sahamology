@@ -7,6 +7,20 @@ Redis 7 with BullMQ workers embedded in the Next.js server process.
 
 ---
 
+## Phase 9 Macro Dynamic Overlay & Tranche Execution
+
+Phase 9 integrates Bank Indonesia (BI-Rate) interest rate tracking and Rupiah spot pressure index (RPI) calculations into pre-market tactical planning, coupled with a phased order tranche decomposer for institutional-scale IDX trade allocations.
+
+- **Schema Migration**: `029_macro_tranche_lifecycle.sql` adds `bi_rate_decisions`, `macro_pressure_daily`, and `execution_tranches`.
+- **Bank Indonesia Rate Seeder**:
+  ```bash
+  npm run seed:bi-rates
+  ```
+  Seeds recent Bank Indonesia RDG policy meeting decisions, benchmark interest rates, and governor monetary policy statements.
+- **Rupiah Pressure & Macro State**: View real-time currency velocity and regime status at `GET /api/macro/pressure`.
+- **Macro-Adjusted Pre-Market Planning**: During `MACRO_HEADWIND` (rapid currency depreciation or interest rate hikes), pre-market battle plans on `/desk` automatically tighten invalidation stop levels by 15% and raise $V_{15m}$ liquidity confirmation targets to 20% ADTV ($1.33\times$ base).
+- **Tranche Execution Decomposer**: For large orders (>100 lots), the `PositionSizerModal` provides an automated "Pecah Order (Tranche)" schedule dividing execution into Opening ($V_{15m}$), Continuous Pullback, and Pre-Closing phases, strictly adhering to the 50,000 lot IDX single-order cap and queue depth thresholds.
+
 ## Phase 8 Institutional Trading Lifecycle
 
 Phase 8 formalizes the end-to-end **Institutional Trading Lifecycle**, providing multi-window broker absorption scanning (AQS: 0–100), foreign vs. domestic whale divergence tracking, automated 08:30 WIB pre-market battle planning ($V_{15m}$ volume rule), intraday tape crossing alerts, dynamic IDX tick friction sizing, and post-trade slippage audits.

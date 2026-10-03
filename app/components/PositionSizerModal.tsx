@@ -2,6 +2,7 @@
 
 import React, { useState, useId } from 'react';
 import { calculatePositionSize } from '@/lib/risk/sizer';
+import { calculateTrancheSchedule } from '@/lib/risk/tranche-sizer';
 
 export interface PositionSizerModalProps {
   isOpen: boolean;
@@ -11,7 +12,8 @@ export interface PositionSizerModalProps {
   invalidationStop: number;
   targetR1?: number;
   targetMax?: number;
-  onLogExecution?: (data: { lots: number; executedPrice: number }) => void;
+  adtvShares?: number;
+  onLogExecution?: (data: { lots: number; executedPrice: number; tranches?: unknown[] }) => void;
 }
 
 export function PositionSizerModal({
@@ -22,6 +24,7 @@ export function PositionSizerModal({
   invalidationStop,
   targetR1,
   targetMax,
+  adtvShares,
   onLogExecution,
 }: PositionSizerModalProps) {
   const [accountEquity, setAccountEquity] = useState<number>(100_000_000);
@@ -29,6 +32,7 @@ export function PositionSizerModal({
   const [executedPrice, setExecutedPrice] = useState<number>(plannedEntry);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [logSuccess, setLogSuccess] = useState<boolean>(false);
+  const [showTranches, setShowTranches] = useState<boolean>(false);
   const equityInputId = useId();
   const riskInputId = useId();
   const executedPriceInputId = useId();
@@ -45,11 +49,22 @@ export function PositionSizerModal({
     maxCapitalPct: 20.0,
   });
 
+  const trancheSchedule = calculateTrancheSchedule({
+    totalLots: sizerResult.recommendedLots,
+    entryPrice: executedPrice || plannedEntry,
+    adtvShares: adtvShares || 10_000_000,
+    avgQueueDepthLots: 2000,
+  });
+
   const handleLog = async () => {
     setIsSubmitting(true);
     try {
       if (onLogExecution) {
-        onLogExecution({ lots: sizerResult.recommendedLots, executedPrice });
+        onLogExecution({
+          lots: sizerResult.recommendedLots,
+          executedPrice,
+          tranches: trancheSchedule.tranches,
+        });
       } else {
         await fetch('/api/desk/execution-audit', {
           method: 'POST',
@@ -61,6 +76,7 @@ export function PositionSizerModal({
             plannedR1: targetR1,
             invalidationStop,
             lots: sizerResult.recommendedLots,
+            tranches: trancheSchedule.tranches,
           }),
         });
       }
@@ -78,7 +94,7 @@ export function PositionSizerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-2xl text-gray-100">
+      <div className="w-full max-w-lg rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-2xl text-gray-100 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-gray-800 pb-3">
           <div>
             <h2 className="text-lg font-bold text-emerald-400">
@@ -184,6 +200,52 @@ export function PositionSizerModal({
               </div>
             )}
           </div>
+
+          {/* Tranche Breakdown Toggle for larger orders */}
+          {sizerResult.recommendedLots >= 100 && (
+            <div className="rounded-lg border border-gray-800 bg-gray-800/40 p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-gray-300">
+                  📦 Tranche Breakdown ({trancheSchedule.tranches.length} Tranches)
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTranches(!showTranches)}
+                  className="text-xs font-semibold text-emerald-400 hover:underline"
+                >
+                  {showTranches ? 'Sembunyikan' : 'Lihat Jadwal Tranche'}
+                </button>
+              </div>
+
+              {showTranches && (
+                <div className="mt-3 space-y-2 text-xs">
+                  <div className="text-[11px] text-gray-400">
+                    Eksekusi bertahap untuk meminimalkan market impact slippage:
+                  </div>
+                  {trancheSchedule.tranches.map((t) => (
+                    <div
+                      key={t.trancheNumber}
+                      className="flex items-center justify-between rounded bg-gray-900/80 p-2"
+                    >
+                      <div>
+                        <div className="font-bold text-white">{t.name}</div>
+                        <div className="text-[10px] text-gray-400">{t.targetSession}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-emerald-400">{t.lotSize} Lots ({t.percentage}%)</div>
+                        <div className="text-[10px] text-gray-400">Slippage est: ~{t.estimatedSlippageTicks} tick</div>
+                      </div>
+                    </div>
+                  ))}
+                  {trancheSchedule.marketImpactAlert === 'HIGH_MARKET_IMPACT' && (
+                    <div className="text-[11px] text-amber-400">
+                      ⚠️ Order besar terhadap kedalaman antrean. Disarankan menggunakan algoritma TWAP/VWAP.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex items-center justify-end space-x-3 border-t border-gray-800 pt-3">

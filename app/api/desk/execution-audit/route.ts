@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateExecutionAudit } from '@/lib/risk/audit';
-import { saveExecutionAudit } from '@/lib/db';
+import { saveExecutionAudit, saveExecutionTranches } from '@/lib/db';
 import { sessionDateJakarta } from '@/lib/market-calendar';
 
 export async function POST(request: NextRequest) {
@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       actualExitPrice,
       exitReason,
       tradeDate,
+      tranches,
     } = body;
 
     if (!emiten || !plannedEntry || !executedEntry || !lots) {
@@ -52,6 +53,23 @@ export async function POST(request: NextRequest) {
       realized_pnl: audit.realizedPnl,
       exit_reason: exitReason || null,
     });
+
+    // If multi-account / multi-session execution tranches were passed, persist them
+    if (savedRow && (savedRow as { id?: number }).id && Array.isArray(tranches) && tranches.length > 0) {
+      const auditId = (savedRow as { id: number }).id;
+      await saveExecutionTranches(
+        auditId,
+        tranches.map((t, idx) => ({
+          tranche_number: t.trancheNumber || idx + 1,
+          name: String(t.name || `TRANCHE_${idx + 1}`),
+          lot_size: Number(t.lotSize || 0),
+          target_session: String(t.targetSession || 'Continuous'),
+          executed_price: t.executedPrice ? Number(t.executedPrice) : undefined,
+          slippage_ticks: t.slippageTicks ? Number(t.slippageTicks) : 0,
+          status: t.status || 'PLANNED',
+        }))
+      );
+    }
 
     return NextResponse.json({
       status: 'success',

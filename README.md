@@ -16,6 +16,9 @@
 
 ## Changelog
 
+### Unreleased / v0.13.0 (draft) — Phase 9: Macro Dynamic Overlay & Tranche Execution
+Phase 9 formalizes Bank Indonesia RDG policy rate tracking, Rupiah Pressure Index (RPI: 0–100) from spot USD/IDR velocity, dynamic pre-market macro overlays (tightening invalidation by 15% and raising $V_{15m}$ liquidity thresholds during HEADWIND), and 3-session phased tranche execution sizing adhering to IDX single-order caps (50,000 lots) and queue depth limits.
+
 ### Unreleased / v0.12.0 (draft) — Phase 8: The Institutional Trading Lifecycle
 Phase 8 formalizes the end-to-end **Institutional Trading Lifecycle**: multi-window supply absorption ($T-1$ to $T-20$ broker flow, concentration $C_W$, deterministic AQS 0–100 score), dynamic ADTV-scaled divergence tracking ($\max(\text{IDR } 500\text{M},\; 0.10 \times \text{ADTV}_{20d})$), 08:30 WIB pre-market tactical battle plans with early volume confirmation ($V_{15m}$), continuous trading broker masking-compliant tape velocity and Pasar Nego crossing monitors, dynamic IDX 5-tier Fraksi Harga position sizing, and post-trade execution slippage audits.
 
