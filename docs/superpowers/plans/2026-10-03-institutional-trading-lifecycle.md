@@ -1,6 +1,6 @@
 # The Institutional Trading Lifecycle Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build and ship the Institutional Trading Lifecycle for Sahamology, providing multi-window broker absorption scanning (AQS), foreign vs. domestic whale divergence tracking, automated 08:30 WIB pre-market battle planning ($V_{15m}$ volume rule), intraday tape crossing alerts, and dynamic IDX tick friction sizing with post-trade slippage audits.
 
@@ -37,7 +37,7 @@
 **Interfaces:**
 - Produces: `saveFlowAbsorption()`, `getLatestFlowAbsorption()`, `saveBattlePlan()`, `getBattlePlanForDate()`, `saveTapeAlert()`, `saveExecutionAudit()`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/lifecycle-db.test.ts
@@ -58,21 +58,21 @@ test('migration 028_institutional_lifecycle.sql contains all required tables and
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/lifecycle-db.test.ts`  
 Expected: FAIL (file `supabase/028_institutional_lifecycle.sql` does not exist).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `supabase/028_institutional_lifecycle.sql` with exact DDL from spec §3 (tables `broker_archetypes`, `flow_absorption_daily`, `premarket_battle_plans`, `intraday_tape_alerts`, `execution_audits`). Export DB helpers in `lib/db.ts`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/lifecycle-db.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add supabase/028_institutional_lifecycle.sql lib/lifecycle-db.test.ts lib/db.ts
@@ -91,7 +91,7 @@ git commit -m "feat(lifecycle): add 028 migration for institutional lifecycle sc
 **Interfaces:**
 - Produces: `classifyBrokerArchetype(code: string): BrokerClassification`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/flow/archetypes.test.ts
@@ -130,24 +130,24 @@ test('classifyBrokerArchetype handles unknown or lowercase codes gracefully', ()
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/flow/archetypes.test.ts`  
 Expected: FAIL (module `./archetypes` not found).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `lib/flow/types.ts` and `lib/flow/archetypes.ts` with static registry:
 - Foreign whales: `AK, BK, CC, CS, RX, KZ, ZP, CG`
 - Domestic institutions: `OD, LG, NI, DP, DX, TP`
 - Retail: `YP, PD, XC, KK, CP, SQ, XL`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/flow/archetypes.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/flow/types.ts lib/flow/archetypes.ts lib/flow/archetypes.test.ts
@@ -166,7 +166,7 @@ git commit -m "feat(flow): add broker archetype registry and classification help
 - Consumes: `BrokerClassification` from `lib/flow/archetypes.ts`
 - Produces: `calculateAbsorptionScore(input: AbsorptionInput): AbsorptionResult`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/flow/absorption.test.ts
@@ -202,12 +202,12 @@ test('calculateAbsorptionScore handles sparse historical bars gracefully (<5 bar
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/flow/absorption.test.ts`  
 Expected: FAIL (`calculateAbsorptionScore` not defined).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `calculateAbsorptionScore` in `lib/flow/absorption.ts`:
 - Concentration component (0–30 pts)
@@ -215,12 +215,12 @@ Implement `calculateAbsorptionScore` in `lib/flow/absorption.ts`:
 - Absorption divergence component (0–40 pts: +40 for stealth base building, +25 for markup, 0 for distribution)
 - Boundary guard: if `barsCount < 5`, returns `historyStatus: 'INCOMPLETE_HISTORY'`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/flow/absorption.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/flow/absorption.ts lib/flow/absorption.test.ts
@@ -239,7 +239,7 @@ git commit -m "feat(flow): implement multi-window absorption and AQS score calcu
 - Consumes: `classifyBrokerArchetype`
 - Produces: `classifyDivergenceRegime(input: DivergenceInput): DivergenceResult`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/flow/divergence.test.ts
@@ -281,23 +281,23 @@ test('enforces absolute IDR 500M floor for low turnover penny stocks', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/flow/divergence.test.ts`  
 Expected: FAIL (`classifyDivergenceRegime` not defined).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `classifyDivergenceRegime` in `lib/flow/divergence.ts` enforcing:
 - Threshold = $\max(500\_000\_000, 0.10 \times \text{ADTV}_{20d})$.
 - Classifies `WHALE_ABSORPTION`, `RETAIL_TRAP`, `SYNCHRONIZED_ACCUMULATION`, `DOMESTIC_DRIVEN`, or `INSUFFICIENT_LIQUIDITY`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/flow/divergence.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/flow/divergence.ts lib/flow/divergence.test.ts
@@ -316,7 +316,7 @@ git commit -m "feat(flow): implement foreign vs domestic divergence classifier w
 - Consumes: `decision_journal` stance, `macro_snapshot`, `flow_absorption_daily`, `isIdxTradingDay`
 - Produces: `generatePreMarketBattlePlan(deps: BattlePlanDeps): Promise<BattlePlanOutput>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/tactical/battle-plan.test.ts
@@ -346,21 +346,21 @@ test('buildBattlePlanRow fails closed if T-1 entry price or invalidation is miss
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/tactical/battle-plan.test.ts`  
 Expected: FAIL (`buildBattlePlanRow` not defined).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `lib/tactical/battle-plan.ts` with `buildBattlePlanRow` and `generatePreMarketBattlePlan`. Check `isIdxTradingDay(now)` and return `{ status: 'SKIPPED_HOLIDAY' }` on non-trading days.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/tactical/battle-plan.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/tactical/battle-plan.ts lib/tactical/battle-plan.test.ts
@@ -378,7 +378,7 @@ git commit -m "feat(tactical): implement 08:30 WIB battle plan generator and V15
 **Interfaces:**
 - Produces: `evaluateTapeAlerts(snapshot: TapeSnapshot): TapeAlert[]`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/tape/alert-engine.test.ts
@@ -421,24 +421,24 @@ test('detects FLOW_VELOCITY_SPIKE on aggregate foreign flow acceleration without
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/tape/alert-engine.test.ts`  
 Expected: FAIL (`evaluateTapeAlerts` not defined).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `evaluateTapeAlerts` in `lib/tape/alert-engine.ts` checking:
 - Crossing threshold ($\ge \text{Rp } 5\text{B}$ or $V_{NG}/V_{REG} \ge 0.20$), calculating discount/premium %
 - Velocity surge ($>3\times$ opening flow rate on aggregate foreign/volume)
 - Pre-closing auction price shift ($> \pm 3\%$)
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/tape/alert-engine.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/tape/alert-engine.ts lib/tape/alert-engine.test.ts
@@ -456,7 +456,7 @@ git commit -m "feat(tape): implement intraday tape alert and crossing detection 
 **Interfaces:**
 - Produces: `getIdxTickSize(price: number): number`, `calculatePositionSize(input: SizerInput): SizerResult`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/risk/sizer.test.ts
@@ -489,21 +489,21 @@ test('calculatePositionSize accurately sizes lots with friction and 20% equity c
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/risk/sizer.test.ts`  
 Expected: FAIL (`getIdxTickSize` not defined).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `getIdxTickSize` and `calculatePositionSize` in `lib/risk/sizer.ts` handling exact lot math (1 lot = 100 shares), brokerage fees, and 20% portfolio cap.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/risk/sizer.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/risk/sizer.ts lib/risk/sizer.test.ts
@@ -521,7 +521,7 @@ git commit -m "feat(risk): implement dynamic IDX position sizer and tick frictio
 **Interfaces:**
 - Produces: `calculateExecutionAudit(input: AuditInput): AuditResult`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // lib/risk/audit.test.ts
@@ -544,21 +544,21 @@ test('calculateExecutionAudit computes tick distance and slippage drag accuratel
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test lib/risk/audit.test.ts`  
 Expected: FAIL (`calculateExecutionAudit` not defined).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Implement `calculateExecutionAudit` in `lib/risk/audit.ts` calculating exact tick differences, adjusted R:R, and efficiency metrics.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test lib/risk/audit.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/risk/audit.ts lib/risk/audit.test.ts
@@ -578,7 +578,7 @@ git commit -m "feat(risk): implement execution slippage audit and realized RR en
 **Interfaces:**
 - Exposes: `GET /api/radar/absorption`, `GET /api/desk/battle-plan`, `POST /api/desk/execution-audit`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // app/api/desk/lifecycle-api.test.ts
@@ -593,21 +593,21 @@ test('API route handlers are exported functions', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test app/api/desk/lifecycle-api.test.ts`  
 Expected: FAIL (modules not found).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create route handlers in Next.js 16 App Router format returning JSON representations of absorption data, battle plans, and handling audit submissions.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test app/api/desk/lifecycle-api.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/api/radar/absorption/route.ts app/api/desk/battle-plan/route.ts app/api/desk/execution-audit/route.ts app/api/desk/lifecycle-api.test.ts
@@ -627,7 +627,7 @@ git commit -m "feat(api): expose lifecycle endpoints for absorption, battle plan
 **Interfaces:**
 - Renders: Position Sizer Modal, Battle Plan Card on `/desk`, Alert Ribbon, Absorption Matrix on `/radar`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // app/components/PositionSizerModal.test.ts
@@ -644,21 +644,21 @@ test('PositionSizerModal exports a valid React component structure', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test app/components/PositionSizerModal.test.ts`  
 Expected: FAIL (file not found).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Author `app/components/PositionSizerModal.tsx` and integrate into `/desk` and `/radar` page surfaces with clean Tailwind styling.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test app/components/PositionSizerModal.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/components/PositionSizerModal.tsx app/components/PositionSizerModal.test.ts app/radar/page.tsx app/desk/page.tsx
@@ -677,7 +677,7 @@ git commit -m "feat(ui): integrate PositionSizerModal, battle plan card, and abs
 **Interfaces:**
 - Produces: CLI script `npm run walkforward:lifecycle` asserting `SHIP_GATE=VERDICT_UNREACHABLE` until $N \ge 30$ OOS trades exist.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // scripts/lifecycle-walkforward.test.ts
@@ -691,21 +691,21 @@ test('evaluateLifecycleGate returns VERDICT_UNREACHABLE when sample is below 30 
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx tsx --test scripts/lifecycle-walkforward.test.ts`  
 Expected: FAIL (module not found).
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Author `scripts/run-lifecycle-walkforward.ts` mirroring Phase 2/4 gates. Wire `"walkforward:lifecycle"` into `package.json`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx --test scripts/lifecycle-walkforward.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/run-lifecycle-walkforward.ts scripts/lifecycle-walkforward.test.ts package.json
