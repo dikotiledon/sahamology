@@ -242,10 +242,10 @@ export default function RadarPage() {
     }
   };
 
-  const strongAccumCount = items.filter((i) => i.score >= 65).length;
-  const heavyDistCount = items.filter((i) => i.score <= 35).length;
-  const extremeConcentrationCount = items.filter((i) => i.concentration.isExtremeConcentration).length;
-  const silentAccumCount = items.filter((i) => i.volumeAnomaly.isSilentAccumulation).length;
+  const strongAccumCount = items.filter((i) => (i.score ?? 0) >= 65).length;
+  const heavyDistCount = items.filter((i) => (i.score ?? 0) <= 35).length;
+  const extremeConcentrationCount = items.filter((i) => Boolean(i.concentration?.isExtremeConcentration)).length;
+  const silentAccumCount = items.filter((i) => Boolean(i.volumeAnomaly?.isSilentAccumulation)).length;
 
   return (
     <div className="container" style={{ paddingTop: '1.5rem', paddingBottom: '3rem', maxWidth: '1400px' }}>
@@ -584,25 +584,25 @@ export default function RadarPage() {
                       </div>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <span style={{ fontWeight: row.concentration.top3NetValueRatio >= 0.6 ? 700 : 400 }}>
-                        {(row.concentration.top3NetValueRatio * 100).toFixed(1)}%
+                      <span style={{ fontWeight: (row.concentration?.top3NetValueRatio ?? 0) >= 0.6 ? 700 : 400 }}>
+                        {((row.concentration?.top3NetValueRatio ?? 0) * 100).toFixed(1)}%
                       </span>
-                      {row.concentration.isExtremeConcentration && (
+                      {row.concentration?.isExtremeConcentration && (
                         <span style={{ marginLeft: '0.3rem', color: '#667eea', fontSize: '0.72rem', fontWeight: 600 }}>
                           [EKSTREM]
                         </span>
                       )}
                     </td>
                     <td>
-                      {row.topBuyers.slice(0, 2).map((b) => (
+                      {(row.topBuyers || []).slice(0, 2).map((b) => (
                         <span key={b.code} style={{ marginRight: '0.35rem', whiteSpace: 'nowrap' }}>
                           <strong>{b.code}</strong> ({formatIDR(b.netValue)})
                         </span>
                       ))}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <span>{row.volumeAnomaly.volumeRatioToSma50.toFixed(1)}x</span>
-                      {row.volumeAnomaly.isSilentAccumulation && (
+                      <span>{(row.volumeAnomaly?.volumeRatioToSma50 ?? 1).toFixed(1)}x</span>
+                      {row.volumeAnomaly?.isSilentAccumulation && (
                         <span style={{ marginLeft: '0.3rem', color: '#38ef7d', fontSize: '0.72rem', fontWeight: 600 }}>
                           [SILENT]
                         </span>
