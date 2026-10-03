@@ -2,6 +2,28 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.20.0 (draft) — Phase 16: Anchored VWAP (AVWAP) & Institutional Broker Benchmark Engine
+
+Phase 16 introduces the **Anchored VWAP (AVWAP) & Institutional Broker Benchmark Engine (Bandar VWAP & Multi-Anchor Defense)**, formalizing volume-weighted average price calculations from structural anchor points (Accumulation Base, Volume Climax, 52-Week High) alongside multi-day broker summary cost benchmarks (Bandar VWAP Top 3 / Top 5) for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/036_anchored_vwap_daily.sql`)**:
+  - `anchored_vwap_daily`: Time-series table tracking `emiten`, `trade_date`, `base_avwap`, `base_upper_band_1sd`, `base_lower_band_1sd`, `base_upper_band_2sd`, `base_lower_band_2sd`, `volume_climax_avwap`, `high_52w_avwap`, `bandar_vwap_top3`, `bandar_vwap_top5`, `confluence_regime`, `regime_score`, `advisory`, and `anchor_metadata`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_avwap_date_regime`.
+- **AVWAP & Broker Benchmark Core Engine (`lib/vwap/`)**:
+  - `types.ts`: Defines `AnchoredVwapResult`, `VwapAnchorMetric`, `VwapConfluenceRegime`, and `BrokerSummaryItem`.
+  - `avwap-calculator.ts`: Computes volume-weighted typical price and volume-weighted standard deviation bands ($\pm 1\sigma, \pm 2\sigma$) from arbitrary anchor points; identifies lowest trough, volume climax, and 52-week high anchor indices.
+  - `bandar-benchmark.ts`: Computes composite volume-weighted average prices (Bandar VWAP) for top 3 and top 5 accumulating brokers from EOD broker summary records.
+  - `confluence.ts`: Evaluates price interaction against multi-anchor levels into 5 deterministic regimes (`AT_INSTITUTIONAL_DEFENSE`, `ABOVE_ALL_ANCHORS_EXPANSION`, `OVEREXTENDED_VALUE_EXHAUSTION`, `TRAPPED_BELOW_CLIMAX`, `INSTITUTIONAL_CAPITULATION_BREAKDOWN`).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveAnchoredVwapSnapshot`, `getLatestAnchoredVwap`, `getLatestAnchoredVwapUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/avwap`: Exposes single emiten AVWAP assessment with runtime calculation fallback and universe-wide candidate screening.
+  - `AnchoredVwapCard.tsx`: Interactive component displaying AVWAP level gauges, volatility channels ($\pm 1\sigma, \pm 2\sigma$), Bandar VWAP benchmark comparison, and architectural boundary notices.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `⚓ AVWAP: Rp X.XXX` badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:avwap` (`scripts/run-avwap-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.19.0 (draft) — Phase 15: IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)
 
 Phase 15 introduces the **IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)**, formalizing systemic market participation tracking to separate broad-based institutional accumulation from heavyweight conglomerate index masking on the Indonesia Stock Exchange.

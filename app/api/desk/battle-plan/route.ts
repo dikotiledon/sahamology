@@ -8,6 +8,7 @@ import {
   getSectorRotationForSector,
   getLatestVcpSnapshot,
   getLatestMarketBreadthSnapshot,
+  getLatestAnchoredVwap,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -171,6 +172,18 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if VCP table is unavailable
         }
 
+        let baseAvwap: number | null = null;
+        let bandarVwap: number | null = null;
+        try {
+          const avwapRow = await getLatestAnchoredVwap(emitenUpper);
+          if (avwapRow) {
+            baseAvwap = avwapRow.base_avwap != null ? Number(avwapRow.base_avwap) : null;
+            bandarVwap = avwapRow.bandar_vwap_top3 != null ? Number(avwapRow.bandar_vwap_top3) : null;
+          }
+        } catch {
+          // Graceful fallback if AVWAP table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -186,6 +199,8 @@ export async function GET(request: NextRequest) {
           vcp_stage: vcpStage,
           vcp_pivot: vcpPivot,
           vcp_risk_pct: vcpRiskPct,
+          base_avwap: baseAvwap,
+          bandar_vwap: bandarVwap,
         };
       })
     );

@@ -12,6 +12,8 @@ import type { SectorRotationMetric } from '@/lib/sector';
 import { MarketBreadthCard } from '@/app/components/MarketBreadthCard';
 import { VcpPatternCard } from '@/app/components/VcpPatternCard';
 import type { VcpAssessment } from '@/lib/vcp/types';
+import { AnchoredVwapCard } from '@/app/components/AnchoredVwapCard';
+import type { AnchoredVwapResult } from '@/lib/vwap/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -57,6 +59,8 @@ export default function RadarPage() {
   const [rotationSectors, setRotationSectors] = useState<SectorRotationMetric[]>([]);
   const [vcpAssessment, setVcpAssessment] = useState<VcpAssessment | null>(null);
   const [vcpLoading, setVcpLoading] = useState(false);
+  const [avwapAssessment, setAvwapAssessment] = useState<AnchoredVwapResult | null>(null);
+  const [avwapLoading, setAvwapLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -138,12 +142,14 @@ export default function RadarPage() {
       setVolumeProfile(null);
       setVolumeProfileConfluence(undefined);
       setVcpAssessment(null);
+      setAvwapAssessment(null);
       return;
     }
     let active = true;
     setWyckoffLoading(true);
     setVolumeProfileLoading(true);
     setVcpLoading(true);
+    setAvwapLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -191,6 +197,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setVcpLoading(false);
+      });
+
+    // 4. Fetch Anchored VWAP & Institutional Benchmark
+    fetch(`/api/radar/avwap?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setAvwapAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load AVWAP assessment:', err);
+      })
+      .finally(() => {
+        if (active) setAvwapLoading(false);
       });
 
     return () => {
@@ -942,6 +963,16 @@ export default function RadarPage() {
             )}
             {!vcpLoading && vcpAssessment && (
               <VcpPatternCard assessment={vcpAssessment} />
+            )}
+
+            {/* Anchored VWAP & Institutional Broker Benchmark Section */}
+            {avwapLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Anchored VWAP &amp; Bandar Benchmark...
+              </div>
+            )}
+            {!avwapLoading && avwapAssessment && (
+              <AnchoredVwapCard emiten={selectedEmiten.emiten} initialData={avwapAssessment} />
             )}
           </div>
         </div>

@@ -16,14 +16,14 @@
 
 ## Changelog
 
+### Unreleased / v0.20.0 (draft) — Phase 16: Anchored VWAP (AVWAP) & Institutional Broker Benchmark Engine
+Phase 16 introduces the **Anchored VWAP (AVWAP) & Institutional Broker Benchmark Engine (Bandar VWAP & Multi-Anchor Defense)**, formalizing volume-weighted average price calculations from structural anchor points (Accumulation Base, Volume Climax, 52-Week High) alongside multi-day broker summary cost benchmarks (Bandar VWAP Top 3 / Top 5) for the Indonesia Stock Exchange.
+
 ### Unreleased / v0.19.0 (draft) — Phase 15: IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)
 Phase 15 introduces the **IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)**, formalizing systemic market participation tracking to separate broad-based institutional accumulation from heavyweight conglomerate index masking on the Indonesia Stock Exchange.
 
 ### Unreleased / v0.18.0 (draft) — Phase 14: Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine
 Phase 14 introduces the **Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine (SEPA for IDX)**, formalizing institutional supply absorption via progressive contraction waves ($T_1 > T_2 > T_3 > T_4$), volume dry-up quantification ($\le 0.60 \times \text{SMA}_{50}(V)$), cheat/pivot breakout triggers, asymmetric invalidation stops, and Minervini Stage 2 Trend Template gating.
-
-### Unreleased / v0.17.0 (draft) — Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix
-Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Momentum Matrix Engine**, formalizing Relative Strength ($RS$) benchmarking against IHSG, multi-session sectoral foreign net flow velocity ($5d, 20d$), RRG-adapted institutional quadrant classification (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), and tactical execution confluence for the Discovery Radar and Pre-Market Battle Plan.
 
 📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -31,6 +31,7 @@ Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Mom
 
 ## Fitur Utama
 
+- **Anchored VWAP & Bandar Benchmark (Phase 16)**: Perhitungan volume-weighted average price multi-titik anchor (Basis Akumulasi, Klimaks Volume Whale, Puncak 52-Minggu) dan Bandar VWAP (rata-rata harga modal broker akumulator Top 3 & Top 5 dari broker summary EOD) dengan pita volatilitas $\pm 1\sigma, \pm 2\sigma$. Memetakan zona pertahanan institusi (*Institutional Defense*) dan ekspansi nilai tanpa hambatan di laci inspeksi `/radar` serta kartu battle plan `/desk`.
 - **IDX Market Breadth & Composite Liquidity (Phase 15)**: Pengukuran partisipasi pasar luas IDX memisahkan akumulasi institusi riil dari manipulasi bobot konglomerat IHSG. Menghitung rasio Advance/Decline (A/D), persentase emiten di atas moving average ($> \text{EMA}_{20}$, $> \text{SMA}_{50}$, $> \text{SMA}_{200}$), ekspansi 52-Week High/Low net, serta mengklasifikasikan 5 rezim pasar bursa deterministik (`BULLISH_EXPANSION`, `HEALTHY_PULLBACK`, `BREADTH_DIVERGENCE_WARNING`, `BEARISH_DISTRIBUTION`, `OVERSOLD_CAPITULATION`) dengan visualisasi interaktif di `/desk` dan `/radar`.
 - **Volatility Contraction Pattern (VCP) & Trend Template (Phase 14)**: Engine pengenalan pola VCP Minervini (SEPA) mendeteksi kompresi volatilitas progresif ($T_1 > T_2 > T_3 > T_4$), pengeringan volume pasokan ($\le 0.60 \times \text{SMA}_{50}$), level trigger cheat/pivot breakout, serta stop loss asimetris ketat (1 tick di bawah wave terakhir) dengan verifikasi 6 kriteria Stage 2 Trend Template.
 - **Cross-Sector Capital Rotation (Phase 13)**: Engine rotasi sektoral multi-sesi memetakan pergerakan modal institusi dan Relative Strength (RS) terhadap IHSG ke dalam kuadran rotasi (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`). Mengidentifikasi *Sector Tailwind* (`🌊`) dan *Sector Headwind* (`⚠️`) pada `/radar` dan Battle Plan `/desk` tanpa melanggar batasan gerbang nol-stance G0–G4.

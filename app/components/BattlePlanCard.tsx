@@ -30,6 +30,8 @@ export interface BattlePlanItem {
   vcp_stage?: string | null;
   vcp_pivot?: number | null;
   vcp_risk_pct?: number | null;
+  base_avwap?: number | null;
+  bandar_vwap?: number | null;
 }
 
 export interface MacroOverlayState {
@@ -239,6 +241,26 @@ export function BattlePlanCard({ date }: { date: string }) {
                         }}
                       >
                         🎯 VCP: Rp {Number(p.vcp_pivot).toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {p.base_avwap && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          color: '#38bdf8',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                        }}
+                        title={`Anchored VWAP Basis: Rp ${Math.round(p.base_avwap).toLocaleString('id-ID')}${p.bandar_vwap ? ` | Bandar VWAP: Rp ${Math.round(p.bandar_vwap).toLocaleString('id-ID')}` : ''}`}
+                      >
+                        ⚓ AVWAP: Rp {Math.round(p.base_avwap).toLocaleString('id-ID')}
                       </span>
                     )}
                   </div>

@@ -2662,3 +2662,96 @@ export async function getMarketBreadthHistory(
   );
   return result.rows as Array<Record<string, unknown>>;
 }
+
+export async function saveAnchoredVwapSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  base_avwap: number;
+  base_upper_band_1sd?: number | null;
+  base_lower_band_1sd?: number | null;
+  base_upper_band_2sd?: number | null;
+  base_lower_band_2sd?: number | null;
+  volume_climax_avwap?: number | null;
+  high_52w_avwap?: number | null;
+  bandar_vwap_top3?: number | null;
+  bandar_vwap_top5?: number | null;
+  confluence_regime: string;
+  regime_score?: number;
+  advisory?: string | null;
+  anchor_metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await query(
+    `INSERT INTO anchored_vwap_daily (
+       emiten, trade_date, base_avwap, base_upper_band_1sd, base_lower_band_1sd,
+       base_upper_band_2sd, base_lower_band_2sd, volume_climax_avwap, high_52w_avwap,
+       bandar_vwap_top3, bandar_vwap_top5, confluence_regime, regime_score,
+       advisory, anchor_metadata, created_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+     ON CONFLICT (emiten, trade_date) DO UPDATE SET
+       base_avwap = EXCLUDED.base_avwap,
+       base_upper_band_1sd = EXCLUDED.base_upper_band_1sd,
+       base_lower_band_1sd = EXCLUDED.base_lower_band_1sd,
+       base_upper_band_2sd = EXCLUDED.base_upper_band_2sd,
+       base_lower_band_2sd = EXCLUDED.base_lower_band_2sd,
+       volume_climax_avwap = EXCLUDED.volume_climax_avwap,
+       high_52w_avwap = EXCLUDED.high_52w_avwap,
+       bandar_vwap_top3 = EXCLUDED.bandar_vwap_top3,
+       bandar_vwap_top5 = EXCLUDED.bandar_vwap_top5,
+       confluence_regime = EXCLUDED.confluence_regime,
+       regime_score = EXCLUDED.regime_score,
+       advisory = EXCLUDED.advisory,
+       anchor_metadata = EXCLUDED.anchor_metadata`,
+    [
+      row.emiten.toUpperCase(),
+      row.trade_date,
+      row.base_avwap,
+      row.base_upper_band_1sd ?? null,
+      row.base_lower_band_1sd ?? null,
+      row.base_upper_band_2sd ?? null,
+      row.base_lower_band_2sd ?? null,
+      row.volume_climax_avwap ?? null,
+      row.high_52w_avwap ?? null,
+      row.bandar_vwap_top3 ?? null,
+      row.bandar_vwap_top5 ?? null,
+      row.confluence_regime,
+      row.regime_score ?? 50,
+      row.advisory ?? null,
+      JSON.stringify(row.anchor_metadata || {}),
+    ]
+  );
+}
+
+export async function getLatestAnchoredVwap(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM anchored_vwap_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM anchored_vwap_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestAnchoredVwapUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM anchored_vwap_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM anchored_vwap_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
