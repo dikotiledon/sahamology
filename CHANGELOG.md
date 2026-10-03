@@ -2,6 +2,74 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.17.0 (draft) — Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix
+
+Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Momentum Matrix Engine**, formalizing Relative Strength ($RS$) benchmarking against IHSG, multi-session sectoral foreign net flow velocity ($5d, 20d$), RRG-adapted institutional quadrant classification (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), and tactical execution confluence for the Discovery Radar and Pre-Market Battle Plan.
+
+- **Relational Schema (`supabase/033_sector_rotation_flow.sql`)**:
+  - `sector_rotation_daily`: Time-series table tracking `sector`, `trade_date`, `rs_ratio`, `rs_momentum`, `net_flow_5d`, `net_flow_20d`, `flow_intensity_pct`, `quadrant`, `constituent_count`, and `top_emiten`.
+  - Composite primary key `(sector, trade_date)` and chronological index `idx_sector_rotation_date`.
+- **Sector Relative Strength & Flow Momentum Engine (`lib/sector/`)**:
+  - `relative-strength.ts`: Computes Sector vs. IHSG $RS_{\text{ratio}} = (\text{Sector} / \text{IHSG}) \times 100$, 10-day moving average $RS_{\text{momentum}}$, outperformance spread, and constituent flow aggregation.
+  - `matrix-classifier.ts`: Classifies sectors into deterministic quadrants (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`) based on RS threshold ($100.0$) and 5-day net institutional flow direction.
+  - Evaluates tactical confluence: tags constituent emitens with `SECTOR TAILWIND` (`🌊`) or `SECTOR HEADWIND` (`⚠️`) advisories without violating fail-closed zero-stance boundaries.
+- **API & UI Surfaces**:
+  - `GET /api/radar/sectors/rotation`: Exposes universe-wide sector rotation snapshots and targeted single-sector confluence evaluations.
+  - `SectorRotationMatrixCard.tsx`: Interactive dashboard component featuring quadrant filter tabs (`Semua Sektor`, `LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), tactical confluence advisory banner, 4-column responsive grid, and architectural boundary notices.
+  - Mounted on `/radar` below sectoral institutional distribution cards; integrated sector quadrant badges into `BattlePlanCard.tsx` on `/desk`.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:sector` (`scripts/run-sector-rotation-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
+### Unreleased / v0.16.0 (draft) — Phase 12: Cognitive Post-Trade Journal & Trader Discipline Engine
+
+Phase 12 introduces the **Cognitive Post-Trade Journal & Execution Discipline Engine**, formalizing post-trade execution audits, behavioral deviation detection (FOMO Chase, Stop Widening, Premature Exit, Oversizing, Revenge Trading), quantitative discipline scoring ($0$–$100$), and automated psychological capital tracking with Trader Tilt Lockout protection.
+
+- **Relational Schema (`supabase/032_cognitive_journal.sql`)**:
+  - `cognitive_trade_reviews`: Audits linked to `decision_journal(id)` capturing discipline score, grade (`MASTER_DISCIPLINE`, `DISCIPLINED`, `SLIPPY_DISCIPLINE`, `TILT_VIOLATION`), detected deviations, psychological state, and trader reflections.
+  - `trader_tilt_state`: Singleton tracking current psychological capital percentage ($0$–$100\%$), consecutive violations, rolling tilt state (`NORMAL`, `CAUTION`, `TILT_LOCKOUT`), and lockout cooldown timestamps.
+- **Behavioral Deviation & Tilt Engine (`lib/cognitive/`)**:
+  - `auditor.ts`: Evaluates execution against planned trigger, stop, and position sizing. Flags FOMO entry slippage ($> 2$ ticks), stop-loss widening ($> 1$ tick past invalidation), premature exit ($< 50\%$ to target with trend intact), oversizing ($> 15\%$ excess lots), and revenge trades ($< 30$ min after stop-out).
+  - `tilt-detector.ts`: Evaluates rolling tilt escalation based on psychological capital and penalty accumulation, recommending risk reduction ($50\%$ position size) on `CAUTION` and total trading lockout on `TILT_LOCKOUT`.
+- **API & UI Surfaces**:
+  - `GET/POST /api/desk/cognitive-review`: Evaluates execution audits and returns updated trader tilt state.
+  - `CognitiveJournalCard.tsx`: Dark/light themed component with discipline score gauge, deviation severity pills, psychological state selectors, and prominent Tilt Lockout advisory banners mounted directly on `/desk`.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:cognitive` (`scripts/run-cognitive-discipline-walkforward.ts`) enforcing $N \ge 30$ sample floor.
+
+### Unreleased / v0.15.0 (draft) — Phase 11: Volume Profile Liquidity Shelves & Value Area Confluence
+
+Phase 11 introduces **Volume Profile Liquidity Shelves & Value Area Confluence**, formalizing discrete intraday volume-by-price accumulation, Point of Control (POC) shelf identification, 70% Value Area (VAH, VAL) calculation via Auction Market Theory, and high/low volume node liquidity clustering.
+
+- **Relational Schema (`supabase/031_volume_profile_shelves.sql`)**:
+  - `volume_profile_shelves_daily`: Daily time-series tracking emiten POC price, VAH, VAL, total volume, Value Area volume, and JSONB price bins.
+- **Volume Profile Engine (`lib/volume-profile/`)**:
+  - Fraksi-aligned price binning conforming strictly to official IDX tick brackets (Rp 1 to Rp 25).
+  - Iterative 70% Value Area expansion starting from Point of Control (POC).
+  - High Volume Node (HVN) shelf and Low Volume Node (LVN) void clustering with trade setup confluence (`AT_POC_SUPPORT`, `IN_LOW_VOLUME_VOID`, `ABOVE_VALUE_AREA`).
+- **API & UI Surfaces**:
+  - `GET /api/radar/volume-profile`: Computes and caches volume profile distributions per emiten.
+  - `VolumeProfileCard.tsx`: Interactive horizontal volume distribution histogram with POC, VAH, and VAL markers.
+  - Mounted in `/radar` emiten detail inspection drawer; POC shelf levels embedded into pre-market battle plans on `/desk`.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:vp` (`scripts/run-volume-profile-walkforward.ts`) enforcing $N \ge 30$ sample floor.
+
+### Unreleased / v0.14.0 (draft) — Phase 10: Wyckoff Structural Screener & Volume Spread Analysis
+
+Phase 10 introduces the **Wyckoff Structural Screener & Volume Spread Analysis (VSA) Engine**, identifying trading range boundaries (Ice & Creek), structural market events (Selling Climax, Spring, Sign of Strength, Upthrust), and master phase transitions (Phase A through E) with Brosum AQS confluence.
+
+- **Relational Schema (`supabase/030_wyckoff_structure.sql`)**:
+  - `wyckoff_structures_daily`: Stores detected trading ranges, support (Ice), resistance (Creek), current phase, structural events, and breakout status.
+- **Wyckoff & VSA Engine (`lib/wyckoff/`)**:
+  - Multi-bar spread analysis, relative volume ratios ($V / \text{SMA}_{20}(V)$), and close position normalization ($0$ to $1$).
+  - Structural pivot detection for Ice support and Creek resistance levels.
+  - Automated event detection: Selling Climax (`SC`), Spring test (`SPRING`), Sign of Strength (`SOS`), and Upthrust (`UT`/`UTAD`).
+  - Phase state classifier: `PHASE_A_STOPPING`, `PHASE_B_ABSORPTION`, `PHASE_C_TEST`, `PHASE_D_MARKUP_RANGE`, `PHASE_E_MARKUP`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/wyckoff`: Returns emiten structural diagnostics and phase classifications.
+  - `WyckoffSchematicCard.tsx`: Schematic visualization component displaying Ice/Creek price levels, active phase badges, and structural event logs on `/radar` and `/desk`.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:wyckoff` (`scripts/run-wyckoff-walkforward.ts`) enforcing $N \ge 30$ sample floor.
+
 ### Unreleased / v0.13.0 (draft) — Phase 9: Macro Dynamic Overlay & Tranche Execution
 
 Phase 9 introduces the **Macro Dynamic Overlay & Multi-Account Tranche Execution Engine**, formalizing Bank Indonesia interest rate decision tracking, Rupiah spot pressure metrics, macro-adjusted pre-market risk bands, and phased order tranche decomposition for institutional-scale IDX trade sizing.

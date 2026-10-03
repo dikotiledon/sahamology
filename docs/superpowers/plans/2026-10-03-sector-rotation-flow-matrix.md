@@ -26,11 +26,11 @@
 - Modify: `lib/db.ts`
 - Create: `lib/sector-db.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Write migration SQL and DB persistence helpers**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Write migration SQL and DB persistence helpers**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -43,11 +43,11 @@
 - Create: `lib/sector/index.ts`
 - Create: `lib/sector/sector.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement RS ratio, momentum, flow aggregation, and quadrant classification**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement RS ratio, momentum, flow aggregation, and quadrant classification**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -57,11 +57,11 @@
 - Create: `app/api/radar/sectors/rotation/route.ts`
 - Create: `app/api/radar/sectors/rotation/route.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement GET handler with database caching & fallback**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement GET handler with database caching & fallback**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -71,10 +71,10 @@
 - Create: `app/components/SectorRotationMatrixCard.tsx`
 - Modify: `app/globals.css`
 
-- [ ] **Step 1: Implement quadrant visualization, RS metrics grid, and sector flow tables**
-- [ ] **Step 2: Add semantic CSS design tokens in `app/globals.css`**
-- [ ] **Step 3: Verify clean layout and no undefined tokens**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Implement quadrant visualization, RS metrics grid, and sector flow tables**
+- [x] **Step 2: Add semantic CSS design tokens in `app/globals.css`**
+- [x] **Step 3: Verify clean layout and no undefined tokens**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -84,10 +84,10 @@
 - Modify: `app/radar/page.tsx`
 - Modify: `app/components/BattlePlanCard.tsx`
 
-- [ ] **Step 1: Embed SectorRotationMatrixCard into Radar discovery surface**
-- [ ] **Step 2: Add Sector Tailwind/Headwind pill in BattlePlanCard**
-- [ ] **Step 3: Verify with typecheck, lint, and build**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Embed SectorRotationMatrixCard into Radar discovery surface**
+- [x] **Step 2: Add Sector Tailwind/Headwind pill in BattlePlanCard**
+- [x] **Step 3: Verify with typecheck, lint, and build**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -98,7 +98,7 @@
 - Create: `scripts/run-sector-rotation-walkforward.test.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
-- [ ] **Step 2: Add `npm run walkforward:sector` to `package.json`**
-- [ ] **Step 3: Run canonical verification suite (`typecheck`, `lint`, `test`, `build`)**
-- [ ] **Step 4: Commit and push**
+- [x] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
+- [x] **Step 2: Add `npm run walkforward:sector` to `package.json`**
+- [x] **Step 3: Run canonical verification suite (`typecheck`, `lint`, `test`, `build`)**
+- [x] **Step 4: Commit and push**

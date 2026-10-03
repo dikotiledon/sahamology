@@ -26,11 +26,11 @@
 - Modify: `lib/db.ts`
 - Create: `lib/cognitive-db.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Write migration SQL and DB persistence helpers**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Write migration SQL and DB persistence helpers**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -41,11 +41,11 @@
 - Create: `lib/cognitive/auditor.ts`
 - Create: `lib/cognitive/auditor.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement deviation math (FOMO, Stop Widening, Premature Exit, Oversizing) and scoring**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement deviation math (FOMO, Stop Widening, Premature Exit, Oversizing) and scoring**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -56,11 +56,11 @@
 - Create: `lib/cognitive/index.ts`
 - Create: `lib/cognitive/tilt-detector.test.ts`
 
-- [ ] **Step 1: Write the failing test for tilt transitions and psychological capital**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement rolling tilt evaluator and cooldown recovery logic**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test for tilt transitions and psychological capital**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement rolling tilt evaluator and cooldown recovery logic**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -70,11 +70,11 @@
 - Create: `app/api/desk/cognitive-review/route.ts`
 - Create: `app/api/desk/cognitive-review/route.test.ts`
 
-- [ ] **Step 1: Write the failing test**
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement GET and POST handlers with DB fallback**
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement GET and POST handlers with DB fallback**
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -84,10 +84,10 @@
 - Create: `app/components/CognitiveJournalCard.tsx`
 - Modify: `app/globals.css`
 
-- [ ] **Step 1: Author cognitive review component with discipline score gauge and tilt alerts**
-- [ ] **Step 2: Add semantic CSS design tokens in `app/globals.css` with dark/light theme support**
-- [ ] **Step 3: Verify component renders cleanly without undefined class tokens**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Author cognitive review component with discipline score gauge and tilt alerts**
+- [x] **Step 2: Add semantic CSS design tokens in `app/globals.css` with dark/light theme support**
+- [x] **Step 3: Verify component renders cleanly without undefined class tokens**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -96,10 +96,10 @@
 **Files:**
 - Modify: `app/desk/page.tsx`
 
-- [ ] **Step 1: Mount CognitiveJournalCard in Desk surface for post-trade reviews**
-- [ ] **Step 2: Add Tilt Lockout advisory banner when trader psychological capital is depleted**
-- [ ] **Step 3: Verify with typecheck, lint, and build**
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Mount CognitiveJournalCard in Desk surface for post-trade reviews**
+- [x] **Step 2: Add Tilt Lockout advisory banner when trader psychological capital is depleted**
+- [x] **Step 3: Verify with typecheck, lint, and build**
+- [x] **Step 4: Commit**
 
 ---
 
@@ -110,7 +110,7 @@
 - Create: `scripts/run-cognitive-discipline-walkforward.test.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
-- [ ] **Step 2: Add `npm run walkforward:cognitive` script to `package.json`**
-- [ ] **Step 3: Run full verification suite (`typecheck`, `lint`, `test`, `build`)**
-- [ ] **Step 4: Commit and push**
+- [x] **Step 1: Implement walk-forward sample evaluator with $N \ge 30$ sample floor**
+- [x] **Step 2: Add `npm run walkforward:cognitive` script to `package.json`**
+- [x] **Step 3: Run full verification suite (`typecheck`, `lint`, `test`, `build`)**
+- [x] **Step 4: Commit and push**

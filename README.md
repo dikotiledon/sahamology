@@ -16,43 +16,14 @@
 
 ## Changelog
 
-### Unreleased / v0.13.0 (draft) — Phase 9: Macro Dynamic Overlay & Tranche Execution
-Phase 9 formalizes Bank Indonesia RDG policy rate tracking, Rupiah Pressure Index (RPI: 0–100) from spot USD/IDR velocity, dynamic pre-market macro overlays (tightening invalidation by 15% and raising $V_{15m}$ liquidity thresholds during HEADWIND), and 3-session phased tranche execution sizing adhering to IDX single-order caps (50,000 lots) and queue depth limits.
+### Unreleased / v0.17.0 (draft) — Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix
+Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Momentum Matrix Engine**, formalizing Relative Strength ($RS$) benchmarking against IHSG, multi-session sectoral foreign net flow velocity ($5d, 20d$), RRG-adapted institutional quadrant classification (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), and tactical execution confluence for the Discovery Radar and Pre-Market Battle Plan.
 
-### Unreleased / v0.12.0 (draft) — Phase 8: The Institutional Trading Lifecycle
-Phase 8 formalizes the end-to-end **Institutional Trading Lifecycle**: multi-window supply absorption ($T-1$ to $T-20$ broker flow, concentration $C_W$, deterministic AQS 0–100 score), dynamic ADTV-scaled divergence tracking ($\max(\text{IDR } 500\text{M},\; 0.10 \times \text{ADTV}_{20d})$), 08:30 WIB pre-market tactical battle plans with early volume confirmation ($V_{15m}$), continuous trading broker masking-compliant tape velocity and Pasar Nego crossing monitors, dynamic IDX 5-tier Fraksi Harga position sizing, and post-trade execution slippage audits.
+### Unreleased / v0.16.0 (draft) — Phase 12: Cognitive Post-Trade Journal & Trader Discipline Engine
+Phase 12 introduces the **Cognitive Post-Trade Journal & Execution Discipline Engine**, formalizing post-trade execution audits, behavioral deviation detection (FOMO Chase, Stop Widening, Premature Exit, Oversizing, Revenge Trading), quantitative discipline scoring ($0$–$100$), and automated psychological capital tracking with Trader Tilt Lockout protection.
 
-### Unreleased / v0.11.0 (draft) — Phase 6 Hardening
-Phase 6 ships process health, weekday holiday no-ops, and fail-closed Stockbit deadlines. Phase 4 remains capture-complete, not ship-complete. No gate is armed. Docker HEALTHCHECK is live-only (`/api/health?level=live`). Open `/desk` for the last ranked session even on a holiday.
-
-### Unreleased / v0.10.0 (draft) — Phase 5 Ranked Desk
-Phase 5 ships the ranked desk, the morning card, and auto-filled journal outcomes. **Phase 4 remains capture-complete, not ship-complete** (`SHIP_GATE=VERDICT_UNREACHABLE`); no gate is armed. The desk reads stored `decision_journal` rows and does not re-evaluate target math. `npm run backfill:outcomes` writes PathExit only after five complete forward sessions exist. Open `/desk`.
-
-### Unreleased / v0.6.0 (draft)
-- **Honest Desk Phase 0**: Decision Card G0–G3 evaluator (`ENTER`/`WAIT`/`AVOID`/`TAKE_PROFIT`) berbasis Adi Sucipto math, journal persisten (`decision_journal`), price-history backfill worker (BullMQ), dan story-analysis schema alignment (`strategi_trading`).
-- **Fix Kritis JSONB**: `saveDecisionJournal` kini men-serialize `gates` sebagai JSON valid (sebelumnya selalu `invalid input syntax for type json`).
-- **Catatan jujur**: workflow CI (`.github/workflows/ci.yml`) sudah ditambahkan, tapi entri ini **tidak** mengklaim CI sudah berjalan hijau di GitHub. Seed hari libur IDX 2026 diisi dari SKB 3 Menteri 2026 via `api.kemendesa.link` (13 hari libur nasional; cuti bersama dikecualikan) — lihat `docs/R5-IDX-HOLIDAYS-BLOCKER.md`.
-
-### v0.5.0 (2026-09-24)
-- **Self-Hosted Migration**: Netlify + Supabase digantikan oleh stack self-hosted — Next.js (standalone) + PostgreSQL 16 + Redis 7 (BullMQ) dalam Docker Compose. Semua data kini diakses lewat native `pg` (`lib/db.ts`), migrasi SQL dijalankan oleh `scripts/run-migrations.js`, dan background worker (watchlist + story analysis) berjalan embedded di proses Next.js via `instrumentation.ts`.
-- **OpenAI-Compatible LLM Support**: AI Story Analysis kini mendukung `LLM_PROVIDER=openai` (endpoint OpenAI-compatible) selain `gemini`. Konfigurasi lewat `LLM_BASE_URL`, `LLM_API_KEY`, dan `LLM_MODEL`.
-- **Chrome Extension Token Syncer**: Ekstensi Manifest V3 (`stockbit-token-extension/dist/`) siap pakai untuk sinkronisasi token Stockbit ke `/api/update-token`.
-- **Fix JSONB Persistence**: `updateAgentStory` kini men-serialize nilai array/object untuk kolom `jsonb` dengan benar (mencegah `invalid input syntax for type json` dari node-postgres).
-
-### v0.4.3 (2026-09-06)
-- **AI Story Anti-Stuck**: Kartu AI Story tidak lagi polling tanpa henti saat analisis macet di status `pending`/`processing` — polling otomatis menyerah setelah 3 menit dan menampilkan pesan error beserta tombol "Coba Lagi".
-- **Trigger Background Function Diperkuat**: Pemanggilan Netlify background function untuk analisis kini di-`await`; jika gagal terkirim, status langsung ditandai error alih-alih diam-diam macet selamanya di `pending`.
-- **Timeout Analisis Gemini**: Pemanggilan Gemini di background function dibatasi 4 menit, jadi permintaan yang menggantung tetap ditandai error alih-alih menggantung sampai batas keras eksekusi Netlify.
-
-### v0.4.2 (2026-09-04)
-- **BrokerFlowCard Migration**: Mengganti sumber data `BrokerFlowCard` dari API `tradersaham.com` (sudah tidak aktif) ke endpoint `running-trade-chart` milik Stockbit, tetap mempertahankan format heatmap harian & consistency yang ada.
-- **Top 7 Broker Aktif**: Market Detector kini memilih 7 broker paling aktif (batas maksimal dari Stockbit) untuk window yang dipilih, lalu mengambil data net value harian untuk semuanya sekaligus.
-- **Filter Window Disesuaikan**: Filter periode dikembalikan ke 1D/7D/14D/21D, dijangkarkan ke sesi trading terakhir yang sudah selesai (endpoint ini menolak tanggal hari berjalan).
-- **Konfigurasi Model AI Story Analysis**: Model Gemini (`GEMINI_STORY_MODEL`) dan thinking level (`GEMINI_STORY_THINKING_LEVEL`) untuk fitur AI Story Analysis kini bisa diatur lewat environment variable, dengan fallback ke `gemini-3-flash-preview` / `HIGH`.
-
-### v0.4.1 (2026-02-24)
-- **Security Hardening**: Implementasi global API protection menggunakan **Next.js 16 Proxy**.
-- **API Request Optimization**: Implementasi *request deduplication* pada indikator status dan pembatasan minimal 4 karakter pada input emiten untuk menghemat kuota request.
+### Unreleased / v0.15.0 (draft) — Phase 11: Volume Profile Liquidity Shelves & Value Area Confluence
+Phase 11 introduces **Volume Profile Liquidity Shelves & Value Area Confluence**, formalizing discrete intraday volume-by-price accumulation, Point of Control (POC) shelf identification, 70% Value Area (VAH, VAL) calculation via Auction Market Theory, and high/low volume node liquidity clustering.
 
 📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -60,6 +31,12 @@ Phase 5 ships the ranked desk, the morning card, and auto-filled journal outcome
 
 ## Fitur Utama
 
+- **Cross-Sector Capital Rotation (Phase 13)**: Engine rotasi sektoral multi-sesi memetakan pergerakan modal institusi dan Relative Strength (RS) terhadap IHSG ke dalam kuadran rotasi (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`). Mengidentifikasi *Sector Tailwind* (`🌊`) dan *Sector Headwind* (`⚠️`) pada `/radar` dan Battle Plan `/desk` tanpa melanggar batasan gerbang nol-stance G0–G4.
+- **Cognitive Post-Trade Journal & Tilt Lockout (Phase 12)**: Audit psikologis dan disiplin eksekusi pasca-trade mendeteksi deviasi perilaku (FOMO entry slippage, pelebaran stop-loss, exit prematur, oversizing lot, revenge trading). Menghitung Skor Disiplin ($0$–$100$) serta mengelola modal psikologis dengan proteksi *Trader Tilt Lockout* otomatis.
+- **Volume Profile Liquidity Shelves (Phase 11)**: Distribusi likuiditas volume-by-price fraksi harga IDX menghitung Point of Control (POC), 70% Value Area (VAH/VAL), serta kluster HVN/LVN untuk konfluensi entri di laci inspeksi `/radar` dan kartu battle plan `/desk`.
+- **Wyckoff Structural Screener & VSA (Phase 10)**: Identifikasi batas trading range (Ice support & Creek resistance), deteksi event struktural (Selling Climax, Spring, Sign of Strength, Upthrust), dan klasifikasi fase akumulasi Wyckoff (Fase A hingga E) dengan konfluensi Brosum AQS.
+- **Macro Dynamic Overlay & Tranche Execution (Phase 9)**: Pelacakan keputusan suku bunga RDG Bank Indonesia, Rupiah Pressure Index (RPI: 0–100) dari kecepatan spot USD/IDR, pengetatan stop & peningkatan konfirmasi volume $V_{15m}$ saat HEADWIND, serta pemecahan eksekusi order institusi menjadi 3 tranche (30%-40%-30%) sesuai batas fraksi dan antrean pasar IDX.
+- **The Institutional Trading Lifecycle (Phase 8)**: Siklus perdagangan institusional lengkap mencakup multi-window broker absorption (AQS 0–100), pelacakan divergensi paus asing vs domestik berskala ADTV, rencana tempur pra-pasar 08:30 WIB ($V_{15m}$ rule), radar tape anomaly crossing Pasar Nego, position sizer fraksi IDX dengan pagu ekuitas 20%, dan audit slippage pasca-trade.
 - **Ranked Desk (Phase 5)**: Halaman `/desk` meranking kartu jurnal tersimpan (`ENTER > WAIT > TAKE_PROFIT > INVALIDATED > AVOID`, lalu R:R), menampilkan kartu pagi, dan menjelaskan setiap WAIT/AVOID dari reason gate yang tersimpan. Baris AVOID disembunyikan secara default di belakang toggle `Tampilkan AVOID`; TAKE_PROFIT tetap terlihat. **Bukan evaluasi ulang.** Phase 4 tetap capture-complete (`VERDICT_UNREACHABLE`); tidak ada profil yang di-arm. Outcome ENTER diisi oleh `npm run backfill:outcomes` hanya setelah horizon N=5 lengkap — yang belum terskor tetap NULL. Phase 6 menambahkan health live-only, skip hari libur IDX, dan deadline Stockbit fail-closed tanpa meng-arm gate.
 - **Analisis Target**: Menghitung target harga "Realistis (R1)" dan "Maksimal" berdasarkan rata-rata harga pembelian broker (Avg Bandar).
 - **Decision Card (Playbook G0–G4)**: Setiap analisis memunculkan stance deterministik (`ENTER` / `WAIT` / `AVOID` / `TAKE_PROFIT`) berdasarkan gate kuantitatif: integritas data (G0), kualitas broker akumulator Smartmoney/Whale (G1), ruang menuju ARA dan kesehatan buku (G2), risk-reward bersih ≥ 1.5 setelah friksi IDX dengan invalidation ATR(14) (G3), dan **tape filter 20-EMA + 3 pola allow-list** (G4, aktif di Phase 1). TradingView tidak pernah menjadi input gate — murni tampilan.
