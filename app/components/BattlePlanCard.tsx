@@ -48,6 +48,10 @@ export interface BattlePlanItem {
   dividend_trap_score?: number | null;
   days_to_cum?: number | null;
   corp_action_regime?: string | null;
+  cvd_20d?: number | null;
+  cvd_delta_ratio?: number | null;
+  cvd_divergence?: string | null;
+  cvd_regime?: string | null;
 }
 
 export interface MacroOverlayState {
@@ -422,6 +426,41 @@ export function BattlePlanCard({ date }: { date: string }) {
                         title={`Aksi Korporasi: ${p.corp_action_regime.replace(/_/g, ' ')}${p.dividend_yield_pct ? ` | Yield: ${p.dividend_yield_pct}%` : ''}${p.days_to_cum != null ? ` | Sisa: ${p.days_to_cum} hari` : ''}${p.dividend_trap_score ? ` | Skor Trap: ${p.dividend_trap_score}/100` : ''}`}
                       >
                         📅 Action: {p.corp_action_regime.replace(/_/g, ' ')}{p.dividend_yield_pct ? ` (${p.dividend_yield_pct}%)` : ''}
+                      </span>
+                    )}
+                    {p.cvd_regime && p.cvd_regime !== 'NEUTRAL_DELTA_ROTATION' && (
+                      <span
+                        className="vp-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background:
+                            p.cvd_regime === 'BULLISH_CVD_ABSORPTION' || p.cvd_regime === 'AGGRESSIVE_MARKET_MARKUP'
+                              ? 'rgba(16, 185, 129, 0.12)'
+                              : p.cvd_regime === 'BEARISH_CVD_EXHAUSTION' || p.cvd_regime === 'AGGRESSIVE_MARKET_MARKDOWN'
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : 'rgba(148, 163, 184, 0.12)',
+                          color:
+                            p.cvd_regime === 'BULLISH_CVD_ABSORPTION' || p.cvd_regime === 'AGGRESSIVE_MARKET_MARKUP'
+                              ? '#34d399'
+                              : p.cvd_regime === 'BEARISH_CVD_EXHAUSTION' || p.cvd_regime === 'AGGRESSIVE_MARKET_MARKDOWN'
+                              ? '#f87171'
+                              : '#cbd5e1',
+                          border:
+                            p.cvd_regime === 'BULLISH_CVD_ABSORPTION' || p.cvd_regime === 'AGGRESSIVE_MARKET_MARKUP'
+                              ? '1px solid rgba(16, 185, 129, 0.3)'
+                              : p.cvd_regime === 'BEARISH_CVD_EXHAUSTION' || p.cvd_regime === 'AGGRESSIVE_MARKET_MARKDOWN'
+                              ? '1px solid rgba(239, 68, 68, 0.3)'
+                              : '1px solid rgba(148, 163, 184, 0.3)',
+                        }}
+                        title={`Cumulative Volume Delta: ${p.cvd_regime.replace(/_/g, ' ')}${p.cvd_delta_ratio != null ? ` | Delta: ${p.cvd_delta_ratio > 0 ? '+' : ''}${p.cvd_delta_ratio}%` : ''}${p.cvd_divergence ? ` | Divergensi: ${p.cvd_divergence.replace(/_/g, ' ')}` : ''}`}
+                      >
+                        📊 CVD: {p.cvd_regime.replace(/_/g, ' ')}{p.cvd_delta_ratio != null ? ` (${p.cvd_delta_ratio > 0 ? '+' : ''}${p.cvd_delta_ratio}%)` : ''}
                       </span>
                     )}
                   </div>

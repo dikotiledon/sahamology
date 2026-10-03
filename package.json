@@ -35,7 +35,8 @@
     "walkforward:smc": "tsx --tsconfig tsconfig.test.json scripts/run-smc-walkforward.ts",
     "walkforward:mtf": "tsx --tsconfig tsconfig.test.json scripts/run-mtf-walkforward.ts",
     "walkforward:orb": "tsx --tsconfig tsconfig.test.json scripts/run-orb-walkforward.ts",
-    "walkforward:corp": "tsx --tsconfig tsconfig.test.json scripts/run-corporate-actions-walkforward.ts"
+    "walkforward:corp": "tsx --tsconfig tsconfig.test.json scripts/run-corporate-actions-walkforward.ts",
+    "walkforward:cvd": "tsx --tsconfig tsconfig.test.json scripts/run-cvd-walkforward.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

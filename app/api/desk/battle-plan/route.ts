@@ -13,6 +13,7 @@ import {
   getLatestMtf,
   getLatestOrb,
   getLatestCorpAction,
+  getLatestCvd,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -258,6 +259,22 @@ export async function GET(request: NextRequest) {
           // Graceful fallback if Corporate Action table is unavailable
         }
 
+        let cvd20d: number | null = null;
+        let cvdDeltaRatio: number | null = null;
+        let cvdDivergence: string | null = null;
+        let cvdRegime: string | null = null;
+        try {
+          const cvdRow = await getLatestCvd(emitenUpper);
+          if (cvdRow) {
+            cvd20d = cvdRow.cvd_20d != null ? Number(cvdRow.cvd_20d) : null;
+            cvdDeltaRatio = cvdRow.delta_ratio_pct != null ? Number(cvdRow.delta_ratio_pct) : null;
+            cvdDivergence = (cvdRow.divergence_type as string) || null;
+            cvdRegime = (cvdRow.confluence_regime as string) || null;
+          }
+        } catch {
+          // Graceful fallback if CVD table is unavailable
+        }
+
         return {
           ...item,
           macro_regime: adjusted.macroRegime,
@@ -291,6 +308,10 @@ export async function GET(request: NextRequest) {
           dividend_trap_score: dividendTrapScore,
           days_to_cum: daysToCum,
           corp_action_regime: corpActionRegime,
+          cvd_20d: cvd20d,
+          cvd_delta_ratio: cvdDeltaRatio,
+          cvd_divergence: cvdDivergence,
+          cvd_regime: cvdRegime,
         };
       })
     );

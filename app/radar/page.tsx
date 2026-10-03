@@ -22,6 +22,8 @@ import { OpeningRangeCard } from '@/app/components/OpeningRangeCard';
 import type { OrbAssessment } from '@/lib/orb/types';
 import { CorporateActionsCard } from '@/app/components/CorporateActionsCard';
 import type { CorporateActionAssessment } from '@/lib/corporate-action/types';
+import { CumulativeDeltaCard } from '@/app/components/CumulativeDeltaCard';
+import type { CvdAssessment } from '@/lib/cvd/types';
 
 function todayJakartaHint(): string {
   return sessionDateJakarta(new Date());
@@ -77,6 +79,8 @@ export default function RadarPage() {
   const [orbLoading, setOrbLoading] = useState(false);
   const [corpAssessment, setCorpAssessment] = useState<CorporateActionAssessment | null>(null);
   const [corpLoading, setCorpLoading] = useState(false);
+  const [cvdAssessment, setCvdAssessment] = useState<CvdAssessment | null>(null);
+  const [cvdLoading, setCvdLoading] = useState(false);
 
   // Watchlist configuration states
   const [watchlistSymbols, setWatchlistSymbols] = useState<Set<string>>(new Set());
@@ -163,6 +167,7 @@ export default function RadarPage() {
       setMtfAssessment(null);
       setOrbAssessment(null);
       setCorpAssessment(null);
+      setCvdAssessment(null);
       return;
     }
     let active = true;
@@ -174,6 +179,7 @@ export default function RadarPage() {
     setMtfLoading(true);
     setOrbLoading(true);
     setCorpLoading(true);
+    setCvdLoading(true);
 
     // 1. Fetch Wyckoff
     fetch(`/api/radar/wyckoff?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
@@ -296,6 +302,21 @@ export default function RadarPage() {
       })
       .finally(() => {
         if (active) setCorpLoading(false);
+      });
+
+    // 9. Fetch Cumulative Volume Delta (CVD) & Tape Aggression
+    fetch(`/api/radar/cvd?emiten=${encodeURIComponent(selectedEmiten.emiten)}&date=${encodeURIComponent(date)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json.status === 'success' && json.data) {
+          setCvdAssessment(json.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Radar] Failed to load CVD assessment:', err);
+      })
+      .finally(() => {
+        if (active) setCvdLoading(false);
       });
 
     return () => {
@@ -1097,6 +1118,16 @@ export default function RadarPage() {
             )}
             {!corpLoading && corpAssessment && (
               <CorporateActionsCard emiten={selectedEmiten.emiten} initialData={corpAssessment} />
+            )}
+
+            {/* Cumulative Volume Delta (CVD) & Tape Aggression Section */}
+            {cvdLoading && (
+              <div style={{ marginTop: '1rem', padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                Memuat Cumulative Volume Delta (CVD) &amp; Agresi Tape...
+              </div>
+            )}
+            {!cvdLoading && cvdAssessment && (
+              <CumulativeDeltaCard emiten={selectedEmiten.emiten} initialData={cvdAssessment} />
             )}
           </div>
         </div>

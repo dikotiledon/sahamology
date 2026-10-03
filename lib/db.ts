@@ -3168,6 +3168,99 @@ export async function getLatestCorpActionUniverse(
   return result.rows as Array<Record<string, unknown>>;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 21: Cumulative Volume Delta (CVD) & Foreign Tape Aggression
+// ---------------------------------------------------------------------------
+
+export async function saveCvdSnapshot(row: {
+  emiten: string;
+  trade_date: string;
+  bar_delta: number;
+  cvd_20d: number;
+  cvd_50d: number;
+  delta_ratio_pct: number;
+  foreign_buy_value?: number | null;
+  foreign_sell_value?: number | null;
+  foreign_aggression_ratio?: number | null;
+  divergence_type: string;
+  confluence_regime: string;
+  conviction_score?: number;
+  advisory?: string | null;
+}): Promise<void> {
+  const symbol = row.emiten.toUpperCase();
+  await query(
+    `INSERT INTO cumulative_volume_delta_daily (
+      emiten, trade_date, bar_delta, cvd_20d, cvd_50d, delta_ratio_pct,
+      foreign_buy_value, foreign_sell_value, foreign_aggression_ratio,
+      divergence_type, confluence_regime, conviction_score, advisory
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    ON CONFLICT (emiten, trade_date) DO UPDATE SET
+      bar_delta = EXCLUDED.bar_delta,
+      cvd_20d = EXCLUDED.cvd_20d,
+      cvd_50d = EXCLUDED.cvd_50d,
+      delta_ratio_pct = EXCLUDED.delta_ratio_pct,
+      foreign_buy_value = EXCLUDED.foreign_buy_value,
+      foreign_sell_value = EXCLUDED.foreign_sell_value,
+      foreign_aggression_ratio = EXCLUDED.foreign_aggression_ratio,
+      divergence_type = EXCLUDED.divergence_type,
+      confluence_regime = EXCLUDED.confluence_regime,
+      conviction_score = EXCLUDED.conviction_score,
+      advisory = EXCLUDED.advisory,
+      created_at = NOW()`,
+    [
+      symbol,
+      row.trade_date,
+      row.bar_delta,
+      row.cvd_20d,
+      row.cvd_50d,
+      row.delta_ratio_pct,
+      row.foreign_buy_value ?? null,
+      row.foreign_sell_value ?? null,
+      row.foreign_aggression_ratio ?? 0.5,
+      row.divergence_type,
+      row.confluence_regime,
+      row.conviction_score ?? 50,
+      row.advisory ?? null,
+    ]
+  );
+}
+
+export async function getLatestCvd(
+  emiten: string,
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  const symbol = emiten.toUpperCase();
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM cumulative_volume_delta_daily WHERE emiten = $1 AND trade_date = $2 LIMIT 1`,
+      [symbol, tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM cumulative_volume_delta_daily WHERE emiten = $1 ORDER BY trade_date DESC LIMIT 1`,
+    [symbol]
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getLatestCvdUniverse(
+  tradeDate?: string
+): Promise<Array<Record<string, unknown>>> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM cumulative_volume_delta_daily WHERE trade_date = $1 ORDER BY emiten ASC`,
+      [tradeDate]
+    );
+    return result.rows as Array<Record<string, unknown>>;
+  }
+  const result = await query(
+    `SELECT DISTINCT ON (emiten) * FROM cumulative_volume_delta_daily ORDER BY emiten, trade_date DESC`
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}
+
+
 
 
 

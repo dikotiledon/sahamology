@@ -2,6 +2,29 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.25.0 (draft) — Phase 21: Cumulative Volume Delta (CVD) Proxy, Foreign Tape Aggression & Passive Absorption Divergence Engine
+
+Phase 21 introduces the **Cumulative Volume Delta (CVD) Proxy, Foreign Tape Aggression & Passive Absorption Divergence Engine**, formalizing single-bar volume delta proxies (Close Location Value + Open-to-Close displacement weighting), multi-session rolling Cumulative Volume Delta (CVD 20d & 50d), Foreign Tape Aggression Ratio (HAKA vs HAKI participation), and order flow divergence detection (Bullish Absorption vs Bearish Exhaustion) for the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/041_cumulative_volume_delta_daily.sql`)**:
+  - `cumulative_volume_delta_daily`: Time-series table tracking `emiten`, `trade_date`, `bar_delta`, `cvd_20d`, `cvd_50d`, `delta_ratio_pct`, `foreign_buy_value`, `foreign_sell_value`, `foreign_aggression_ratio`, `divergence_type`, `confluence_regime`, `conviction_score`, and `advisory`.
+  - Unique constraint on `(emiten, trade_date)` and index `idx_cvd_date_regime`.
+- **Cumulative Volume Delta & Order Flow Core Engine (`lib/cvd/`)**:
+  - `types.ts`: Defines `CvdAssessment`, `CvdMetrics`, `TapeAggression`, `CvdDivergenceType`, and `CvdRegime`.
+  - `delta-calculator.ts`: Computes bar volume delta proxies and 20d/50d rolling Cumulative Volume Delta series with normalized delta ratio ($\Delta\%$).
+  - `tape-aggression.ts`: Computes Foreign Tape Aggression Ratio ($\ge 0.65$ HAKA dominant, $\le 0.35$ HAKI dominant).
+  - `divergence-detector.ts`: Detects Bullish CVD Absorption (price lower low + CVD higher low) and Bearish CVD Exhaustion (price higher high + CVD lower high).
+  - `confluence.ts`: Evaluates order flow interactions into 5 regimes (`BULLISH_CVD_ABSORPTION`, `AGGRESSIVE_MARKET_MARKUP`, `NEUTRAL_DELTA_ROTATION`, `BEARISH_CVD_EXHAUSTION`, `AGGRESSIVE_MARKET_MARKDOWN`) with conviction score (0–100).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveCvdSnapshot`, `getLatestCvd`, `getLatestCvdUniverse`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/cvd`: Exposes single emiten CVD assessment with price history fallback and universe-wide candidate screening.
+  - `CumulativeDeltaCard.tsx`: Interactive component displaying 20d/50d CVD gauges, Foreign Tape Aggression ratio, order flow divergence status, and single-bar delta.
+  - Mounted in `/radar` emiten detail inspection drawer.
+  - Enriched `BattlePlanCard.tsx` and `app/api/desk/battle-plan/route.ts` with tactical `📊 CVD: {regime}` badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:cvd` (`scripts/run-cvd-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.24.0 (draft) — Phase 20: Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine
 
 Phase 20 introduces the **Corporate Actions, Ex-Date Dividend Arbitrage & Rights Issue Dilution Risk Engine**, formalizing cash dividend yield quantification, historical Ex-Date drop ratios, Dividend Trap Risk Scoring (0–100), Pre-Cum Run-Up momentum window detection ($5 \le T_{\text{cum}} \le 20$), and Rights Issue (HMETD) dilution percentage, exercise price discount, and Standby Buyer (Pembeli Siaga) commitments for the Indonesia Stock Exchange.
