@@ -7,6 +7,7 @@ import {
   getLatestVolumeProfileSnapshot,
   getSectorRotationForSector,
   getLatestVcpSnapshot,
+  getLatestMarketBreadthSnapshot,
   query,
 } from '@/lib/db';
 import { sessionDateJakarta, isWeekend, isIdxHoliday } from '@/lib/market-calendar';
@@ -189,11 +190,27 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    let marketBreadth: { regime: string; score: number; adRatio: number; advisory?: string } | null = null;
+    try {
+      const bRow = await getLatestMarketBreadthSnapshot(planDate);
+      if (bRow) {
+        marketBreadth = {
+          regime: String(bRow.market_regime),
+          score: Number(bRow.regime_score),
+          adRatio: Number(bRow.ad_ratio),
+          advisory: bRow.advisory ? String(bRow.advisory) : undefined,
+        };
+      }
+    } catch {
+      // Graceful fallback if breadth table is unpopulated
+    }
+
     return NextResponse.json({
       status: 'success',
       planDate,
       isTradingDay: !isNonTrading,
       macroOverlay,
+      marketBreadth,
       items: adjustedItems,
     });
   } catch (err: unknown) {

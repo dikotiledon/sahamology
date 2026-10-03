@@ -2,6 +2,27 @@
 
 Riwayat lengkap perubahan Sahamology. 3 versi terbaru selalu ditampilkan di [README.md](README.md#changelog); versi yang lebih lama diarsipkan di sini.
 
+### Unreleased / v0.19.0 (draft) — Phase 15: IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)
+
+Phase 15 introduces the **IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)**, formalizing systemic market participation tracking to separate broad-based institutional accumulation from heavyweight conglomerate index masking on the Indonesia Stock Exchange.
+
+- **Relational Schema (`supabase/035_market_breadth_daily.sql`)**:
+  - `market_breadth_daily`: Time-series table tracking `trade_date`, `advancers`, `decliners`, `unchanged`, `ad_ratio`, `pct_above_ema20`, `pct_above_sma50`, `pct_above_sma200`, `new_highs_52w`, `new_lows_52w`, `net_foreign_flow`, `market_regime`, `regime_score`, `constituent_count`, and `advisory`.
+  - Unique constraint on `trade_date` and composite index `idx_breadth_date_regime`.
+- **Market Breadth & Regime Engine (`lib/breadth/`)**:
+  - `types.ts`: Defines `MarketBreadthMetric`, `MarketRegime`, and `BreadthConstituent`.
+  - `calculator.ts`: Computes advance/decline metrics, Advance/Decline ratio, percentage of stocks above key moving averages ($> \text{EMA}_{20}$, $> \text{SMA}_{50}$, $> \text{SMA}_{200}$), 52-week High/Low expansion spread, and aggregated total foreign net flow.
+  - `regime-classifier.ts`: Classifies market environment into 5 deterministic regimes (`BULLISH_EXPANSION`, `HEALTHY_PULLBACK`, `BREADTH_DIVERGENCE_WARNING`, `BEARISH_DISTRIBUTION`, `OVERSOLD_CAPITULATION`).
+- **Database Persistence Helpers (`lib/db.ts`)**:
+  - `saveMarketBreadthSnapshot`, `getLatestMarketBreadthSnapshot`, `getMarketBreadthHistory`.
+- **API & UI Surfaces**:
+  - `GET /api/radar/breadth`: Exposes daily market breadth metrics and historical trends with fail-open fallback.
+  - `MarketBreadthCard.tsx`: Interactive component featuring Advance/Decline ratio meter, moving average breadth progress bars, 52-week High/Low expansion status, foreign flow liquidity summary, and architectural boundary notices.
+  - Mounted on `/desk` above the tactical battle plans and on `/radar` above the sector rotation matrix.
+  - Enriched `BattlePlanCard.tsx` with top-level `📊 Breadth: {regime} ({score}/100)` status badge.
+- **Walk-forward Evaluation Gate**:
+  - CLI `npm run walkforward:breadth` (`scripts/run-market-breadth-walkforward.ts`) enforcing out-of-sample sample floor ($N \ge 30$).
+
 ### Unreleased / v0.18.0 (draft) — Phase 14: Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine
 
 Phase 14 introduces the **Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine (SEPA for IDX)**, formalizing institutional supply absorption via progressive contraction waves ($T_1 > T_2 > T_3 > T_4$), volume dry-up quantification ($\le 0.60 \times \text{SMA}_{50}(V)$), cheat/pivot breakout triggers, asymmetric invalidation stops, and Minervini Stage 2 Trend Template gating.

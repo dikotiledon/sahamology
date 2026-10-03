@@ -29,7 +29,8 @@
     "walkforward:vp": "tsx --tsconfig tsconfig.test.json scripts/run-volume-profile-walkforward.ts",
     "walkforward:cognitive": "tsx --tsconfig tsconfig.test.json scripts/run-cognitive-discipline-walkforward.ts",
     "walkforward:sector": "tsx --tsconfig tsconfig.test.json scripts/run-sector-rotation-walkforward.ts",
-    "walkforward:vcp": "tsx --tsconfig tsconfig.test.json scripts/run-vcp-walkforward.ts"
+    "walkforward:vcp": "tsx --tsconfig tsconfig.test.json scripts/run-vcp-walkforward.ts",
+    "walkforward:breadth": "tsx --tsconfig tsconfig.test.json scripts/run-market-breadth-walkforward.ts"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

@@ -2577,3 +2577,88 @@ export async function getLatestVcpUniverse(
   );
   return result.rows as Array<Record<string, unknown>>;
 }
+
+export async function saveMarketBreadthSnapshot(row: {
+  trade_date: string;
+  advancers: number;
+  decliners: number;
+  unchanged: number;
+  ad_ratio: number;
+  pct_above_ema20: number;
+  pct_above_sma50: number;
+  pct_above_sma200: number;
+  new_highs_52w: number;
+  new_lows_52w: number;
+  net_foreign_flow: number;
+  market_regime: string;
+  regime_score: number;
+  constituent_count: number;
+  advisory?: string | null;
+}): Promise<void> {
+  await query(
+    `INSERT INTO market_breadth_daily (
+       trade_date, advancers, decliners, unchanged, ad_ratio,
+       pct_above_ema20, pct_above_sma50, pct_above_sma200,
+       new_highs_52w, new_lows_52w, net_foreign_flow, market_regime,
+       regime_score, constituent_count, advisory, created_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+     ON CONFLICT (trade_date) DO UPDATE SET
+       advancers = EXCLUDED.advancers,
+       decliners = EXCLUDED.decliners,
+       unchanged = EXCLUDED.unchanged,
+       ad_ratio = EXCLUDED.ad_ratio,
+       pct_above_ema20 = EXCLUDED.pct_above_ema20,
+       pct_above_sma50 = EXCLUDED.pct_above_sma50,
+       pct_above_sma200 = EXCLUDED.pct_above_sma200,
+       new_highs_52w = EXCLUDED.new_highs_52w,
+       new_lows_52w = EXCLUDED.new_lows_52w,
+       net_foreign_flow = EXCLUDED.net_foreign_flow,
+       market_regime = EXCLUDED.market_regime,
+       regime_score = EXCLUDED.regime_score,
+       constituent_count = EXCLUDED.constituent_count,
+       advisory = EXCLUDED.advisory`,
+    [
+      row.trade_date,
+      row.advancers,
+      row.decliners,
+      row.unchanged,
+      row.ad_ratio,
+      row.pct_above_ema20,
+      row.pct_above_sma50,
+      row.pct_above_sma200,
+      row.new_highs_52w,
+      row.new_lows_52w,
+      row.net_foreign_flow,
+      row.market_regime,
+      row.regime_score,
+      row.constituent_count,
+      row.advisory ?? null,
+    ]
+  );
+}
+
+export async function getLatestMarketBreadthSnapshot(
+  tradeDate?: string
+): Promise<Record<string, unknown> | null> {
+  if (tradeDate) {
+    const result = await query(
+      `SELECT * FROM market_breadth_daily WHERE trade_date = $1 LIMIT 1`,
+      [tradeDate]
+    );
+    return (result.rows[0] as Record<string, unknown>) || null;
+  }
+  const result = await query(
+    `SELECT * FROM market_breadth_daily ORDER BY trade_date DESC LIMIT 1`
+  );
+  return (result.rows[0] as Record<string, unknown>) || null;
+}
+
+export async function getMarketBreadthHistory(
+  limit = 30
+): Promise<Array<Record<string, unknown>>> {
+  const result = await query(
+    `SELECT * FROM market_breadth_daily ORDER BY trade_date DESC LIMIT $1`,
+    [limit]
+  );
+  return result.rows as Array<Record<string, unknown>>;
+}

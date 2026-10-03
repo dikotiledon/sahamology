@@ -39,6 +39,13 @@ export interface MacroOverlayState {
   summary: string;
 }
 
+export interface MarketBreadthSummary {
+  regime: string;
+  score: number;
+  adRatio: number;
+  advisory?: string;
+}
+
 const regimeBadgeClass: Record<string, string> = {
   MACRO_HEADWIND: 'battle-plan-badge--headwind',
   MACRO_TAILWIND: 'battle-plan-badge--tailwind',
@@ -49,6 +56,7 @@ export function BattlePlanCard({ date }: { date: string }) {
   const [loading, setLoading] = useState(false);
   const [isTradingDay, setIsTradingDay] = useState(true);
   const [macroOverlay, setMacroOverlay] = useState<MacroOverlayState | null>(null);
+  const [marketBreadth, setMarketBreadth] = useState<MarketBreadthSummary | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<BattlePlanItem | null>(null);
 
   useEffect(() => {
@@ -63,6 +71,9 @@ export function BattlePlanCard({ date }: { date: string }) {
           setIsTradingDay(json.isTradingDay ?? true);
           if (json.macroOverlay) {
             setMacroOverlay(json.macroOverlay);
+          }
+          if (json.marketBreadth) {
+            setMarketBreadth(json.marketBreadth);
           }
         }
       } catch (err) {
@@ -117,6 +128,35 @@ export function BattlePlanCard({ date }: { date: string }) {
             {regime && regime !== 'MACRO_NEUTRAL' && (
               <span className={`battle-plan-badge ${regimeBadgeClass[regime]}`}>
                 {regime === 'MACRO_HEADWIND' ? '⚠️ Macro Headwind' : '🌊 Macro Tailwind'}
+              </span>
+            )}
+            {marketBreadth && (
+              <span
+                className="battle-plan-badge"
+                style={{
+                  background:
+                    marketBreadth.score >= 60
+                      ? 'rgba(56, 239, 125, 0.12)'
+                      : marketBreadth.score <= 40
+                        ? 'rgba(244, 63, 94, 0.12)'
+                        : 'rgba(251, 191, 36, 0.12)',
+                  color:
+                    marketBreadth.score >= 60
+                      ? '#38ef7d'
+                      : marketBreadth.score <= 40
+                        ? '#f43f5e'
+                        : '#fbbf24',
+                  border: `1px solid ${
+                    marketBreadth.score >= 60
+                      ? 'rgba(56, 239, 125, 0.3)'
+                      : marketBreadth.score <= 40
+                        ? 'rgba(244, 63, 94, 0.3)'
+                        : 'rgba(251, 191, 36, 0.3)'
+                  }`,
+                }}
+                title={marketBreadth.advisory || `IHSG Pulse: ${marketBreadth.regime} (A/D: ${marketBreadth.adRatio}x)`}
+              >
+                📊 Breadth: {marketBreadth.regime.replace(/_/g, ' ')} ({marketBreadth.score}/100)
               </span>
             )}
           </div>

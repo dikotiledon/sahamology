@@ -5,6 +5,7 @@ import MorningCard from '../components/MorningCard';
 import RankedDeskTable from '../components/RankedDeskTable';
 import { BattlePlanCard } from '../components/BattlePlanCard';
 import { CognitiveJournalCard } from '../components/CognitiveJournalCard';
+import { MarketBreadthCard } from '../components/MarketBreadthCard';
 import type { DeskApiPayload } from '@/lib/desk/assemble';
 import { sessionDateJakarta } from '@/lib/market-calendar';
 
@@ -77,6 +78,7 @@ export default function DeskPage() {
       )}
       {payload && (
         <>
+          <MarketBreadthCard />
           <BattlePlanCard date={date} />
           <MorningCard card={payload.morningCard} />
           {payload.morningCard.avoidCount > 0 && (

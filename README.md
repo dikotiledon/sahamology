@@ -16,14 +16,14 @@
 
 ## Changelog
 
+### Unreleased / v0.19.0 (draft) — Phase 15: IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)
+Phase 15 introduces the **IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse)**, formalizing systemic market participation tracking to separate broad-based institutional accumulation from heavyweight conglomerate index masking on the Indonesia Stock Exchange.
+
 ### Unreleased / v0.18.0 (draft) — Phase 14: Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine
 Phase 14 introduces the **Volatility Contraction Pattern (VCP) & Minervini Trend Template Engine (SEPA for IDX)**, formalizing institutional supply absorption via progressive contraction waves ($T_1 > T_2 > T_3 > T_4$), volume dry-up quantification ($\le 0.60 \times \text{SMA}_{50}(V)$), cheat/pivot breakout triggers, asymmetric invalidation stops, and Minervini Stage 2 Trend Template gating.
 
 ### Unreleased / v0.17.0 (draft) — Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix
 Phase 13 introduces the **Cross-Sector Capital Rotation & Institutional Flow Momentum Matrix Engine**, formalizing Relative Strength ($RS$) benchmarking against IHSG, multi-session sectoral foreign net flow velocity ($5d, 20d$), RRG-adapted institutional quadrant classification (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`), and tactical execution confluence for the Discovery Radar and Pre-Market Battle Plan.
-
-### Unreleased / v0.16.0 (draft) — Phase 12: Cognitive Post-Trade Journal & Trader Discipline Engine
-Phase 12 introduces the **Cognitive Post-Trade Journal & Execution Discipline Engine**, formalizing post-trade execution audits, behavioral deviation detection (FOMO Chase, Stop Widening, Premature Exit, Oversizing, Revenge Trading), quantitative discipline scoring ($0$–$100$), and automated psychological capital tracking with Trader Tilt Lockout protection.
 
 📜 Riwayat versi sebelumnya ada di **[CHANGELOG.md](CHANGELOG.md)**.
 
@@ -31,6 +31,7 @@ Phase 12 introduces the **Cognitive Post-Trade Journal & Execution Discipline En
 
 ## Fitur Utama
 
+- **IDX Market Breadth & Composite Liquidity (Phase 15)**: Pengukuran partisipasi pasar luas IDX memisahkan akumulasi institusi riil dari manipulasi bobot konglomerat IHSG. Menghitung rasio Advance/Decline (A/D), persentase emiten di atas moving average ($> \text{EMA}_{20}$, $> \text{SMA}_{50}$, $> \text{SMA}_{200}$), ekspansi 52-Week High/Low net, serta mengklasifikasikan 5 rezim pasar bursa deterministik (`BULLISH_EXPANSION`, `HEALTHY_PULLBACK`, `BREADTH_DIVERGENCE_WARNING`, `BEARISH_DISTRIBUTION`, `OVERSOLD_CAPITULATION`) dengan visualisasi interaktif di `/desk` dan `/radar`.
 - **Volatility Contraction Pattern (VCP) & Trend Template (Phase 14)**: Engine pengenalan pola VCP Minervini (SEPA) mendeteksi kompresi volatilitas progresif ($T_1 > T_2 > T_3 > T_4$), pengeringan volume pasokan ($\le 0.60 \times \text{SMA}_{50}$), level trigger cheat/pivot breakout, serta stop loss asimetris ketat (1 tick di bawah wave terakhir) dengan verifikasi 6 kriteria Stage 2 Trend Template.
 - **Cross-Sector Capital Rotation (Phase 13)**: Engine rotasi sektoral multi-sesi memetakan pergerakan modal institusi dan Relative Strength (RS) terhadap IHSG ke dalam kuadran rotasi (`LEADING`, `IMPROVING`, `WEAKENING`, `LAGGING`). Mengidentifikasi *Sector Tailwind* (`🌊`) dan *Sector Headwind* (`⚠️`) pada `/radar` dan Battle Plan `/desk` tanpa melanggar batasan gerbang nol-stance G0–G4.
 - **Cognitive Post-Trade Journal & Tilt Lockout (Phase 12)**: Audit psikologis dan disiplin eksekusi pasca-trade mendeteksi deviasi perilaku (FOMO entry slippage, pelebaran stop-loss, exit prematur, oversizing lot, revenge trading). Menghitung Skor Disiplin ($0$–$100$) serta mengelola modal psikologis dengan proteksi *Trader Tilt Lockout* otomatis.

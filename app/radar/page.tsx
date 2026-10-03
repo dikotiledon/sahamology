@@ -9,6 +9,7 @@ import { VolumeProfileCard } from '@/app/components/VolumeProfileCard';
 import type { VolumeProfileResult, VolumeProfileConfluence } from '@/lib/volume-profile';
 import { SectorRotationMatrixCard } from '@/app/components/SectorRotationMatrixCard';
 import type { SectorRotationMetric } from '@/lib/sector';
+import { MarketBreadthCard } from '@/app/components/MarketBreadthCard';
 import { VcpPatternCard } from '@/app/components/VcpPatternCard';
 import type { VcpAssessment } from '@/lib/vcp/types';
 
@@ -497,6 +498,11 @@ export default function RadarPage() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Phase 15: IDX Market Breadth & Composite Liquidity Engine (IHSG Pulse) */}
+      {!loading && (
+        <MarketBreadthCard />
       )}
 
       {/* Phase 13: Cross-Sector Capital Rotation & Institutional Flow Matrix */}
