@@ -529,17 +529,18 @@ export default function RadarPage() {
             </thead>
             <tbody>
               {items.map((row) => {
-                const colors = verdictColor(row.verdict);
+                const verdict = (row.verdict || 'NEUTRAL') as RadarVerdict;
+                const colors = verdictColor(verdict);
                 return (
                   <tr
-                    key={row.emiten}
+                    key={row.emiten || (row as any).symbol}
                     style={{
                       borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                       transition: 'background 0.15s',
                     }}
                   >
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {row.emiten}
+                      {row.emiten || (row as any).symbol}
                     </td>
                     <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {row.sector || 'Others'}
@@ -558,7 +559,7 @@ export default function RadarPage() {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {row.verdict.replace('_', ' ')}
+                        {String(verdict).replace('_', ' ')}
                       </span>
                     </td>
                     <td>
